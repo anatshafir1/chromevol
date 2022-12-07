@@ -1,0 +1,37 @@
+# CMake package file for Bio++ Phyl
+# Authors:
+#   Francois Gindraud (2017)
+# Created: 08/03/2017
+@PACKAGE_INIT@
+
+if (NOT @PROJECT_NAME@_FOUND)
+  # Deps
+  find_package (bpp-core3 @bpp-core_VERSION@ REQUIRED)
+  find_package (bpp-seq3 @bpp-seq_VERSION@ REQUIRED)
+  find_package (bpp-phyl3 @bpp-phyl_VERSION@ REQUIRE)
+  find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+  # Add targets
+  include ("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-targets.cmake")
+  # Append targets to convenient lists
+  set (BPP_LIBS_STATIC "${BPP_LIBS_STATIC}" @PROJECT_NAME@-static)
+  set (BPP_LIBS_SHARED "${BPP_LIBS_SHARED}" @PROJECT_NAME@-shared)
+  # Print some path info for targets
+  if (BUILD_STATIC)
+    get_property (static-location TARGET @PROJECT_NAME@-static PROPERTY LOCATION)
+  endif (BUILD_STATIC)
+  get_property (shared-location TARGET @PROJECT_NAME@-shared PROPERTY LOCATION)
+  get_property (header-location TARGET @PROJECT_NAME@-shared PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+  message (STATUS "@PROJECT_NAME@ @PROJECT_VERSION@ found:")
+  if (BUILD_STATIC)
+    message (STATUS "  static lib: ${static-location}")
+  else (BUILD_STATIC)
+    message (STATUS "  static lib: not built/installed")
+  endif (BUILD_STATIC)
+  message (STATUS "  shared lib: ${shared-location}")
+  message (STATUS "  includes: ${header-location}")
+  if (BUILD_STATIC)
+    unset (static-location)
+  endif (BUILD_STATIC)
+  unset (shared-location)
+  unset (header-location)
+endif (NOT @PROJECT_NAME@_FOUND)
