@@ -866,6 +866,9 @@ void ChromosomeNumberMng::runStochasticMapping(ChromosomeNumberOptimizer* chrOpt
     SubstitutionProcess* nsubPro= multiModelProcess->clone();
     Context context;
     auto likObjectOpt = std::make_shared<LikelihoodCalculationSingleProcess>(context, *vsc_->clone(), *nsubPro, weightedRootFreqs);
+    auto likTest = SingleProcessPhyloLikelihood(context, likObjectOpt, likObjectOpt->getParameters());
+    std::cout << "stochastic mapping lik object likelihood: " << likTest.getValue();
+
     StochasticMapping* stm = new StochasticMapping(likObjectOpt, ChromEvolOptions::NumOfSimulations_, ChromEvolOptions::numOfStochasticMappingTrials_);//ChromEvolOptions::NumOfSimulations_);
     stm->generateStochasticMapping();
     // retry to get unsuccessful nodes via stretching the problematic branches.
@@ -902,7 +905,7 @@ void ChromosomeNumberMng::runStochasticMapping(ChromosomeNumberOptimizer* chrOpt
     const std::shared_ptr<PhyloTree> stmTree = stm->getTree();
     auto &mappings = stm->getMappings();
     auto &ancestralStates = stm->getAncestralStates();
-    const string stretchedBranchesPath = ChromEvolOptions::resultsPathDir_+"//"+ "stretchedBranchesForMapping.txt";
+    const string stretchedBranchesPath = ChromEvolOptions::resultsPathDir_+"//"+ "stretchedBranchesForMapping.csv";
     printMappingStretchedBranches(stretchedBranchesPath, originalBrLenVsStretched, stmTree);
 
     for (size_t i = 0; i < numOfMapping; i++){
@@ -926,20 +929,20 @@ void ChromosomeNumberMng::printMappingStretchedBranches(const string &stretchedB
         return;
     }
     ofstream outFile;
-    outFile << "Node\tMapping\tOriginalBranchLength\tStretchedBranchLength" << std::endl;
     outFile.open(stretchedBranchesPath);
+    outFile << "Node,Mapping,OriginalBranchLength,StretchedBranchLength" << std::endl;
     auto itNode = originalBrLenVsStretched.begin();
     while (itNode != originalBrLenVsStretched.end()){
         auto itMapping = originalBrLenVsStretched[itNode->first].begin();
         while (itMapping != originalBrLenVsStretched[itNode->first].end()){
             if(tree->isLeaf(tree->getNode(itNode->first))){
-                outFile << (tree->getNode(itNode->first))->getName() << "\t";
+                outFile << (tree->getNode(itNode->first))->getName() << ",";
             }else{
-                outFile << "N" << itNode->first << "\t";
+                outFile << "N" << itNode->first << ",";
             }
-            outFile << itMapping->first << "\t";
-            outFile << (itMapping->second).first << "\t";
-            outFile << (itMapping->second).second << "\t";
+            outFile << itMapping->first << ",";
+            outFile << (itMapping->second).first << ",";
+            outFile << (itMapping->second).second << std::endl;
             itMapping++;
         }
         itNode ++;
@@ -1043,7 +1046,7 @@ void ChromosomeNumberMng::fixFailedMappings(StochasticMapping* stm, std::map<uin
                 bool success = stm->tryToReplaceMapping(branchLength, failedNodes[i], mappings[j], ChromEvolOptions::numOfFixingMappingIterations_);
                 if (success){
                     stm->removeFailedNodes(failedNodes[i], mappings[j]);
-                    originalBrLenVsStretched[failedNodes[i]][j] = std::pair<double, double>(original_branch_length, branchLength);
+                    originalBrLenVsStretched[failedNodes[i]][mappings[j]] = std::pair<double, double>(original_branch_length, branchLength);
                     break;
                 }
             }           
