@@ -163,6 +163,9 @@ namespace bpp{
             void printRootToLeaf(std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafOccurrences, std::map<uint, std::map<size_t, bool>> &presentMapping, size_t numOfMappings, const NonHomogeneousSubstitutionProcess* NonHomoProcess);
             static std::string getTypeOfTransitionStr(int transitionType);
             void printResultsForEachMapping(std::map<uint, std::map<int, double>> &expectationsPerTypeRootToLeaf, const NonHomogeneousSubstitutionProcess* NonHomoProcess, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafTransitions, std::map<uint, std::map<size_t, bool>> &presentMapping, const string &outStMappingRootToLeafPath, size_t mappingIndex);
+            void printStochasticMappingEvolutionaryPath(std::shared_ptr<PhyloTree> stmTree, const std::map<uint, std::vector<MutationPath>> &mappings, const std::map<uint, std::vector<size_t>> &ancestralStates, size_t mappingIndex, const string &outPathPerMapping);
+            void printMappingStretchedBranches(const string &stretchedBranchesPath, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched, const std::shared_ptr<PhyloTree> tree);
+
 
         protected:
             void createProbabilisticVsc(std::map<std::string, std::map<string, double>> &species_states_map);
@@ -185,7 +188,7 @@ namespace bpp{
             static string nodeToParenthesis(const uint nodeId, const PhyloTree& tree);
             std::map<int, vector <double>> getVectorToSetModelParams(SingleProcessPhyloLikelihood* lik, size_t modelIndex = 1) const;
             double getOriginalTreeLength(string &path) const;
-            void fixFailedMappings(StochasticMapping* stm);
+            void fixFailedMappings(StochasticMapping* stm, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched);
             vector <uint> getVectorOfMapKeys(std::map<uint, vector<size_t>> &mapOfVectors);
 
 
