@@ -18,10 +18,10 @@
 #include <Bpp/Seq/Alphabet/AlphabetTools.h>
 
 
-//from bpp-phyl
 
-#include <Bpp/Phyl/App/ChromEvolOptions.h>
-#include <ChromosomeNumberMng.h>
+
+#include "ChromEvolOptions.h"
+#include "ChromosomeNumberMng.h"
 
 
 
