@@ -74,7 +74,7 @@
 #include <Bpp/Phyl/Likelihood/NonHomogeneousSubstitutionProcess.h>
 #include <Bpp/Phyl/Likelihood/RateAcrossSitesSubstitutionProcess.h>
 #include <Bpp/Phyl/Parsimony/DRTreeParsimonyScore.h>
-#include <Bpp/Phyl/Likelihood/ChromosomeNumberOptimizer.h>
+#include "ChromosomeNumberOptimizer.h"
 #include <Bpp/Phyl/Mapping/ComputeChromosomeTransitionsExp.h>
 #include <Bpp/Phyl/Model/ChromosomeSubstitutionModel.h>
 #include <Bpp/Phyl/Simulation/SimpleSubstitutionProcessSequenceSimulator.h>

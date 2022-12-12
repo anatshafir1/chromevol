@@ -62,7 +62,7 @@
 #include <Bpp/Phyl/Io/Newick.h>
 #include <Bpp/Phyl/Model/RateDistribution/GammaDiscreteRateDistribution.h>
 #include "UndirectedGraph.h"
-#include <Bpp/Phyl/Model/ChromosomeSubstitutionModel.h>
+#include "ChromosomeSubstitutionModel.h"
 #include <Bpp/Phyl/Likelihood/NonHomogeneousSubstitutionProcess.h>
 #include <Bpp/Phyl/Likelihood/RateAcrossSitesSubstitutionProcess.h>
 #include <Bpp/Phyl/Likelihood/DataFlow/LikelihoodCalculationSingleProcess.h>

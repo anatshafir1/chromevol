@@ -14,7 +14,7 @@
 #include <Bpp/Seq/App/SequenceApplicationTools.h>
 
 // From bpp-phyl:
-#include <Bpp/Phyl/Model/ChromosomeSubstitutionModel.h>
+#include "ChromosomeSubstitutionModel.h"
 #include <Bpp/Phyl/App/PhylogeneticsApplicationTools.h>
 
 

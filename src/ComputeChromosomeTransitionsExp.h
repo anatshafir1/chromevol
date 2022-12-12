@@ -40,7 +40,7 @@
 #define CHROMEVOL_COMPUTECHROMOSOMETRANSITIONSEXP_H
 
 
-#include "Bpp/Phyl/Model/ChromosomeSubstitutionModel.h"
+#include "ChromosomeSubstitutionModel.h"
 #include "Bpp/Phyl/Likelihood/NonHomogeneousSubstitutionProcess.h"
 #include "Bpp/Phyl/Tree/PhyloTree.h"
 #include "Bpp/Phyl/Tree/PhyloTreeTools.h"
