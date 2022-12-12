@@ -76,7 +76,7 @@
 #include <Bpp/Phyl/Parsimony/DRTreeParsimonyScore.h>
 #include "ChromosomeNumberOptimizer.h"
 #include "ComputeChromosomeTransitionsExp.h"
-#include <Bpp/Phyl/Model/ChromosomeSubstitutionModel.h>
+#include "ChromosomeSubstitutionModel.h"
 #include <Bpp/Phyl/Simulation/SimpleSubstitutionProcessSequenceSimulator.h>
 
 
