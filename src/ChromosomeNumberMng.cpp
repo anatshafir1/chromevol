@@ -1,5 +1,5 @@
 #include "ChromosomeNumberMng.h"
-#include <Bpp/Phyl/App/ChromEvolOptions.h>
+#include "ChromEvolOptions.h"
 
 using namespace bpp;
 
