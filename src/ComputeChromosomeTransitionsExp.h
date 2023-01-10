@@ -45,24 +45,21 @@
 #include "Bpp/Phyl/Tree/PhyloTree.h"
 #include "Bpp/Phyl/Tree/PhyloTreeTools.h"
 #include "ChromEvolOptions.h"
+#include "TreeUtils.h"
 #include "Bpp/Phyl/Mapping/StochasticMapping.h"
+#include "StochasticMappingUtils.h"
 
 #include <Bpp/Exceptions.h>
 #include <Bpp/Numeric/Random/RandomTools.h>
 #include <Bpp/Numeric/VectorTools.h>
 
 // From Seqlib:
-#include <Bpp/Seq/Alphabet/IntegerAlphabet.h>
+#include <Bpp/Seq/Alphabet/ChromosomeAlphabet.h>
 #include <vector>
 #include <map>
 #include <utility>
 #include <string>
 
-#define THRESHOLD_EXP 0.5
-#define THRESHOLD_HEURISTIC 0.95
-#define MAX_ITER_HEURISTICS 10
-#define MAX_SIM_HEURISTICS 1000
-#define BRANCH_MULTIPLIER_FACTOR 2
 
 using namespace std;
 
@@ -81,7 +78,7 @@ namespace bpp
 
             const PhyloTree* tree_;
             const NonHomogeneousSubstitutionProcess* model_;
-            const IntegerAlphabet* alphabet_;
+            const ChromosomeAlphabet* alphabet_;
             // The branches on which the chromsome number changes are simulated
             vector<vector<Branch>> branchOrder_;
 
@@ -127,7 +124,7 @@ namespace bpp
             bool isMaxStateValid(int prevState, std::shared_ptr<const ChromosomeSubstitutionModel> model) const;
             
         public:
-            ComputeChromosomeTransitionsExp(const std::shared_ptr<NonHomogeneousSubstitutionProcess> model,  const PhyloTree* tree, const IntegerAlphabet* alphabet, map<uint, map<size_t, VVdouble>>& jointProbabilitiesFatherSon, int method = 0)
+            ComputeChromosomeTransitionsExp(const std::shared_ptr<NonHomogeneousSubstitutionProcess> model,  const PhyloTree* tree, const ChromosomeAlphabet* alphabet, map<uint, map<size_t, VVdouble>>& jointProbabilitiesFatherSon, int method = 0)
             :jointProbabilitiesFatherSon_(jointProbabilitiesFatherSon), tree_(tree), model_(model.get()), alphabet_(alphabet),
             //waitingTimes_(), jumpProbs_(), 
             branchOrder_(), 
@@ -188,20 +185,16 @@ namespace bpp
             void updateMapOfJumps(int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model);
             void updateExpectationsPerBranch(uint nodeId, pair<int, int> ancestralTerminals, pair<int, int> jumpStates);
             void runHeuristics(const string FilePath = "none");
-            static std::map<int, double> getTypeForEachTransitionPerNode(std::shared_ptr<const ChromosomeSubstitutionModel> chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId);
+            
 
             //*** *** ***
             // Temporarily include function for dealing with chromosome number model related stochastic mapping
             // as inferred from the StochasticMapping class. these functions are needed mainly to test the method
             //*** *** ***
 
-            // get model index for each node (i.e., the model of the father, because this is the model which applies on the son branch)
-            static std::map<uint, size_t> getModelForEachBranch(PhyloTree &tree, const NonHomogeneousSubstitutionProcess &models);
-            static void getModeForSons(PhyloTree &tree, uint fatherId, uint sonId, const NonHomogeneousSubstitutionProcess* NonHomoModel,  std::map<uint, size_t> &modelPerNode);
-
             // find the expectations of each transition type
             static std::map<int, double> getExpectationsPerType(const NonHomogeneousSubstitutionProcess* NonHomoProcess, PhyloTree &tree, std::map<uint, std::map<pair<size_t, size_t>, double>> &expectationsPerNode);
-            static bool getProbabilitiesPerType(vector<double> &probabilities, int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model);
+            
             
 
 

@@ -9,7 +9,7 @@
 #define CHROMEVOL_CHROMOSOMESUBSTITUTIONMODEL_H
 
 #include <Bpp/Phyl/Model/AbstractSubstitutionModel.h>
-#include <Bpp/Seq/Alphabet/IntegerAlphabet.h>
+#include <Bpp/Seq/Alphabet/ChromosomeAlphabet.h>
 #include <Bpp/Exceptions.h>
 #include <regex>
 //#include <Bpp/Phyl/NewLikelihood/DataFlow/ExtendedFloatTools.h>
@@ -365,7 +365,7 @@ protected:
 
 
 public:
-  ChromosomeSubstitutionModel(const IntegerAlphabet* alpha, 
+  ChromosomeSubstitutionModel(const ChromosomeAlphabet* alpha, 
     vector<double> gain, 
     vector<double> loss, 
     vector<double> dupl, 
@@ -377,7 +377,7 @@ public:
     vector<int> rateChangeType,
     bool simulated = false);
 
-  ChromosomeSubstitutionModel(const IntegerAlphabet* alpha, 
+  ChromosomeSubstitutionModel(const ChromosomeAlphabet* alpha, 
     std::map<int, vector<double>> mapOfParamValues,
     int baseNum,
     unsigned int maxChrRange, 
@@ -454,7 +454,7 @@ public:
   
 public:
   static ChromosomeSubstitutionModel* initRandomModel(
-    const IntegerAlphabet* alpha,
+    const ChromosomeAlphabet* alpha,
     int &baseNumber,
     std::map<int, vector<double>> initParams,
     unsigned int chrRange,

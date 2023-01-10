@@ -4,13 +4,53 @@
 using namespace bpp;
 
 void ChromosomeNumberMng::getCharacterData (const string& path){
-    int minChrNum;
-    int maxChrNum;
-    vector <int> UniqueCharacterStates;
-    uint numberOfComposite = 0;
-    std::map<std::string, std::map<string, double>> species_states_map = extract_alphabet_states(path, minChrNum, maxChrNum, UniqueCharacterStates, numberOfComposite);
-    numberOfUniqueStates_ = (unsigned int)UniqueCharacterStates.size() + numberOfComposite;
-    uint chrRangeNum = (uint)(maxChrNum - minChrNum);
+    ChromosomeAlphabet* alphaInitial = new ChromosomeAlphabet(ChromEvolOptions::minAlpha_, ChromEvolOptions::maxAlpha_);
+    VectorSequenceContainer* initialSetOfSequences = ChrFasta::readSequencesFromFile(path, alphaInitial);
+    size_t numOfSequences = initialSetOfSequences->getNumberOfSequences();
+    vector <string> sequenceNames = initialSetOfSequences->getSequenceNames();
+
+    unsigned int maxNumberOfChr = 1; //the minimal number of chromosomes cannot be zero
+    unsigned int minNumOfChr = ChromEvolOptions::maxAlpha_;
+
+    std::vector <int> UniqueCharacterStates;
+    cout<<"vector size is "<< UniqueCharacterStates.size()<<endl;
+    for (size_t i = 0; i < numOfSequences; i++){
+        BasicSequence seq = initialSetOfSequences->getSequence(sequenceNames[i]);
+        int character = seq.getValue(0);
+        if (character == -1){
+            continue;
+        }
+        if (character == static_cast<int>(ChromEvolOptions::maxAlpha_)+1){
+            continue;
+        }
+        // if it is a composite state
+        if (character > static_cast<int>(ChromEvolOptions::maxAlpha_) +1){
+            const std::vector<int> compositeCharacters = alphaInitial->getSetOfStatesForAComposite(character);
+            for (size_t j = 0; j < compositeCharacters.size(); j++){
+                if ((unsigned int) compositeCharacters[j] > maxNumberOfChr){
+                    maxNumberOfChr = compositeCharacters[j];
+                }
+                if ((unsigned int) compositeCharacters[j] < minNumOfChr){
+                    minNumOfChr = compositeCharacters[j];
+                }
+                
+            }
+            continue;
+        }
+
+        if (!std::count(UniqueCharacterStates.begin(), UniqueCharacterStates.end(), character)){
+            UniqueCharacterStates.push_back(character);
+        }
+        if ((unsigned int) character > maxNumberOfChr){
+            maxNumberOfChr = character;
+        }
+        if ((unsigned int) character < minNumOfChr){
+            minNumOfChr = character;
+        }
+
+    }
+    numberOfUniqueStates_ = (unsigned int)UniqueCharacterStates.size() + alphaInitial->getNumberOfCompositeStates();
+    uint chrRangeNum = maxNumberOfChr - minNumOfChr;
     for (uint j = 1; j <= static_cast<uint>(ChromEvolOptions::numOfModels_); j++){      
         if (ChromEvolOptions::baseNum_[j] != IgnoreParam){
             if (ChromEvolOptions::baseNum_[j] > (int)chrRangeNum){
@@ -22,210 +62,41 @@ void ChromosomeNumberMng::getCharacterData (const string& path){
     }
     cout <<"Number of unique states is " << numberOfUniqueStates_ <<endl;
 
-    setMaxChrNum(maxChrNum);
-    setMinChrNum(minChrNum);
-    //create_pasta_file(pastaFile, ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_, species_states_map);
-    alphabet_ =  new IntegerAlphabet(ChromEvolOptions::maxChrNum_, ChromEvolOptions::minChrNum_);
-    
-    vsc_ =  new VectorProbabilisticSiteContainer(alphabet_);
-    createProbabilisticVsc(species_states_map);
+    setMaxChrNum(maxNumberOfChr);
+    setMinChrNum(minNumOfChr);
+
+    vsc_ = resizeAlphabetForSequenceContainer(initialSetOfSequences, alphaInitial);
+    delete initialSetOfSequences;
+    delete alphaInitial;
     return;
 }
 /*************************************************************************************************************/
-void ChromosomeNumberMng::createProbabilisticVsc(std::map<std::string, std::map<string, double>> &sp_states_map){
-    auto it = sp_states_map.begin();
-    while (it != sp_states_map.end()){
-        shared_ptr<BasicProbabilisticSequence> seq(new BasicProbabilisticSequence(vsc_->getAlphabet()));
-        seq->setName(it->first);
-        auto &states_probs_map = sp_states_map[it->first];
-        DataTable content(alphabet_->getSize(),0);
-        vector<double> row(alphabet_->getSize());
-        if (states_probs_map.find("X") != states_probs_map.end()){
-            for (size_t i = 0; i < row.size(); i++){
-                row[i] = 1.0;
-
-            }
-        }else{
-            auto it_sp_states = states_probs_map.begin();
-            vector<int> states;
-            while (it_sp_states != states_probs_map.end()){
-                states.push_back(std::stoi(it_sp_states->first));
-                it_sp_states ++;
-            }
-            for (int i = static_cast<int>(alphabet_->getMin()); i <= static_cast<int>(alphabet_->getMax()); i++){
-                if (std::find(states.begin(), states.end(), i) != states.end()){
-                    string state_str = std::to_string(i);
-                    row[(size_t)(i-alphabet_->getMin())] = states_probs_map[state_str];
-
-
-                }else{
-                    row[(size_t)(i-alphabet_->getMin())] = 0;
-
-                    
-                }
-
-            }
-
+VectorSiteContainer* ChromosomeNumberMng::resizeAlphabetForSequenceContainer(VectorSequenceContainer* vsc, ChromosomeAlphabet* alphaInitial){
+    size_t numOfSequences = vsc->getNumberOfSequences();
+    vector <string> sequenceNames = vsc->getSequenceNames();
+    alphabet_ = new ChromosomeAlphabet(ChromEvolOptions::minChrNum_,ChromEvolOptions::maxChrNum_);
+        // fill with composite values
+    if (alphaInitial->getNumberOfCompositeStates() > 0){
+        const std::map <int, std::map<int, double>> compositeStates = alphaInitial->getCompositeStatesMap();
+        std::map <int, std::map<int, double>>::const_iterator it = compositeStates.begin();
+        while (it != compositeStates.end()){
+            int compositeState = it->first;
+            std::string charComposite = alphaInitial->intToChar(compositeState);
+            alphabet_->setCompositeState(charComposite);
+            it++;
         }
-        content.addColumn(row);
-        seq->setContent(content.getData());
-        vsc_->addSequence(*seq);
-        
-        it ++;
     }
-
-}
-/*************************************************************************************************************/
-void ChromosomeNumberMng::setNodeIdsForAllModels(string &path){
-    std::map<uint, std::vector<uint>> mapModelNodesTmp;
-    // ChromEvolOptions::mapModelNodesIds_[1]
-    if (path == "none"){
-        auto nodes = tree_->getAllNodes();
-        for (size_t i = 0; i < nodes.size(); i++){
-            uint nodeId = tree_->getNodeIndex(nodes[i]);
-            if (nodeId == tree_->getRootIndex()){
-                continue;
-            }else{
-                ChromEvolOptions::mapModelNodesIds_[1].push_back(nodeId);
-            }
-        }
-        return;
-    }
-    ifstream stream;
-    stream.open(path.c_str());
-    vector <string> lines = FileTools::putStreamIntoVectorOfStrings(stream);
-    stream.close();
-    PhyloTree* tree = tree_->clone();
-    std::map<uint, std::pair<uint, std::vector<uint>>> mapOfModelMRCAAndNodes;
-    std::map<uint, uint> mapNodeModel;
-    std::map<uint, uint> mapOriginalToAssignedModel;
-    for (size_t i = 0; i < lines.size(); i ++){
-        if (lines[i] == ""){
-            continue;
-        }
-        getNodeIdsPerModelFromLine(lines[i], tree, mapOfModelMRCAAndNodes, mapOriginalToAssignedModel);
+    VectorSiteContainer* resized_alphabet_site_container = new VectorSiteContainer(alphabet_);
+    for (size_t i = 0; i < numOfSequences; i++){
+        BasicSequence seq = vsc->getSequence(sequenceNames[i]);
+        BasicSequence new_seq = BasicSequence(seq.getName(), seq.getChar(0), alphabet_);
+        resized_alphabet_site_container->addSequence(new_seq);
 
     }
-    auto it_ModelNodes = mapOfModelMRCAAndNodes.begin();
-    while (it_ModelNodes != mapOfModelMRCAAndNodes.end()){
-        uint model = it_ModelNodes->first;
-        uint nodeId = mapOfModelMRCAAndNodes[model].first;
-        mapNodeModel[nodeId] = model;
-        mapModelNodesTmp[model] = mapOfModelMRCAAndNodes[model].second;
-        it_ModelNodes ++;
-    }
-    auto it = mapOfModelMRCAAndNodes.begin();
-    while (it != mapOfModelMRCAAndNodes.end()){
-        uint model = it->first;
-        vector<uint> nodeIds = mapOfModelMRCAAndNodes[model].second;
-        for (size_t i = 0; i < nodeIds.size(); i++){
-            auto itNodeModel = mapNodeModel.find(nodeIds[i]);
-            if (itNodeModel != mapNodeModel.end()){
-                uint modelOfDescendant = mapNodeModel[nodeIds[i]];
-                if (modelOfDescendant != model){
-                    vector<uint> subtree = mapOfModelMRCAAndNodes[modelOfDescendant].second;
-                    for (size_t j = 0; j < subtree.size(); j++){
-                        auto nodeToDelIt = std::find(mapModelNodesTmp[model].begin(), mapModelNodesTmp[model].end(), subtree[j]);
-                        if (nodeToDelIt != mapModelNodesTmp[model].end()){
-                            mapModelNodesTmp[model].erase(std::remove(mapModelNodesTmp[model].begin(), mapModelNodesTmp[model].end(), subtree[j]),mapModelNodesTmp[model].end());
-
-                        }
-                    }
-                }
-            }
-        }
-        it ++;
-    }
-    
-    delete tree;
-    auto it_tmp = mapModelNodesTmp.begin();
-    while(it_tmp != mapModelNodesTmp.end()){
-        if (ChromEvolOptions::mapModelNodesIds_.find(mapOriginalToAssignedModel[it_tmp->first]) != ChromEvolOptions::mapModelNodesIds_.end()){
-            ChromEvolOptions::mapModelNodesIds_[mapOriginalToAssignedModel[it_tmp->first]].insert(ChromEvolOptions::mapModelNodesIds_[mapOriginalToAssignedModel[it_tmp->first]].end(), mapModelNodesTmp[it_tmp->first].begin(), mapModelNodesTmp[it_tmp->first].end());
-
-        }else{
-            ChromEvolOptions::mapModelNodesIds_[mapOriginalToAssignedModel[it_tmp->first]] = mapModelNodesTmp[it_tmp->first];
-
-        }
-        
-        it_tmp ++;
-    }
-
-
-
+    return resized_alphabet_site_container;
 }
 
 
-
-/**************************************************************************************************************/
-void ChromosomeNumberMng::getNodeIdsPerModelFromLine(string &content, PhyloTree* tree, std::map<uint, std::pair<uint, std::vector<uint>>> &modelAndNodeIds, std::map<uint,uint> &mapOriginalToAssignedModel){
-    vector<string> paramValues;
-    std::regex modelPattern ("([\\d]+)");
-    std::regex treePattern ("\\(([\\S]+)\\)");
-    StringTokenizer stoken = StringTokenizer(content, "=");
-    while (stoken.hasMoreToken()){
-        paramValues.push_back(stoken.nextToken());
-    }
-    shared_ptr<PhyloNode> mrca_node;
-    uint model;
-    vector<uint> nodes;
-    for (size_t i = 0; i < paramValues.size(); i++){
-        std::smatch sm;
-        if (i == 0){
-            std::regex_search(paramValues[i], sm, modelPattern);
-            model = std::stoi(sm[0]);
-            if (modelAndNodeIds.find(model) != modelAndNodeIds.end()){
-                auto maxModel = modelAndNodeIds.rbegin()->first;
-                auto originalModel = model;
-                model = maxModel+1;
-                mapOriginalToAssignedModel[model] = originalModel;
-            }else{
-                mapOriginalToAssignedModel[model] = model;
-            }
-
-        }else{
-            std::regex_search(paramValues[i], sm, treePattern);
-            string speciesNonSepWithBrackets = sm[0];
-            string speciesNonSep = speciesNonSepWithBrackets.substr(1, speciesNonSepWithBrackets.length()-2);
-
-            vector<string> speciesNames;
-            StringTokenizer speciesToken = StringTokenizer(speciesNonSep, ",");
-            while (speciesToken.hasMoreToken()){
-                speciesNames.push_back(speciesToken.nextToken());
-            }
-            std::map<std::string, shared_ptr<PhyloNode>> subtreeLeavesAsNodes;
-            vector<shared_ptr<PhyloNode>> allLeaves = tree->getAllLeaves();
-            for (size_t k = 0; k < allLeaves.size(); k++){
-                subtreeLeavesAsNodes[allLeaves[k]->getName()] = allLeaves[k];
-            }
-            vector<shared_ptr<PhyloNode>> leaveNodesForMrca;
-            for (size_t k = 0; k < speciesNames.size(); k++){
-                leaveNodesForMrca.push_back(subtreeLeavesAsNodes[speciesNames[k]]);
-            }
-            
-            mrca_node = ChromEvolOptions::getMRCA(tree, leaveNodesForMrca);
- 
-            auto mrca_id = tree->getNodeIndex(mrca_node);
-            ChromEvolOptions::initialModelNodes_.push_back(mrca_id);
-            auto subtreeNodes = tree->getSubtreeNodes(mrca_node);
-            auto allNodeIds = tree->getNodeIndexes(subtreeNodes);
-            for (size_t j = 0; j  < allNodeIds.size(); j++){
-                if (allNodeIds[j] == tree->getRootIndex()){
-                    continue;
-                }
-                nodes.push_back(allNodeIds[j]);
-            }
-            auto leavesUnderNode = tree->getLeavesUnderNode(mrca_node);
-            std:: cout << "Model #" << mapOriginalToAssignedModel[model] << std::endl;
-            for (size_t j= 0; j < leavesUnderNode.size(); j++){
-                std::cout << leavesUnderNode[j]->getName() << std::endl;
-            }
-        }    
-
-    }
-    modelAndNodeIds[model].first = tree->getNodeIndex(mrca_node);
-    modelAndNodeIds[model].second = nodes;
-}
 // /*******************************************************************************************************************/
 std::map<std::string, std::map<string, double>> ChromosomeNumberMng::extract_alphabet_states(const string &file_path, int &min, int &max, vector<int> &uniqueStates, uint &numberOfComposite){
     
@@ -387,53 +258,13 @@ void ChromosomeNumberMng::getMaxParsimonyUpperBound(double* parsimonyBound) cons
     TreeTemplate<Node>* tree = reader.readTree(ChromEvolOptions::treeFilePath_);
     double factor = tree_->getTotalLength()/tree->getTotalLength();
     tree->scaleTree(factor);
-    auto vsc = convertToNotProbVsc();
-    DRTreeParsimonyScore maxParsimonyObject = DRTreeParsimonyScore(*tree, *vsc);
+    DRTreeParsimonyScore maxParsimonyObject = DRTreeParsimonyScore(*tree, *vsc_);
     *parsimonyBound = (maxParsimonyObject.getScore())/(tree->getTotalLength());
     delete tree;
-    delete vsc;
     return;   
 
 }
-/*****************************************************************************************/
-VectorSiteContainer* ChromosomeNumberMng::convertToNotProbVsc() const{
-    IntegerAlphabet* alpha = new IntegerAlphabet(ChromEvolOptions::maxChrNum_,ChromEvolOptions::minChrNum_);
-    vector <string> sequenceNames = vsc_->getSequenceNames();
-    VectorSiteContainer* vsc = new VectorSiteContainer(alpha);
-    for (size_t i = 0; i < sequenceNames.size(); i++){
-        const BasicProbabilisticSequence seq = *(dynamic_cast<const BasicProbabilisticSequence*>(&(vsc_->getSequence(sequenceNames[i]))));
-        string state = getStateWithMaxProbability(seq);
-        BasicSequence new_seq = BasicSequence(seq.getName(), state, alpha);
-        vsc->addSequence(new_seq);
-    }
-    return vsc;
-    
-}
-/*****************************************************************************************/
 
-string ChromosomeNumberMng::getStateWithMaxProbability(const BasicProbabilisticSequence seq) const{
-    int min = alphabet_->getMin();
-    int max = alphabet_->getMax();
-    int max_state;
-    size_t num_of_ambiguous = 0;
-    double max_prob = 0.0;
-    for (int i = min; i <= max; i++){
-        double prob = seq.getStateValueAt(0, i);
-        if (prob == 1){
-            num_of_ambiguous ++;
-        }
-        if (prob > max_prob){
-            max_prob = prob;
-            max_state = i;
-        }
-
-    }
-    if (num_of_ambiguous == alphabet_->getSize()){
-        return "X";
-    }
-    return std::to_string(max_state);
-  
-}
 /*****************************************************************************************/
 ChromosomeNumberOptimizer* ChromosomeNumberMng::optimizeLikelihoodMultiStartPoints() const{
     std::map<uint, std::pair<int, std::map<int, vector<double>>>> complexParamsValues;
@@ -462,7 +293,7 @@ ChromosomeNumberOptimizer* ChromosomeNumberMng::optimizeLikelihoodMultiStartPoin
     time_t t2;
     std::map<uint, vector<uint>> mapOfNodesWithRoot = ChromEvolOptions::mapModelNodesIds_;
     mapOfNodesWithRoot[1].push_back(tree_->getRootIndex());
-    auto modelAndRepresentitives = findMRCAForEachModelNodes(mapOfNodesWithRoot);
+    auto modelAndRepresentitives = LikelihoodUtils::findMRCAForEachModelNodes(tree_, mapOfNodesWithRoot);
     opt->setInitialModelRepresentitives(modelAndRepresentitives);
     if (ChromEvolOptions::parallelization_){
         opt->optimizeInParallel(complexParamsValues, parsimonyBound, ChromEvolOptions::rateChangeType_, ChromEvolOptions::seed_, ChromEvolOptions::OptPointsNum_[0], ChromEvolOptions::fixedFrequenciesFilePath_, ChromEvolOptions::fixedParams_ ,ChromEvolOptions::mapModelNodesIds_);
@@ -741,7 +572,7 @@ void ChromosomeNumberMng::simulateData(){
     if (ChromEvolOptions::maxChrNum_ <= ChromEvolOptions::minChrNum_){
         throw Exception("ERROR!!! ChromosomeNumberMng::initializeSimulator(): maximum chromsome number should be larger than minimum chromosome number!");
     }
-    alphabet_ = new IntegerAlphabet(ChromEvolOptions::maxChrNum_, ChromEvolOptions::minChrNum_);
+    alphabet_ = new ChromosomeAlphabet(ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_);
     std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
     std::shared_ptr<ParametrizablePhyloTree> parTree =  std::make_shared<ParametrizablePhyloTree>(*tree_);
     std::map<uint, std::pair<int, std::map<int, vector<double>>>> complexParamsValues;
@@ -814,7 +645,7 @@ void ChromosomeNumberMng::simulateData(){
 
 /***********************************************************************************/
 void ChromosomeNumberMng::runChromEvol(){
-    setNodeIdsForAllModels(ChromEvolOptions::nodeIdsFilePath_);
+    LikelihoodUtils::setNodeIdsForAllModels(tree_, ChromEvolOptions::mapModelNodesIds_, ChromEvolOptions::nodeIdsFilePath_, ChromEvolOptions::initialModelNodes_);
     if (ChromEvolOptions::simulateData_){
         time_t t1;
         time(&t1);
@@ -874,7 +705,7 @@ void ChromosomeNumberMng::runStochasticMapping(ChromosomeNumberOptimizer* chrOpt
     // retry to get unsuccessful nodes via stretching the problematic branches.
     // initalizing a map that will contain all the branches that were stretched with their original lengths.
     std::map<uint, std::map<size_t, std::pair<double, double>>> originalBrLenVsStretched;
-    fixFailedMappings(stm, originalBrLenVsStretched);
+    StochasticMappingUtils::fixFailedMappings(tree_, stm, originalBrLenVsStretched, ChromEvolOptions::numOfFixingMappingIterations_);
 
     // getting expected number of transitions for each type (comparable to the expectation computation).
     // This is just a test!!
@@ -891,9 +722,7 @@ void ChromosomeNumberMng::runStochasticMapping(ChromosomeNumberOptimizer* chrOpt
     std::map<uint, std::map<size_t, bool>> presentMapping;
     auto rootToLeafTransitions = stm->getNumOfOccurrencesFromRootToNode(presentMapping);
     //const string outStMappingRootToLeaf = ChromEvolOptions::resultsPathDir_+"//"+ "stMapping_root_to_leaf.txt";
-
-    printRootToLeaf(rootToLeafTransitions, presentMapping, ChromEvolOptions::NumOfSimulations_, nonHomoProcess);
-    // std::map<int, double> ComputeChromosomeTransitionsExp::getTypeForEachTransitionPerNode(const ChromosomeSubstitutionModel* chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId)
+    StochasticMappingUtils::printRootToLeaf(tree_, alphabet_, rootToLeafTransitions, presentMapping, ChromEvolOptions::NumOfSimulations_, nonHomoProcess, ChromEvolOptions::resultsPathDir_);
     
     Vdouble dwellingTimesPerState = stm->getDwellingTimesUnderEachState();
     auto numOfOccurencesPerTransition = stm->getTotalNumOfOcuurencesForEachTransition();
@@ -906,11 +735,11 @@ void ChromosomeNumberMng::runStochasticMapping(ChromosomeNumberOptimizer* chrOpt
     auto &mappings = stm->getMappings();
     auto &ancestralStates = stm->getAncestralStates();
     const string stretchedBranchesPath = ChromEvolOptions::resultsPathDir_+"//"+ "stretchedBranchesForMapping.csv";
-    printMappingStretchedBranches(stretchedBranchesPath, originalBrLenVsStretched, stmTree);
+    StochasticMappingUtils::printMappingStretchedBranches(stretchedBranchesPath, originalBrLenVsStretched, stmTree);
 
     for (size_t i = 0; i < numOfMapping; i++){
         const string outPathPerMapping =  ChromEvolOptions::resultsPathDir_+"//"+ "evoPathMapping_" + std::to_string(i) + ".txt";
-        printStochasticMappingEvolutionaryPath(stmTree, mappings, ancestralStates, i, outPathPerMapping);
+        StochasticMappingUtils::printStochasticMappingEvolutionaryPath(alphabet_, stmTree, mappings, ancestralStates, i, outPathPerMapping);
     }
 
     // delete
@@ -922,351 +751,6 @@ void ChromosomeNumberMng::runStochasticMapping(ChromosomeNumberOptimizer* chrOpt
     
 
 
-}
-/**************************************************************************************/
-void ChromosomeNumberMng::printMappingStretchedBranches(const string &stretchedBranchesPath, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched, const std::shared_ptr<PhyloTree> tree){
-    if (originalBrLenVsStretched.empty()){
-        return;
-    }
-    ofstream outFile;
-    outFile.open(stretchedBranchesPath);
-    outFile << "Node,Mapping,OriginalBranchLength,StretchedBranchLength" << std::endl;
-    auto itNode = originalBrLenVsStretched.begin();
-    while (itNode != originalBrLenVsStretched.end()){
-        auto itMapping = originalBrLenVsStretched[itNode->first].begin();
-        while (itMapping != originalBrLenVsStretched[itNode->first].end()){
-            if(tree->isLeaf(tree->getNode(itNode->first))){
-                outFile << (tree->getNode(itNode->first))->getName() << ",";
-            }else{
-                outFile << "N" << itNode->first << ",";
-            }
-            outFile << itMapping->first << ",";
-            outFile << (itMapping->second).first << ",";
-            outFile << (itMapping->second).second << std::endl;
-            itMapping++;
-        }
-        itNode ++;
-    }
-
-    outFile.close();
-
-}
-/**************************************************************************************/
-void ChromosomeNumberMng::printStochasticMappingEvolutionaryPath(std::shared_ptr<PhyloTree> stmTree, const std::map<uint, std::vector<MutationPath>> &mappings, const std::map<uint, std::vector<size_t>> &ancestralStates, size_t mappingIndex, const string &outPathPerMapping){
-    ofstream outFile;
-    outFile.open(outPathPerMapping);
-    size_t totalNumTransitions = 0;
-    vector<shared_ptr<PhyloNode> > nodes = stmTree->getAllNodes();
-    size_t nbNodes = nodes.size();
-    for (size_t n = 0; n < nbNodes; n++){
-        uint nodeId = stmTree->getNodeIndex(nodes[n]);
-        if (stmTree->getRootIndex() == nodeId){
-            outFile << "N-" + std::to_string(nodeId) << endl;
-            size_t rootState = ancestralStates.at(nodeId)[mappingIndex];
-            outFile <<"\tThe root state is: "<< ((int)(rootState + alphabet_->getMin())) <<endl;
-        }else{
-            if (stmTree->isLeaf(nodeId)){
-                outFile << stmTree->getNode(nodeId)->getName() << endl;
-            }else{
-                outFile << "N-" + std::to_string(nodeId) <<endl;
-
-            }
-            MutationPath mutPath = mappings.at(nodeId)[mappingIndex];
-            vector<size_t> states = mutPath.getStates();
-            vector<double> times = mutPath.getTimes();
-            totalNumTransitions += static_cast<int>(times.size());
-
-            auto edgeIndex =  stmTree->getIncomingEdges(nodeId)[0]; 
-            auto fatherIndex = stmTree->getFatherOfEdge(edgeIndex);
-            outFile << "Father is: " << "N-" << fatherIndex << std::endl;
-            size_t fatherState = ancestralStates.at(fatherIndex)[mappingIndex] + alphabet_->getMin();    
-            for (size_t i = 0; i < states.size(); i++){
-                outFile << "from state: "<< fatherState  <<"\tt = "<< times[i] << " to state = "<< ((int)(states[i]) + alphabet_->getMin()) << endl;
-                fatherState = ((int)(states[i]) + alphabet_->getMin());
-            }
-            outFile <<"# Number of transitions per branch: "<< times.size() <<endl;   
-
-        }
-
-        outFile <<"*************************************"<<endl;
-
-    }
-    outFile <<"Total number of transitions is: "<< totalNumTransitions << endl;
-    outFile.close();
-
-}
-/**************************************************************************************/
-vector <uint> ChromosomeNumberMng::getVectorOfMapKeys(std::map<uint, vector<size_t>> &mapOfVectors){
-    auto it = mapOfVectors.begin();
-    vector <uint> vectorOfKeys;
-    while (it != mapOfVectors.end()){
-        vectorOfKeys.push_back(it->first);
-        it ++;
-    }
-    return vectorOfKeys;
-}
-/**************************************************************************************/
-void ChromosomeNumberMng::fixFailedMappings(StochasticMapping* stm, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched){
-    auto failedNodesWithMappings = stm->getFailedNodes();
-    std::cout << "*** Stochastic mapping: failed nodes before heuristics ***"<< std:: endl;
-    auto it = failedNodesWithMappings.begin();
-    while (it != failedNodesWithMappings.end()){
-        if (tree_->isLeaf(it->first)){
-            std::cout << (tree_->getNode(it->first))->getName() <<": ";
-        }else{
-            std::cout << "N" << it->first << ": ";
-        }
-        for (size_t m = 0; m < failedNodesWithMappings[it->first].size(); m++){
-            if (m == failedNodesWithMappings[it->first].size()-1){
-                std::cout << failedNodesWithMappings[it->first][m] << std::endl;
-
-            }else{
-                std::cout << failedNodesWithMappings[it->first][m] <<", ";
-            }
-            
-        }
-        it++;
-    }
-    std::cout << "******End of unrepresented nodes*********" << std::endl;
-    vector <uint> failedNodes = getVectorOfMapKeys(failedNodesWithMappings);
-    for (size_t i = 0; i < failedNodes.size(); i++){
-        auto mappings = failedNodesWithMappings[failedNodes[i]];
-        for (size_t j = 0; j < mappings.size(); j++){
-            auto branchPtr = tree_->getIncomingEdges(tree_->getNode(failedNodes[i]))[0];
-            double original_branch_length = branchPtr->getLength();
-            auto branchLength = original_branch_length;
-            for (size_t k = 0; k < MAX_ITER_HEURISTICS; k++){
-                auto rateToLeave = stm->getRateToLeaveState(failedNodes[i], mappings[j]);
-                if (branchLength * rateToLeave >= 1){
-                    branchLength *= BRANCH_MULTIPLIER_FACTOR;
-                }else{
-                    branchLength *= 1/(rateToLeave*branchLength);
-                }
-
-                bool success = stm->tryToReplaceMapping(branchLength, failedNodes[i], mappings[j], ChromEvolOptions::numOfFixingMappingIterations_);
-                if (success){
-                    stm->removeFailedNodes(failedNodes[i], mappings[j]);
-                    originalBrLenVsStretched[failedNodes[i]][mappings[j]] = std::pair<double, double>(original_branch_length, branchLength);
-                    break;
-                }
-            }           
-        }
-    }
-}
-/**************************************************************************************/
-void ChromosomeNumberMng::printRootToLeaf(std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafOccurrences, std::map<uint, std::map<size_t, bool>> &presentMapping, size_t numOfMappings, const NonHomogeneousSubstitutionProcess* NonHomoProcess){
-  const string outStMappingRootToLeafPath =  ChromEvolOptions::resultsPathDir_+"//"+ "stMapping_root_to_leaf.txt";
-  const string outStMappingRootToLeafExpPath =  ChromEvolOptions::resultsPathDir_+"//"+ "stMapping_root_to_leaf_exp.csv";
-  ofstream stream;
-  stream.open(outStMappingRootToLeafPath);
-  std::map<uint, std::map<std::pair<size_t, size_t>, double>> expectationsFromRootToLeaf;
-  stream << "############################" << std::endl;
-  stream << "# Root to leaf transitions #" << std::endl;
-  stream << "############################" << std::endl;
-  std::map<uint, size_t> modelsForBranch = ComputeChromosomeTransitionsExp::getModelForEachBranch(*tree_, *NonHomoProcess);
-  auto leaves = tree_->getAllLeaves();
-  std::map<uint, double> numOfMappingsPerLeaf;
-  for (size_t i = 0; i < leaves.size(); i++){
-    double numOfAccountedMappings = 0;
-    auto leafIndex = tree_->getNodeIndex(leaves[i]);
-    stream << "*** Leaf name: " << leaves[i]->getName() << std::endl;
-    for (size_t j = 0; j < numOfMappings; j ++){
-      if (presentMapping[leafIndex][j]){
-        stream << "\t# Mapping $" << j << std::endl;
-        if (rootToLeafOccurrences[leafIndex].find(j) == rootToLeafOccurrences[leafIndex].end()){
-            if (expectationsFromRootToLeaf.find(leafIndex) == expectationsFromRootToLeaf.end()){
-                expectationsFromRootToLeaf[leafIndex];
-            }
-            numOfAccountedMappings ++;
-            continue;
-        }
-        numOfAccountedMappings ++;
-
-        auto &transitions = rootToLeafOccurrences[leafIndex][j];
-        auto it = transitions.begin();
-        while(it != transitions.end()){
-            if (expectationsFromRootToLeaf.find(leafIndex) == expectationsFromRootToLeaf.end()){
-                expectationsFromRootToLeaf[leafIndex][it->first] = transitions[it->first];
-            }else{
-                if (expectationsFromRootToLeaf[leafIndex].find(it->first) == expectationsFromRootToLeaf[leafIndex].end()){
-                    expectationsFromRootToLeaf[leafIndex][it->first] = transitions[it->first];
-                }else{
-                    expectationsFromRootToLeaf[leafIndex][it->first] += transitions[it->first];
-                }
-            }
-            stream <<"\t\t" << alphabet_->getMin() + (it->first).first << " -> " << alphabet_->getMin()+ (it->first).second << " : " <<  transitions[it->first] << std::endl;
-            it ++;
-        }
-
-      }
-    }
-    if (expectationsFromRootToLeaf.find(leafIndex) != expectationsFromRootToLeaf.end()){
-       auto &expTransitios = expectationsFromRootToLeaf[leafIndex]; 
-       auto transitionsIt = expTransitios.begin();
-       while(transitionsIt != expTransitios.end()){
-           expectationsFromRootToLeaf[leafIndex][transitionsIt->first] /= numOfAccountedMappings;
-           transitionsIt ++;
-        }
-    }
-    numOfMappingsPerLeaf[leafIndex] = numOfAccountedMappings;
-  }
-  stream << "###############################################" << std::endl;
-  stream << "# Root to leaf  transitions expectations      #" << std::endl;
-  stream << "###############################################" << std::endl;
-  for (size_t i = 0; i < leaves.size(); i++){
-    auto leafIndex = tree_->getNodeIndex(leaves[i]);
-    if (expectationsFromRootToLeaf.find(leafIndex) == expectationsFromRootToLeaf.end()){
-        continue;
-    }
-    stream << "*** Leaf name: " << leaves[i]->getName() << std::endl;
-    auto &transitionsPerLeaf = expectationsFromRootToLeaf[leafIndex];
-    auto itTransitionsExpRootLeaf = transitionsPerLeaf.begin();
-    while (itTransitionsExpRootLeaf != transitionsPerLeaf.end()){
-        stream << "\t" << alphabet_->getMin() + (itTransitionsExpRootLeaf->first).first << " -> " << alphabet_->getMin()+ (itTransitionsExpRootLeaf->first).second << " : " <<  transitionsPerLeaf[itTransitionsExpRootLeaf->first] << std::endl;
-        itTransitionsExpRootLeaf ++;
-    }
-  }
-  stream.close();
-  std::map<uint, std::map<int, double>> expectationsPerTypeRootToLeaf;
-  
-  for (size_t i = 0; i < numOfMappings; i++){
-      const string outStMappingRootToLeafCSVPath =  ChromEvolOptions::resultsPathDir_+"//"+ "stMapping_mapping_" + std::to_string(i) + ".csv";
-      printResultsForEachMapping(expectationsPerTypeRootToLeaf, NonHomoProcess, rootToLeafOccurrences, presentMapping, outStMappingRootToLeafCSVPath, i);
-  }
-  ofstream stream_exp;
-  stream_exp.open(outStMappingRootToLeafExpPath);
-  stream_exp << "NODE";
-  for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
-    string typeStr = getTypeOfTransitionStr(type);
-    stream_exp << "," << typeStr;
-  }
-  stream_exp << std::endl;
-  for(size_t i = 0; i < leaves.size(); i++){
-    stream_exp << leaves[i]->getName();
-    auto leafIndex = tree_->getNodeIndex(leaves[i]);
-    if (expectationsPerTypeRootToLeaf.find(leafIndex) == expectationsPerTypeRootToLeaf.end()){
-        writeNanInTable(stream_exp);
-    }else{
-
-        for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
-          expectationsPerTypeRootToLeaf[leafIndex][type] /= numOfMappingsPerLeaf[leafIndex];
-          stream_exp << "," << expectationsPerTypeRootToLeaf[leafIndex][type];
-
-        }
-        stream_exp << std::endl;
-
-    }
-
-  }
-
-  stream_exp.close();
-}
-/*************************************************************************************/
-void ChromosomeNumberMng::writeNanInTable(ofstream &stream){
-    for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
-        stream << ",";
-    }
-    stream << std::endl;
-
-}
-
-/*************************************************************************************/
-void ChromosomeNumberMng::writeZeroInTable(ofstream &stream){
-    for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
-        stream << ",0";
-    }
-    stream << std::endl;
-}
-/**************************************************************************************/
-void ChromosomeNumberMng::printResultsForEachMapping(std::map<uint, std::map<int, double>> &expectationsPerTypeRootToNode, const NonHomogeneousSubstitutionProcess* NonHomoProcess, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafTransitions, std::map<uint, std::map<size_t, bool>> &presentMapping, const string &outStMappingRootToLeafPath, size_t mappingIndex){
-    ofstream stream;
-    std::map<uint, size_t> modelsForBranch = ComputeChromosomeTransitionsExp::getModelForEachBranch(*tree_, *NonHomoProcess);
-    stream.open(outStMappingRootToLeafPath);
-    
-    stream << "NODE";
-    for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
-        string typeStr = getTypeOfTransitionStr(type);
-        stream << "," << typeStr;
-    }
-    stream << std::endl;
-    auto nodes = tree_->getAllNodes();
-    // expectationsPerTypeRootToLeaf
-    for (size_t i = 0; i < nodes.size(); i++){
-        uint nodeId = tree_->getNodeIndex(nodes[i]);
-        if (nodeId == tree_->getRootIndex()){
-            continue;
-        }
-        if (tree_->isLeaf(nodeId)){
-            stream << nodes[i]->getName();
-        }else{
-            stream << "N" << nodeId;
-        }
-        
-        if (!(presentMapping[nodeId][mappingIndex])){
-            writeNanInTable(stream);
-        }else{
-            if (rootToLeafTransitions.find(nodeId) == rootToLeafTransitions.end()){
-                writeZeroInTable(stream);
-                if (expectationsPerTypeRootToNode.find(nodeId) == expectationsPerTypeRootToNode.end()){
-                    for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
-                        expectationsPerTypeRootToNode[nodeId][type] = 0;
-                    }
-
-                }
-
-            }else{
-                if (rootToLeafTransitions[nodeId].find(mappingIndex) == rootToLeafTransitions[nodeId].end()){
-                    writeZeroInTable(stream);
-                    if (expectationsPerTypeRootToNode.find(nodeId) == expectationsPerTypeRootToNode.end()){
-                        for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
-                            expectationsPerTypeRootToNode[nodeId][type] = 0;
-                        }
-                    }
-                }else{
-                    auto &transitions = rootToLeafTransitions[nodeId][mappingIndex];
-                    auto model = NonHomoProcess->getModel(modelsForBranch[nodeId]);
-                    auto chrModel = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(model);
-                    std::map<int, double> transitionsPerType = ComputeChromosomeTransitionsExp::getTypeForEachTransitionPerNode(chrModel, transitions, nodeId);
-                    for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
-                        stream << "," << transitionsPerType[type];
-                        if (expectationsPerTypeRootToNode.find(nodeId) == expectationsPerTypeRootToNode.end()){
-                            expectationsPerTypeRootToNode[nodeId][type] = transitionsPerType[type];
-                        }else{
-                            expectationsPerTypeRootToNode[nodeId][type] += transitionsPerType[type];
-                        }
-                    }
-                    stream << std::endl;
-
-                }
-            }
-            
-        }
-
-    }
-
-    stream.close();
-
-}
-/**************************************************************************************/
-std::string ChromosomeNumberMng::getTypeOfTransitionStr(int transitionType){
-    string nameOfTransition;
-    if (transitionType == ChromosomeSubstitutionModel::GAIN_T){
-        nameOfTransition = "GAIN";
-    }else if (transitionType == ChromosomeSubstitutionModel::LOSS_T){
-        nameOfTransition = "LOSS";
-    }else if (transitionType == ChromosomeSubstitutionModel::DUPL_T){
-        nameOfTransition =  "DUPLICATION";
-    }else if (transitionType == ChromosomeSubstitutionModel::DEMIDUPL_T){
-        nameOfTransition = "DEMI-DUPLICATION";
-    }else if (transitionType == ChromosomeSubstitutionModel::BASENUM_T){
-        nameOfTransition = "BASE-NUMBER";
-    }else if (transitionType == ChromosomeSubstitutionModel::MAXCHR_T){
-        nameOfTransition = "TOMAX";
-    }else{
-        throw Exception("getTypeOfTransitionStr(): No such transition!!");
-    }
-    return nameOfTransition;
-    
 }
 /**************************************************************************************/
 void ChromosomeNumberMng::printStochasticMappingResults(StochasticMapping* stm, Vdouble &dwellingTimesPerState, std::map<pair<size_t, size_t>, double> &numOfOccurencesPerTransition, VVdouble &ratesPerTransition, std::map<int, double> &expectationsTotal, const string &outStMappingPath){       
@@ -1588,7 +1072,7 @@ void ChromosomeNumberMng::printSimulatedData(vector<size_t> leavesStates, vector
             BasicSequence seq = BasicSequence(leavesNames[i], alphabet_->intToChar(state), static_cast <const Alphabet*>(alphabet_));
             simulatedData->addSequence(seq);
         }
-        vsc_ = dynamic_cast<VectorProbabilisticSiteContainer*>(simulatedData);
+        vsc_ = simulatedData;
         
         Fasta fasta;
         fasta.writeSequences(countsPath, *simulatedData);
@@ -1720,7 +1204,7 @@ void ChromosomeNumberMng::writeOutputToFile(ChromosomeNumberOptimizer* chrOptimi
     outFile << "Min clade size in the best model = " << minSizeOfClade << std::endl;
     outFile << "Root node is: " << "N" << tree_->getRootIndex() << std::endl;
     outFile << "Ancestral chromosome number at the root: " << inferredRootState <<std::endl;
-    auto modelAndRepresentitives = findMRCAForEachModelNodes(mapModelNodesIds);
+    auto modelAndRepresentitives = LikelihoodUtils::findMRCAForEachModelNodes(tree_, mapModelNodesIds);
     outFile << "Shifting nodes are: " << std::endl;
     for (uint i = 1; i <= numOfModels; i++){
         for (size_t j = 0; j < modelAndRepresentitives[i].size(); j++){
@@ -1986,31 +1470,7 @@ void ChromosomeNumberMng::writeTreeWithCorrespondingModels(PhyloTree tree, std::
     outFileTree.close();
 
 }
-/******************************************************************************/
-std::map<uint, std::vector<uint>> ChromosomeNumberMng::findMRCAForEachModelNodes(std::map<uint, vector<uint>> mapOfModelsAndNodes) const{
-    std::map <uint, std::vector<uint>> modelWithRepresentitives;
-    auto it = mapOfModelsAndNodes.begin();
-    while (it != mapOfModelsAndNodes.end()){
-        auto nodes = mapOfModelsAndNodes[it->first];
-        for (size_t i = 0; i < nodes.size(); i++){
-            uint nodeId = nodes[i];
-            if (nodeId == tree_->getRootIndex()){
-                modelWithRepresentitives[it->first].push_back(nodeId);
-                break;
-            }
-            auto edgeIndex =  tree_->getIncomingEdges(nodeId)[0]; 
-            auto fatherIndex = tree_->getFatherOfEdge(edgeIndex);
-            if (std::find(nodes.begin(), nodes.end(), fatherIndex) == nodes.end()){
-                // if the node has no father in the list, this is the representitive in the current model
-                modelWithRepresentitives[it->first].push_back(nodeId);
-            }
 
-        }
-        it ++;
-    }
-    return modelWithRepresentitives;
-
-}
 /******************************************************************************/
 uint ChromosomeNumberMng::findMinCladeSize(std::map<uint, vector<uint>> mapModelNodesIds) const{
     auto it = mapModelNodesIds.begin();

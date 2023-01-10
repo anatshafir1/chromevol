@@ -50,7 +50,6 @@
 //from bpp-seq
 #include <Bpp/Seq/Alphabet/Alphabet.h>
 #include <Bpp/Seq/Alphabet/AlphabetTools.h>
-#include <Bpp/Seq/Alphabet/IntegerAlphabet.h>
 #include <Bpp/Seq/Container/VectorSequenceContainer.h>
 #include <Bpp/Seq/Container/VectorSiteContainer.h>
 #include <Bpp/Seq/Container/SiteContainerTools.h>
@@ -62,6 +61,8 @@
 #include <Bpp/Seq/Io/Pasta.h>
 
 //from bpp-phyl
+#include "LikelihoodUtils.h"
+#include "StochasticMappingUtils.h"
 #include <Bpp/Phyl/Tree/PhyloTreeTools.h>
 #include <Bpp/Phyl/Likelihood/ParametrizablePhyloTree.h>
 #include <Bpp/Phyl/Io/IoTree.h>
@@ -77,6 +78,7 @@
 #include "ChromosomeNumberOptimizer.h"
 #include "ComputeChromosomeTransitionsExp.h"
 #include "ChromosomeSubstitutionModel.h"
+#include "ChrFasta.h"
 #include <Bpp/Phyl/Simulation/SimpleSubstitutionProcessSequenceSimulator.h>
 
 
@@ -94,8 +96,8 @@ namespace bpp{
     class ChromosomeNumberMng{
         private:
             PhyloTree* tree_;
-            IntegerAlphabet* alphabet_;
-            VectorProbabilisticSiteContainer* vsc_;
+            ChromosomeAlphabet* alphabet_;
+            VectorSiteContainer* vsc_;
             std::map<uint, uint> chrRange_; //maxObserved-minObserved chromosome number
             unsigned int numberOfUniqueStates_; // number of unique states (number of chromosomes)
         public :
@@ -133,8 +135,8 @@ namespace bpp{
             void getTree(const string &path, double treeLength = 0);
 
             // getters for testers
-            const IntegerAlphabet* getAlphabet() const {return alphabet_;}
-            const VectorProbabilisticSiteContainer* getSeqData() const {return vsc_;}
+            const ChromosomeAlphabet* getAlphabet() const {return alphabet_;}
+            const VectorSiteContainer* getSeqData() const {return vsc_;}
             const map<uint, uint> getChromosomeRange() const {return chrRange_;}
             const PhyloTree* getPhyloTree() const {return tree_;}
             
@@ -158,25 +160,17 @@ namespace bpp{
             void writeOutputToFile(ChromosomeNumberOptimizer* chrOptimizer, int &inferrredRootState) const;
             void printLikParameters(ChromosomeNumberOptimizer* chrOptimizer, SingleProcessPhyloLikelihood* lik, ofstream &outFile) const;
             uint findMinCladeSize(std::map<uint, vector<uint>> mapModelNodesIds) const;
-            std::map<uint, std::vector<uint>> findMRCAForEachModelNodes(std::map<uint, vector<uint>> mapOfModelsAndNodes) const;
             void writeTreeWithCorrespondingModels(PhyloTree tree, std::map<uint, vector<uint>> &modelAndNodes) const;
-            void printRootToLeaf(std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafOccurrences, std::map<uint, std::map<size_t, bool>> &presentMapping, size_t numOfMappings, const NonHomogeneousSubstitutionProcess* NonHomoProcess);
-            static std::string getTypeOfTransitionStr(int transitionType);
-            void printResultsForEachMapping(std::map<uint, std::map<int, double>> &expectationsPerTypeRootToLeaf, const NonHomogeneousSubstitutionProcess* NonHomoProcess, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafTransitions, std::map<uint, std::map<size_t, bool>> &presentMapping, const string &outStMappingRootToLeafPath, size_t mappingIndex);
-            void printStochasticMappingEvolutionaryPath(std::shared_ptr<PhyloTree> stmTree, const std::map<uint, std::vector<MutationPath>> &mappings, const std::map<uint, std::vector<size_t>> &ancestralStates, size_t mappingIndex, const string &outPathPerMapping);
-            void printMappingStretchedBranches(const string &stretchedBranchesPath, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched, const std::shared_ptr<PhyloTree> tree);
+            
+
 
 
         protected:
-            void createProbabilisticVsc(std::map<std::string, std::map<string, double>> &species_states_map);
-            string getStateWithMaxProbability(const BasicProbabilisticSequence seq) const;
-            VectorSiteContainer* convertToNotProbVsc() const;
+            VectorSiteContainer* resizeAlphabetForSequenceContainer(VectorSequenceContainer* vsc, ChromosomeAlphabet* alphaInitial);
             std::map<std::string, std::map<string, double>> extract_alphabet_states(const string &file_path, int &min, int &max, vector<int> &uniqueStates, uint &numberOfComposite);
-            void writeZeroInTable(ofstream &stream);
-            void writeNanInTable(ofstream &stream);
             void writeRunningParameters(ofstream &outFile) const;
-            void setNodeIdsForAllModels(string &path);
-            void getNodeIdsPerModelFromLine(string &content, PhyloTree* tree, std::map<uint, std::pair<uint, std::vector<uint>>> &modelAndNodeIds, std::map<uint,uint> &mapOriginalToAssignedModel);
+            
+            
             std::shared_ptr<LikelihoodCalculationSingleProcess> setHeterogeneousLikInstance(SingleProcessPhyloLikelihood* likProcess, ParametrizablePhyloTree* parTree, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, bool forAncestral = false) const;
             std::shared_ptr<NonHomogeneousSubstitutionProcess> setHeterogeneousModel(std::shared_ptr<ParametrizablePhyloTree> tree, SingleProcessPhyloLikelihood* ntl, ValueRef <Eigen::RowVectorXd> rootFreqs,  std::map<int, vector<pair<uint, int>>> sharedParams) const;
             void rescale_tree(PhyloTree* tree, double chrRange);
@@ -188,8 +182,7 @@ namespace bpp{
             static string nodeToParenthesis(const uint nodeId, const PhyloTree& tree);
             std::map<int, vector <double>> getVectorToSetModelParams(SingleProcessPhyloLikelihood* lik, size_t modelIndex = 1) const;
             double getOriginalTreeLength(string &path) const;
-            void fixFailedMappings(StochasticMapping* stm, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched);
-            vector <uint> getVectorOfMapKeys(std::map<uint, vector<size_t>> &mapOfVectors);
+            
 
 
 

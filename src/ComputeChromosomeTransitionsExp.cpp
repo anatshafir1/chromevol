@@ -19,34 +19,6 @@ void ComputeChromosomeTransitionsExp::computeExpectationOfChangePerBranch(uint n
 
 }
 
-// /**************************************************************************************/
-std::map<uint, size_t> ComputeChromosomeTransitionsExp::getModelForEachBranch(PhyloTree &tree, const NonHomogeneousSubstitutionProcess &NonHomoModel){
-    std::map<uint, size_t> modelPerBranch;
-    auto rootId = tree.getRootIndex();
-    auto sons = tree.getSons(rootId);
-    for (size_t i = 0; i < sons.size(); i++){
-        getModeForSons(tree, rootId, sons[i], &NonHomoModel, modelPerBranch);
-
-    }
-    return modelPerBranch;
-}
-
-/*************************************************************************************/
-void ComputeChromosomeTransitionsExp::getModeForSons(PhyloTree &tree, uint fatherId, uint nodeId, const NonHomogeneousSubstitutionProcess* NonHomoModel, std::map<uint, size_t> &modelPerNode){
-    if (fatherId == tree.getRootIndex()){
-        modelPerNode[nodeId] = 1;
-    }else{
-        modelPerNode[nodeId] = NonHomoModel->getModelNumberForNode(fatherId);
-    }
-    if (tree.isLeaf(nodeId)){
-        return;
-    }
-    auto sons = tree.getSons(nodeId);
-    for (size_t i = 0; i < sons.size(); i++){
-        getModeForSons(tree, nodeId, sons[i], NonHomoModel, modelPerNode);
-    }
-
-}
 
 // /**********************************************************************************/
 void ComputeChromosomeTransitionsExp::computeExpPerTypeHeuristics(map <uint, vector<pair<int, int>>>& nonAccountedForBranchesFromFirstRun){
@@ -307,7 +279,7 @@ void ComputeChromosomeTransitionsExp::init(){
             
         }
         //auto mrca = tree->MRCA(modelNodes);
-        auto mrca = ChromEvolOptions::getMRCA(tree, modelNodes);
+        auto mrca = TreeUtils::getMRCA(tree, modelNodes);
         if (tree->getNodeIndex(mrca) == tree->getRootIndex()){
             for (size_t k = 0; k < rootSons.size(); k++){
                 auto node = tree_->getNode(rootSons[k]);
@@ -870,36 +842,13 @@ double ComputeChromosomeTransitionsExp::getExpectation(uint nodeId, int startAnc
 
 }
 
-/************************************************************************************************/
-std::map<int, double> ComputeChromosomeTransitionsExp::getTypeForEachTransitionPerNode(std::shared_ptr<const ChromosomeSubstitutionModel> chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId){
-    std::map<int, double> expectationsPerType;
-    auto itTransitions = transitionsPerNode.begin();
-    while(itTransitions != transitionsPerNode.end()){
-        std::vector<double> probabilities;
-        int startState = static_cast<int>((itTransitions->first).first);
-        int endState = static_cast<int>((itTransitions->first).second);
-        double expectation = transitionsPerNode[itTransitions->first];
-        bool legalMove = getProbabilitiesPerType(probabilities, startState, endState, chrModel);
-        if (!legalMove){
-            itTransitions ++;
-            continue;
-        }
-        for (int i = 0; i < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; i++){
-            if (expectationsPerType.find(i) == expectationsPerType.end()){
-                expectationsPerType[i] = 0;
-            }
-            expectationsPerType[i] += (probabilities[i] * expectation);
-        }
-        itTransitions ++;
-    }
-    return expectationsPerType;
 
-}
+
 
 /************************************************************************************************/
 std::map<int, double> ComputeChromosomeTransitionsExp::getExpectationsPerType(const NonHomogeneousSubstitutionProcess* NonHomoProcess, PhyloTree &tree, std::map<uint, std::map<pair<size_t, size_t>, double>> &expectationsPerNode){
     std::map<int, double> expectationsPerType;
-    std::map<uint, size_t> modelsForBranch = getModelForEachBranch(tree, *NonHomoProcess); //son end of the branch and its corresponding model (father's model)
+    std::map<uint, size_t> modelsForBranch = StochasticMappingUtils::getModelForEachBranch(tree, *NonHomoProcess); //son end of the branch and its corresponding model (father's model)
     auto it = expectationsPerNode.begin();
     while (it != expectationsPerNode.end()){
         auto nodeId = it->first;
@@ -910,7 +859,7 @@ std::map<int, double> ComputeChromosomeTransitionsExp::getExpectationsPerType(co
             continue;
         }
         auto &transitionsPerNode = expectationsPerNode[nodeId]; // don't want to create a local copy of this element, just to use a reference
-        auto transitionsTypesPerNode = getTypeForEachTransitionPerNode(chrModel, transitionsPerNode, nodeId);
+        auto transitionsTypesPerNode = StochasticMappingUtils::getTypeForEachTransitionPerNode(chrModel, transitionsPerNode, nodeId);
         auto typesIt = transitionsTypesPerNode.begin();
         while(typesIt != transitionsTypesPerNode.end()){
             if (transitionsTypesPerNode.find(typesIt->first) == transitionsTypesPerNode.end()){
@@ -927,102 +876,3 @@ std::map<int, double> ComputeChromosomeTransitionsExp::getExpectationsPerType(co
 }
 
 /************************************************************************************/
-bool ComputeChromosomeTransitionsExp::getProbabilitiesPerType(vector<double> &probabilities, int startStateIndex, int endStateIndex, std::shared_ptr<const ChromosomeSubstitutionModel> model){
-    // convert from state index to real chromsome number
-    bool legalMove = false;
-    probabilities.resize(ChromosomeSubstitutionModel::NUMTYPES);
-    std::fill(probabilities.begin(), probabilities.end(), 0);
-    const IntegerAlphabet* alphabet = dynamic_cast<const IntegerAlphabet*>(model->getAlphabet());
-    int chrStart = startStateIndex + alphabet->getMin();
-    int chrEnd = endStateIndex + alphabet->getMin();
-    double sumOfRates = 0; //for normalization of weights
-    //gain
-    if (chrStart + 1 == chrEnd){
-        if (!(model->isIgnoredGain())){
-            if (chrStart > 3){
-                probabilities[(size_t)(ChromosomeSubstitutionModel::GAIN_T)] = 1;
-                return true;
-            }else{
-                double gainRate = model->getGain()->getRate(chrStart);
-                probabilities[(size_t)(ChromosomeSubstitutionModel::GAIN_T)] = gainRate;
-                sumOfRates += gainRate;
-                legalMove = true;
-            }
-
-        }
-    }
-    // loss
-    if (chrStart - 1 == chrEnd){
-        if (!(model->isIgnoredLoss())){
-            probabilities[(size_t)(ChromosomeSubstitutionModel::LOSS_T)] = 1;
-            return true;
-        }
-    }
-    //baseNumber transitions
-    int baseNumber = model->getBaseNumber();
-    if (baseNumber != IgnoreParam){
-        if (chrEnd > chrStart){
-            if (((chrEnd - chrStart) % baseNumber == 0) && ((chrEnd - chrStart) <= (int)(model->getMaxChrRange()))){
-                legalMove = true;
-                probabilities[(size_t)(ChromosomeSubstitutionModel::BASENUM_T)] = model->getBaseNumR()->getRate(chrStart);
-                sumOfRates += model->getBaseNumR()->getRate(chrStart);                              
-            }
-        }        
-    }
-    //duplication
-    if (chrEnd == 2 * chrStart){
-        if (!(model->isIgnoredDupl())){
-            legalMove = true;
-            double duplRate = model->getDupl()->getRate(chrStart);
-            probabilities[(size_t)(ChromosomeSubstitutionModel::DUPL_T)] = duplRate;
-            sumOfRates += duplRate;
-        }
-
-    }
-    //demi-duplication
-    if (!(model->isIgnoredDemiDupl())){
-        if (chrStart % 2 == 0){
-            if (chrEnd == chrStart * 1.5){
-                legalMove = true;
-                probabilities[(size_t)(ChromosomeSubstitutionModel::DEMIDUPL_T)] = model->getDemiDupl()->getRate(chrStart);
-                sumOfRates += model->getDemiDupl()->getRate(chrStart);
-            }
-        }else{
-            if ((chrEnd == (int)ceil(chrStart * 1.5)) || (chrEnd == (int)floor(chrStart * 1.5))){
-                legalMove = true;
-                double demiDupRate;
-                if (chrStart == 1){
-                    demiDupRate =  model->getDemiDupl()->getRate(chrStart);
-                }else{
-                    demiDupRate = model->getDemiDupl()->getRate(chrStart)/2;
-                }
-                probabilities[(size_t)(ChromosomeSubstitutionModel::DEMIDUPL_T)] = demiDupRate;
-                sumOfRates += demiDupRate;
-            }
-        }
-
-    }
-    if (chrEnd  == (int)(alphabet->getMax())){
-
-        
-        double toMaxRate = model->Qij(startStateIndex, endStateIndex)-sumOfRates;
-        probabilities[(size_t)(ChromosomeSubstitutionModel::MAXCHR_T)] = toMaxRate;
-        sumOfRates += toMaxRate;
-        if (sumOfRates == 0){
-            legalMove = false;
-        }else{
-            legalMove = true;
-
-        }
-    }
-    //if nothing fits
-    if(!legalMove){
-        //throw Exception ("ERROR: ComputeChromosomeTransitionsExp::getProbabilitiesPerType(): Illegal transition!");
-        return legalMove;
-    }
-    for (size_t i = 0; i < probabilities.size(); i++){
-        probabilities[i] /= sumOfRates;
-    }
-    return true;
-
-}

@@ -292,7 +292,7 @@ std::vector<std::string> compositeParameter::getRelatedParameterNames(ParameterL
 // Chromosome model ///////////////////////////////////////////////////////////
 /******************************************************************************/
 ChromosomeSubstitutionModel :: ChromosomeSubstitutionModel(
-  const IntegerAlphabet* alpha, 
+  const ChromosomeAlphabet* alpha, 
   std::vector<double> gain, 
   std::vector<double> loss, 
   std::vector<double> dupl, 
@@ -359,7 +359,7 @@ ChromosomeSubstitutionModel :: ChromosomeSubstitutionModel(
 
 }
 /******************************************************************************/
-ChromosomeSubstitutionModel::ChromosomeSubstitutionModel(const IntegerAlphabet* alpha, 
+ChromosomeSubstitutionModel::ChromosomeSubstitutionModel(const ChromosomeAlphabet* alpha, 
   std::map<int, vector<double>> mapOfParamValues,
   int baseNum,
   unsigned int chrRange, 
@@ -430,7 +430,7 @@ ChromosomeSubstitutionModel::ChromosomeSubstitutionModel(const IntegerAlphabet* 
 
 /******************************************************************************/
 ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
-  const IntegerAlphabet* alpha,
+  const ChromosomeAlphabet* alpha,
   int &baseNumber,
   map<int, vector<double>> initParams,
   unsigned int chrRange,

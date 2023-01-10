@@ -5,7 +5,11 @@
 
 # File list
 set (CPP_FILES
+  ChrFasta.cpp
   ChromosomeSubstitutionModel.cpp
+  StochasticMappingUtils.cpp
+  TreeUtils.cpp
+  LikelihoodUtils.cpp
   ChromEvolOptions.cpp
   UndirectedGraph.cpp
   ChromosomeNumberOptimizer.cpp
