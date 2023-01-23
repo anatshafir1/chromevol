@@ -1607,5 +1607,6 @@ double ChromosomeNumberMng::getOriginalTreeLength(string &path) const{
     Newick reader;
     auto originalTree = reader.readPhyloTree(path);
     double treeLength = originalTree->getTotalLength();
+    delete originalTree;
     return treeLength;
 }
