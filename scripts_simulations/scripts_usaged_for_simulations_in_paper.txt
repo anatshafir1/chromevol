@@ -1,0 +1,75 @@
+##################################################################################################################################################################################################
+The detailed scripts were used for the simulations described in the "A non-homogenous model of chromosome-number evolution to reveal shifts in the transition patterns across the phylogeny" paper.
+It is assumed that the empirical datsets are already obtained as detailed in the manuscript. Parameter files that were used for inferences in the manuscript could be found in the param_file_examples directory.
+##################################################################################################################################################################################################
+
+Script name: defs.py
+Description: 
+	The script contains global definitions of variables that are used in the scripts detailed below. These global variables should be editted as specified in the defs.py file.
+###########
+
+Script name: prapare_data.py
+Description: 
+	Samples empirical trees and accordingly also the chromosome counts. The tree is sampled such that it contains the approximate sizes of the required
+	foreground subclades.
+Usage:
+	prepare_data.py -t <the directory of the empirical datasets> -o <the directory where the sampled datasets will be created> -f <the required fraction sizes of the subclades> -s <the required size of the sampled tree> -q <queue>
+
+Example of usage:
+	prepare_data.py -t /path/to/the/directory/of/empirical/datasets -o /path/to/datasets/with/sampled/trees -f 0.05 0.1 0.2 0.4 -s 400 -q my_queue
+Parameters:
+	-t: A directory that contains the directories of the datasets (for example, Cyperaceae and Solanaceae). The directory of each dataset should contain the tree file named tree.newick and chromosome counts (counts.fasta).
+	-o: A path to the directory that should contain the datasets directories with the output sampled trees and fasta files.
+	-f: The required foreground clade sizes as fractions (foreground clade size/sampled tree size). The sampled tree should be created randomely, but also such that it will contain the approximate sizes of the required subclades.
+	-s: The required size of the sampled tree.
+	-q: The queue name required for the PBS system. 
+#######
+Script name: simulate_heterogeneous_models.py
+Description: 
+	simulate either homogeneous or heterogeneous models
+Usage:
+	python simulate_models.py -n <number of simulations> -t <directory that contains the tree file> -m <model> -k <factor of change> -s <subclade size> -o <directory for simulations> -r <manipulated rates> -e <results directory of one-shift model> -q <queue>
+	
+Example of usage:	
+	python simulate_models.py -n 100 -t /path/to/sampled_trees/Cyperaceae/ -m g+L_l+L_du+E_de+C_b+C -k 4.0 -s 0.05 -o /groups/itay_mayrose/anatshafir1/phd_project/power_simulations/hetero_C_c/ -r all -q my_queue
+Parameters:
+	-n: number of required simulations. These number should be always higher than the actually needed number of simulations, since some of the simulations are not successful.
+	-t: A directory that contains the tree on which the chromosome number evolution should be simulated.
+	-m: The required model. For example: g+L_l+L_du+E_de+C_b+C. g+L= linear gain rate; l+L= linear loss rate; du+E= exponential duplication rate; de+C= constant demi-duplication rate; b+C = constant base number rate.
+	-k: The factor by which the rates of the subclade should be multiplied. If k is set to 1, a homogeneous model is simulated.
+	-s: The required ratio between foreground subclade size and the total size of the tree.
+	-o: The directory where all the simulations should be created.
+	-r: The manipulated rates. 'all' means that all the transition type rates are multiplied by the factor specified by the k parameter. Other options are currently not available.
+	-e: if -k is set to 0 and -e is specified (i.e., is not set to the default value None), than instead of using multiplied rates, the simulation is based on the maximum
+		likelihood parameters inferred by the optimized model with one shift. In such case, -e specifies the directory path to the respective ChromoEvol results files.
+	-q: The queue name required for the PBS system. 
+
+
+#######	
+Script name: utils.py
+Description: 
+	Contains auxilary functions for all the other scripts.
+#######
+
+Script name: test_simulations_success.py
+Description: 
+	Deletes unsuccessful simulations, an re-orders the simulations numbering.
+Usage: 
+	python test_simulations_success.py -n <number of required simulations> -i <initial number of simulations> -d <path to the created simulations directories> -o <path to max reach chromosome count statistics>
+Usage example:
+	python test_simulations_success.py -n 50 -i 100 -d /path/to/simulations/0.2/0.5/all -o /path/to/statistic/file/max/state/stats.csv
+Parameters:
+	-n: The required number of simulations, that should remain.
+	-i: The initial number of simulations.
+	-d: a directory that contains the directores that refer to the simulated datasets (specified as 0,.., <intial number of simulations-1>).
+	-o: A file that details the statistics regarding the max reached chromosome counts in the leaves or during on anywhere else in the evolutionary path.
+#######
+	
+Script name: create_job_files.py
+Description: 
+	Contains the format of the job file (PBS format).
+
+
+	
+
+	
