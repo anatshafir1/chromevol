@@ -36,8 +36,8 @@
   The fact that you are presently reading this means that you have had
   knowledge of the CeCILL license and that you accept its terms.
 */
-#ifndef CHROMEVOL_TREEUTILS_H
-#define CHROMEVOL_TREEUTILS_H
+#ifndef _TREEUTILS_H_
+#define _TREEUTILS_H_
 #include <Bpp/Io/FileTools.h>
 #include <Bpp/Text/TextTools.h>
 
@@ -48,7 +48,7 @@
 
 //from bpp-phyl
 #include <Bpp/Phyl/Tree/PhyloTreeTools.h>
-#include <Bpp/Phyl/Likelihood/ParametrizablePhyloTree.h>
+#include <Bpp/Phyl/NewLikelihood/ParametrizablePhyloTree.h>
 #include <Bpp/Phyl/Io/IoTree.h>
 #include <Bpp/Phyl/Io/Newick.h>
 
@@ -76,4 +76,4 @@ namespace bpp{
   };
 
 }
-#endif // CHROMEVOL_TREEUTILS_H
+#endif // _TREEUTILS_H_

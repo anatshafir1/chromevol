@@ -1,5 +1,5 @@
-#ifndef CHROMEVOL_CHRFASTA_H
-#define CHROMEVOL_CHRFASTA_H
+#ifndef _CHRFASTA_H_
+#define _CHRFASTA_H_
 
 #include <Bpp/Seq/Alphabet/Alphabet.h>
 #include <Bpp/Seq/Alphabet/ChromosomeAlphabet.h>
@@ -35,4 +35,4 @@ class ChrFasta
 
 }
 
-#endif // CHROMEVOL_CHRFASTA_H
+#endif // _CHRFASTA_H_

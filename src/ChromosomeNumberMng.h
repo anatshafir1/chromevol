@@ -36,8 +36,8 @@
   The fact that you are presently reading this means that you have had
   knowledge of the CeCILL license and that you accept its terms.
 */
-#ifndef CHROMEVOL_CHROMOSOMENUMBERMNG_H
-#define CHROMEVOL_CHROMOSOMENUMBERMNG_H
+#ifndef _CHROMOSOMENUMBERMNG_H_
+#define _CHROMOSOMENUMBERMNG_H_
 #include <Bpp/Numeric/Prob/GammaDiscreteDistribution.h>
 #include <Bpp/Numeric/Prob/DiscreteDistribution.h>
 #include <Bpp/Numeric/Random/RandomTools.h>
@@ -64,16 +64,15 @@
 #include "LikelihoodUtils.h"
 #include "StochasticMappingUtils.h"
 #include <Bpp/Phyl/Tree/PhyloTreeTools.h>
-#include <Bpp/Phyl/Likelihood/ParametrizablePhyloTree.h>
 #include <Bpp/Phyl/Io/IoTree.h>
 #include <Bpp/Phyl/Io/Newick.h>
 #include <Bpp/Phyl/Model/RateDistribution/GammaDiscreteRateDistribution.h>
-#include <Bpp/Phyl/Likelihood/ParametrizablePhyloTree.h>
-#include <Bpp/Phyl/Likelihood/MarginalAncestralReconstruction.h>
-#include <Bpp/Phyl/Likelihood/JointMLAncestralReconstruction.h>
-#include <Bpp/Phyl/Likelihood/DataFlow/DataFlowNumeric.h>
-#include <Bpp/Phyl/Likelihood/NonHomogeneousSubstitutionProcess.h>
-#include <Bpp/Phyl/Likelihood/RateAcrossSitesSubstitutionProcess.h>
+#include <Bpp/Phyl/NewLikelihood/ParametrizablePhyloTree.h>
+#include <Bpp/Phyl/NewLikelihood/MarginalAncestralReconstruction.h>
+#include <Bpp/Phyl/NewLikelihood/JointMLAncestralReconstruction.h>
+#include <Bpp/Phyl/NewLikelihood/DataFlow/DataFlowNumeric.h>
+#include <Bpp/Phyl/NewLikelihood/NonHomogeneousSubstitutionProcess.h>
+#include <Bpp/Phyl/NewLikelihood/RateAcrossSitesSubstitutionProcess.h>
 #include <Bpp/Phyl/Parsimony/DRTreeParsimonyScore.h>
 #include "ChromosomeNumberOptimizer.h"
 #include "ComputeChromosomeTransitionsExp.h"
@@ -172,7 +171,7 @@ namespace bpp{
             
             
             std::shared_ptr<LikelihoodCalculationSingleProcess> setHeterogeneousLikInstance(SingleProcessPhyloLikelihood* likProcess, ParametrizablePhyloTree* parTree, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, bool forAncestral = false) const;
-            std::shared_ptr<NonHomogeneousSubstitutionProcess> setHeterogeneousModel(std::shared_ptr<ParametrizablePhyloTree> tree, SingleProcessPhyloLikelihood* ntl, ValueRef <Eigen::RowVectorXd> rootFreqs,  std::map<int, vector<pair<uint, int>>> sharedParams) const;
+            std::shared_ptr<NonHomogeneousSubstitutionProcess> setHeterogeneousModel(ParametrizablePhyloTree* tree, SingleProcessPhyloLikelihood* ntl, ValueRef <Eigen::RowVectorXd> rootFreqs,  std::map<int, vector<pair<uint, int>>> sharedParams) const;
             void rescale_tree(PhyloTree* tree, double chrRange);
             void getMaxParsimonyUpperBound(double* parsimonyScore) const;
             // functions to print the tree with ancestral reconstruction
@@ -189,4 +188,4 @@ namespace bpp{
 
     };
 }
-#endif // CHROMEVOL_CHROMOSOMENUMBERMNG_H
+#endif // _CHROMOSOMENUMBERMNG_H_

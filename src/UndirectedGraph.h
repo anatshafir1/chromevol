@@ -1,5 +1,5 @@
-#ifndef CHROMEVOL_UNDIRECTEDGRAPH_H
-#define CHROMEVOL_UNDIRECTEDGRAPH_H
+#ifndef _UNDIRECTEDGRAPH_H_
+#define _UNDIRECTEDGRAPH_H_
 
 #include <string>
 #include <vector>
@@ -162,4 +162,4 @@ namespace bpp{
 
     };
 }
-#endif // CHROMEVOL_UNDIRECTEDGRAPH_H
+#endif // _UNDIRECTEDGRAPH_H_

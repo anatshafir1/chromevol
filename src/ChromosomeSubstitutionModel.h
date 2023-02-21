@@ -5,8 +5,8 @@
 //
 
 
-#ifndef CHROMEVOL_CHROMOSOMESUBSTITUTIONMODEL_H
-#define CHROMEVOL_CHROMOSOMESUBSTITUTIONMODEL_H
+#ifndef _CHROMOSOMESUBSTITUTIONMODEL_H_
+#define _CHROMOSOMESUBSTITUTIONMODEL_H_
 
 #include <Bpp/Phyl/Model/AbstractSubstitutionModel.h>
 #include <Bpp/Seq/Alphabet/ChromosomeAlphabet.h>
@@ -545,4 +545,4 @@ protected:
 };
 } // end of namespace bpp.
 
-#endif  // CHROMEVOL_CHROMOSOMESUBSTITUTIONMODEL_H
+#endif  // _CHROMOSOMESUBSTITUTIONMODEL_H_

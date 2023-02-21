@@ -3,11 +3,11 @@
 #   Anat Shafir (2022)
 # Created: 05/12/2022
 
-cmake_minimum_required (VERSION 3.0.0)
+cmake_minimum_required (VERSION 2.8.11)
 project (chromevol CXX)
 
 # Compile options
-set (CMAKE_CXX_FLAGS "-std=c++14 -Wall -Wshadow -Wconversion")
+set (CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wshadow -Wconversion")
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
@@ -80,9 +80,9 @@ if (CMAKE_INSTALL_PREFIX)
 endif (CMAKE_INSTALL_PREFIX)
 
 include (GNUInstallDirs)
-find_package (bpp-core3 1.0.0 REQUIRED)
-find_package (bpp-seq3 1.0.0 REQUIRED)
-find_package (bpp-phyl3 1.0.0 REQUIRED)
+find_package (bpp-core 4.0.0 REQUIRED)
+find_package (bpp-seq 12.0.0 REQUIRED)
+find_package (bpp-phyl 12.0.0 REQUIRED)
 
 # CMake package
 set (cmake-package-location ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})

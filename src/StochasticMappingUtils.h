@@ -36,8 +36,8 @@
   The fact that you are presently reading this means that you have had
   knowledge of the CeCILL license and that you accept its terms.
 */
-#ifndef CHROMEVOL_STOCHASTICMAPPINGUTILS_H
-#define CHROMEVOL_STOCHASTICMAPPINGUTILS_H
+#ifndef _STOCHASTICMAPPINGUTILS_H_
+#define _STOCHASTICMAPPINGUTILS_H_
 #include <Bpp/Io/FileTools.h>
 #include <Bpp/Text/TextTools.h>
 
@@ -49,12 +49,11 @@
 
 //from bpp-phyl
 #include <Bpp/Phyl/Tree/PhyloTreeTools.h>
-#include <Bpp/Phyl/Likelihood/ParametrizablePhyloTree.h>
+#include <Bpp/Phyl/NewLikelihood/ParametrizablePhyloTree.h>
 #include <Bpp/Phyl/Io/IoTree.h>
 #include <Bpp/Phyl/Io/Newick.h>
-#include <Bpp/Phyl/Likelihood/ParametrizablePhyloTree.h>
 #include <Bpp/Phyl/Mapping/StochasticMapping.h>
-#include <Bpp/Phyl/Likelihood/NonHomogeneousSubstitutionProcess.h>
+#include <Bpp/Phyl/NewLikelihood/NonHomogeneousSubstitutionProcess.h>
 #include "ChromosomeSubstitutionModel.h"
 
 
@@ -90,12 +89,12 @@ namespace bpp{
       static std::map<uint, size_t> getModelForEachBranch(PhyloTree &tree, const NonHomogeneousSubstitutionProcess &models);
       static void getModeForSons(PhyloTree &tree, uint fatherId, uint sonId, const NonHomogeneousSubstitutionProcess* NonHomoModel,  std::map<uint, size_t> &modelPerNode);
       static std::string getTypeOfTransitionStr(int transitionType);
-      static std::map<int, double> getTypeForEachTransitionPerNode(std::shared_ptr<const ChromosomeSubstitutionModel> chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId);
-      static bool getProbabilitiesPerType(vector<double> &probabilities, int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model);
+      static std::map<int, double> getTypeForEachTransitionPerNode(const ChromosomeSubstitutionModel* chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId);
+      static bool getProbabilitiesPerType(vector<double> &probabilities, int startState, int endState, const ChromosomeSubstitutionModel* model);
       static vector <uint> getVectorOfMapKeys(std::map<uint, vector<size_t>> &mapOfVectors);
 
 
   };
 
 }
-#endif // CHROMEVOL_STOCHASTICMAPPINGUTILS_H
+#endif // _STOCHASTICMAPPINGUTILS_H_

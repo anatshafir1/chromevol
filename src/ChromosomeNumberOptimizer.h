@@ -31,8 +31,8 @@
   The fact that you are presently reading this means that you have had
   knowledge of the CeCILL license and that you accept its terms.
 */
-#ifndef CHROMEVOL_CHROMOSOMENUMBEROPTIMIZER_H
-#define CHROMEVOL_CHROMOSOMENUMBEROPTIMIZER_H
+#ifndef _CHROMOSOMENUMBEROPTIMIZER_H_
+#define _CHROMOSOMENUMBEROPTIMIZER_H_
 
 //from bpp-core
 #include <Bpp/Numeric/AutoParameter.h>
@@ -63,10 +63,10 @@
 #include <Bpp/Phyl/Model/RateDistribution/GammaDiscreteRateDistribution.h>
 #include "UndirectedGraph.h"
 #include "ChromosomeSubstitutionModel.h"
-#include <Bpp/Phyl/Likelihood/NonHomogeneousSubstitutionProcess.h>
-#include <Bpp/Phyl/Likelihood/RateAcrossSitesSubstitutionProcess.h>
-#include <Bpp/Phyl/Likelihood/DataFlow/LikelihoodCalculationSingleProcess.h>
-#include <Bpp/Phyl/Likelihood/PhyloLikelihoods/SingleProcessPhyloLikelihood.h>
+#include <Bpp/Phyl/NewLikelihood/NonHomogeneousSubstitutionProcess.h>
+#include <Bpp/Phyl/NewLikelihood/RateAcrossSitesSubstitutionProcess.h>
+#include <Bpp/Phyl/NewLikelihood/DataFlow/LikelihoodCalculationSingleProcess.h>
+#include <Bpp/Phyl/NewLikelihood/PhyloLikelihoods/SingleProcessPhyloLikelihood.h>
 #include "ChromEvolOptions.h"
 #include <Bpp/Phyl/OptimizationTools.h>
 // From Seqlib:
@@ -369,4 +369,4 @@ namespace bpp
 
     };
 }
-#endif // CHROMEVOL_CHROMOSOMENUMBEROPTIMIZER_H
+#endif // _CHROMOSOMENUMBEROPTIMIZER_H_

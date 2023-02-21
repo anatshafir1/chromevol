@@ -7,7 +7,7 @@ void ChromosomeNumberMng::getCharacterData (const string& path){
     ChromosomeAlphabet* alphaInitial = new ChromosomeAlphabet(ChromEvolOptions::minAlpha_, ChromEvolOptions::maxAlpha_);
     VectorSequenceContainer* initialSetOfSequences = ChrFasta::readSequencesFromFile(path, alphaInitial);
     size_t numOfSequences = initialSetOfSequences->getNumberOfSequences();
-    vector <string> sequenceNames = initialSetOfSequences->getSequenceNames();
+    vector <string> sequenceNames = initialSetOfSequences->getSequencesNames();
 
     unsigned int maxNumberOfChr = 1; //the minimal number of chromosomes cannot be zero
     unsigned int minNumOfChr = ChromEvolOptions::maxAlpha_;
@@ -73,7 +73,7 @@ void ChromosomeNumberMng::getCharacterData (const string& path){
 /*************************************************************************************************************/
 VectorSiteContainer* ChromosomeNumberMng::resizeAlphabetForSequenceContainer(VectorSequenceContainer* vsc, ChromosomeAlphabet* alphaInitial){
     size_t numOfSequences = vsc->getNumberOfSequences();
-    vector <string> sequenceNames = vsc->getSequenceNames();
+    vector <string> sequenceNames = vsc->getSequencesNames();
     alphabet_ = new ChromosomeAlphabet(ChromEvolOptions::minChrNum_,ChromEvolOptions::maxChrNum_);
         // fill with composite values
     if (alphaInitial->getNumberOfCompositeStates() > 0){
@@ -220,7 +220,7 @@ void ChromosomeNumberMng::setMinChrNum(unsigned int minNumberOfChr){
 
 void ChromosomeNumberMng::getTree(const string& path, double treeLength){
     Newick reader;
-    tree_ = reader.readPhyloTree(path);
+    tree_ = reader.readPTree(path);
     double treeLengthToScale = (treeLength > 0) ? treeLength : (double) numberOfUniqueStates_;
     rescale_tree(tree_, treeLengthToScale);
     return;
@@ -334,7 +334,7 @@ void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOpti
     std::map <uint, uint> baseNumberUpperBound;
     for (size_t m = 1; m <= numOfModels; m ++){
         auto branchProcess = lik->getSubstitutionProcess().getModel(m);
-        baseNumberUpperBound[static_cast<uint>(m)] = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(branchProcess)->getMaxChrRange();
+        baseNumberUpperBound[static_cast<uint>(m)] = dynamic_cast<const ChromosomeSubstitutionModel*>(branchProcess)->getMaxChrRange();
     }
     std::shared_ptr<LikelihoodCalculationSingleProcess> likAncestralRec = setHeterogeneousLikInstance(lik, &parTree, baseNumberUpperBound, mapModelNodesIds, modelsParams, true);
     //auto likAncestralRec = std::make_shared<LikelihoodCalculationSingleProcess>(context, *sequenceData, *subProcess, rootFreqs);
@@ -431,7 +431,7 @@ std::map<int, vector<double>> ChromosomeNumberMng::getVectorToSetModelParams(Sin
 
 }
 /***********************************************************************************/
-std::shared_ptr<NonHomogeneousSubstitutionProcess> ChromosomeNumberMng::setHeterogeneousModel(std::shared_ptr<ParametrizablePhyloTree> parTree, SingleProcessPhyloLikelihood* ntl, ValueRef <Eigen::RowVectorXd> rootFreqs,  std::map<int, vector<pair<uint, int>>> sharedParams) const{
+std::shared_ptr<NonHomogeneousSubstitutionProcess> ChromosomeNumberMng::setHeterogeneousModel(ParametrizablePhyloTree* parTree, SingleProcessPhyloLikelihood* ntl, ValueRef <Eigen::RowVectorXd> rootFreqs,  std::map<int, vector<pair<uint, int>>> sharedParams) const{
     uint numOfModels = static_cast<uint>(ntl->getSubstitutionProcess().getNumberOfModels());
     std::map<int, std::map<uint, std::vector<string>>> typeWithParamNames;//parameter type, num of model, related parameters
     ChromosomeNumberOptimizer::updateMapsOfParamTypesAndNames(typeWithParamNames, 0, ntl, &sharedParams);
@@ -441,16 +441,16 @@ std::shared_ptr<NonHomogeneousSubstitutionProcess> ChromosomeNumberMng::setHeter
     std::map <uint, uint> baseNumberUpperBound;
     for (size_t m = 1; m <= numOfModels; m ++){
         auto branchProcess = ntl->getSubstitutionProcess().getModel(m);
-        baseNumberUpperBound[static_cast<uint>(m)] = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(branchProcess)->getMaxChrRange();
+        baseNumberUpperBound[static_cast<uint>(m)] = dynamic_cast<const ChromosomeSubstitutionModel*>(branchProcess)->getMaxChrRange();
     }
     auto rootFreqsValues =  rootFreqs->getTargetValue();
     Vdouble rootFreqsBpp;
     copyEigenToBpp(rootFreqsValues, rootFreqsBpp);
-    std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+    DiscreteDistribution* rdist = new GammaDiscreteRateDistribution(1, 1.0);
     
     std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelsParams[1].second, modelsParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
     std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqsBpp);
-    std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
+    FrequencySet* rootFrequencies = rootFreqsFixed->clone();
     std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
 
     // adding models
@@ -470,14 +470,14 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setHete
     auto rootFreqsValues =  rootFreqs->getTargetValue();
     Vdouble rootFreqsBpp;
     copyEigenToBpp(rootFreqsValues, rootFreqsBpp);
-    std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
-    std::shared_ptr<ParametrizablePhyloTree> parTree = std::shared_ptr<ParametrizablePhyloTree>(tree->clone());
+    DiscreteDistribution* rdist = new GammaDiscreteRateDistribution(1, 1.0);
+    ParametrizablePhyloTree* parTree = tree->clone();
     
     uint numOfModels = static_cast<uint>(likProcess->getSubstitutionProcess().getNumberOfModels());
     std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelParams[1].second, modelParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
     std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqsBpp);
     //std::shared_ptr<FrequencySet> rootFrequencies = static_pointer_cast<FrequencySet>(rootFreqsFixed);
-    std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
+    FrequencySet* rootFrequencies = rootFreqsFixed->clone();
     std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
 
     // adding models
@@ -573,8 +573,8 @@ void ChromosomeNumberMng::simulateData(){
         throw Exception("ERROR!!! ChromosomeNumberMng::initializeSimulator(): maximum chromsome number should be larger than minimum chromosome number!");
     }
     alphabet_ = new ChromosomeAlphabet(ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_);
-    std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
-    std::shared_ptr<ParametrizablePhyloTree> parTree =  std::make_shared<ParametrizablePhyloTree>(*tree_);
+    DiscreteDistribution* rdist = new GammaDiscreteRateDistribution(1, 1.0);
+    ParametrizablePhyloTree* parTree =  new ParametrizablePhyloTree(*tree_);
     std::map<uint, std::pair<int, std::map<int, vector<double>>>> complexParamsValues;
     ChromEvolOptions::getInitialValuesForComplexParams(complexParamsValues);
     std::map<uint, uint> maxBaseNumTransition = (ChromEvolOptions::simulateData_) ? ChromEvolOptions::maxBaseNumTransition_ : chrRange_;
@@ -591,9 +591,9 @@ void ChromosomeNumberMng::simulateData(){
 
     }
     vector <double> rootFreqs = ChromosomeNumberOptimizer::setFixedRootFrequencies(ChromEvolOptions::fixedFrequenciesFilePath_, chrModel);
-    FrequencySet* rootFreqsFixed = new FixedFrequencySet(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqs);
-    std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
-    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
+    std::shared_ptr<FrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqs);
+    std::shared_ptr<FrequencySet> rootFrequencies = static_pointer_cast<FrequencySet>(rootFreqsFixed);
+    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies->clone());
 
     // adding models
     for (uint i = 1; i <= (uint)(ChromEvolOptions::numOfModels_); i++){
@@ -691,7 +691,7 @@ void ChromosomeNumberMng::runStochasticMapping(ChromosomeNumberOptimizer* chrOpt
     auto lik = likObject->getLikelihoodCalculationSingleProcess();  
     std::map<int, vector<pair<uint, int>>> sharedParams = chrOptimizer->getSharedParams();
     ParametrizablePhyloTree tree =  ParametrizablePhyloTree(*tree_);
-    std::shared_ptr<ParametrizablePhyloTree> parTree = std::shared_ptr<ParametrizablePhyloTree>((&tree)->clone());
+    ParametrizablePhyloTree* parTree = (&tree)->clone();
     ValueRef <Eigen::RowVectorXd> rootFreqs = likObject->getLikelihoodCalculationSingleProcess()->getRootFreqs();
     std::shared_ptr<NonHomogeneousSubstitutionProcess> multiModelProcess = setHeterogeneousModel(parTree, likObject, rootFreqs, sharedParams);
     SubstitutionProcess* nsubPro= multiModelProcess->clone();
@@ -1118,8 +1118,8 @@ void ChromosomeNumberMng::computeExpectations(ChromosomeNumberOptimizer* chrOpti
     auto lik = ntl->getLikelihoodCalculationSingleProcess();
     
     std::map<int, vector<pair<uint, int>>> sharedParams = chrOptimizer->getSharedParams();
-    ParametrizablePhyloTree* tree =  new ParametrizablePhyloTree(*tree_);
-    std::shared_ptr<ParametrizablePhyloTree> parTree = std::shared_ptr<ParametrizablePhyloTree>(tree);
+    ParametrizablePhyloTree tree =  ParametrizablePhyloTree(*tree_);
+    ParametrizablePhyloTree* parTree = (&tree)->clone();
     ValueRef <Eigen::RowVectorXd> rootFreqs = ntl->getLikelihoodCalculationSingleProcess()->getRootFreqs();
     std::shared_ptr<NonHomogeneousSubstitutionProcess> multiModelProcess =  setHeterogeneousModel(parTree, ntl, rootFreqs, sharedParams);
 
@@ -1605,7 +1605,7 @@ void ChromosomeNumberMng::printLikParameters(ChromosomeNumberOptimizer* chrOptim
 /******************************************************************************/
 double ChromosomeNumberMng::getOriginalTreeLength(string &path) const{
     Newick reader;
-    auto originalTree = reader.readPhyloTree(path);
+    auto originalTree = reader.readTree(path);
     double treeLength = originalTree->getTotalLength();
     delete originalTree;
     return treeLength;

@@ -1,5 +1,5 @@
-#ifndef CHROMEVOL_CHROMEVOLOPTIONS_H
-#define CHROMEVOL_CHROMEVOLOPTIONS_H
+#ifndef _CHROMEVOLOPTIONS_H_
+#define _CHROMEVOLOPTIONS_H_
 
 // From bpp-core:
 
@@ -129,4 +129,4 @@ private:
 }
 
 
-#endif  // CHROMEVOL_CHROMEVOLOPTIONS_H
+#endif  // _CHROMEVOLOPTIONS_H_

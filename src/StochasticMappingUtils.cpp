@@ -51,7 +51,7 @@ void StochasticMappingUtils::printResultsForEachMapping(PhyloTree* tree, std::ma
                 }else{
                     auto &transitions = rootToLeafTransitions[nodeId][mappingIndex];
                     auto model = NonHomoProcess->getModel(modelsForBranch[nodeId]);
-                    auto chrModel = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(model);
+                    auto chrModel = dynamic_cast<const ChromosomeSubstitutionModel*>(model);
                     std::map<int, double> transitionsPerType = getTypeForEachTransitionPerNode(chrModel, transitions, nodeId);
                     for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
                         stream << "," << transitionsPerType[type];
@@ -371,7 +371,7 @@ std::string StochasticMappingUtils::getTypeOfTransitionStr(int transitionType){
     
 }
 /**************************************************************/
-std::map<int, double> StochasticMappingUtils::getTypeForEachTransitionPerNode(std::shared_ptr<const ChromosomeSubstitutionModel> chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId){
+std::map<int, double> StochasticMappingUtils::getTypeForEachTransitionPerNode(const ChromosomeSubstitutionModel* chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId){
     std::map<int, double> expectationsPerType;
     auto itTransitions = transitionsPerNode.begin();
     while(itTransitions != transitionsPerNode.end()){
@@ -396,7 +396,7 @@ std::map<int, double> StochasticMappingUtils::getTypeForEachTransitionPerNode(st
 
 }
 /**************************************************************/
-bool StochasticMappingUtils::getProbabilitiesPerType(vector<double> &probabilities, int startStateIndex, int endStateIndex, std::shared_ptr<const ChromosomeSubstitutionModel> model){
+bool StochasticMappingUtils::getProbabilitiesPerType(vector<double> &probabilities, int startStateIndex, int endStateIndex, const ChromosomeSubstitutionModel* model){
     // convert from state index to real chromsome number
     bool legalMove = false;
     probabilities.resize(ChromosomeSubstitutionModel::NUMTYPES);

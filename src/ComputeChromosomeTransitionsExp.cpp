@@ -360,7 +360,7 @@ void ComputeChromosomeTransitionsExp::runSimulations(int numOfSimulations){
 }
 // /*************************************************************************************/
 void ComputeChromosomeTransitionsExp::runIteration(int beginState, size_t modelIndex, map <uint, vector<pair<int,int>>>* unAccountedNodesAndTerminals){
-    auto model = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(model_->getModel(modelIndex+1));
+    auto model = dynamic_cast<const ChromosomeSubstitutionModel*>(model_->getModel(modelIndex+1));
     double totalTimeTillJump = 0;
     double maxBranch = branchOrder_[modelIndex][branchOrder_[modelIndex].size()-1].second.getLength();
     int currentState = beginState;
@@ -418,7 +418,7 @@ void ComputeChromosomeTransitionsExp::runIteration(int beginState, size_t modelI
 
 }
 // /********************************************************************************/
-bool ComputeChromosomeTransitionsExp::isMaxStateValid(int prevState, std::shared_ptr<const ChromosomeSubstitutionModel> model) const{
+bool ComputeChromosomeTransitionsExp::isMaxStateValid(int prevState, const ChromosomeSubstitutionModel* model) const{
     int valid = false;
     int maxState = model->getMax();
     int initState = model->getMin() + prevState;
@@ -464,7 +464,7 @@ bool ComputeChromosomeTransitionsExp::isMaxStateValid(int prevState, std::shared
     
 }
 // /********************************************************************************/
-void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model){
+void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endState, const ChromosomeSubstitutionModel* model){
     bool legalMove = false;
     pair <int, int> jumpStates;
     jumpStates.first = startState;
@@ -580,7 +580,7 @@ void ComputeChromosomeTransitionsExp::updateExpectationsPerBranch(uint nodeId, p
 }
 
 // /********************************************************************************/
-int ComputeChromosomeTransitionsExp::getRandomState(int currentState, std::shared_ptr<const ChromosomeSubstitutionModel> model){
+int ComputeChromosomeTransitionsExp::getRandomState(int currentState, const ChromosomeSubstitutionModel* model){
     double prob = RandomTools::giveRandomNumberBetweenZeroAndEntry(1.0);
     double cumulativeProb = 0;
     int nextState = currentState;
@@ -717,7 +717,7 @@ void ComputeChromosomeTransitionsExp::runHeuristics(const string FilePath){
 }
 // /*************************************************************************************/
 void ComputeChromosomeTransitionsExp::updateBranchLengths(int initState, int iteration, size_t modelIndex, map <int, double>* ratesPerState){
-    auto model = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(model_->getModel(modelIndex+1));
+    const ChromosomeSubstitutionModel* model = dynamic_cast<const ChromosomeSubstitutionModel*>(model_->getModel(modelIndex+1));
     double sumOfRates = 0;
     if (iteration == 0){
         vector<double> rates;
@@ -853,7 +853,7 @@ std::map<int, double> ComputeChromosomeTransitionsExp::getExpectationsPerType(co
     while (it != expectationsPerNode.end()){
         auto nodeId = it->first;
         auto model = NonHomoProcess->getModel(modelsForBranch[nodeId]);
-        auto chrModel = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(model);
+        auto chrModel = dynamic_cast<const ChromosomeSubstitutionModel*>(model);
         if (expectationsPerNode.find(nodeId) == expectationsPerNode.end()){
             it ++;
             continue;

@@ -304,7 +304,7 @@ ChromosomeSubstitutionModel :: ChromosomeSubstitutionModel(
   std::vector<int> rateChangeType,
   bool simulated):
     AbstractParameterAliasable("Chromosome."),
-    AbstractSubstitutionModel(alpha, std::shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), "Chromosome."),
+    AbstractSubstitutionModel(alpha, std::shared_ptr<const StateMap>(new CanonicalStateMap(alpha, alpha->getMin(), alpha->getMax(), false)), "Chromosome."),
     gain_(0),
     loss_(0),
     dupl_(0),
@@ -367,7 +367,7 @@ ChromosomeSubstitutionModel::ChromosomeSubstitutionModel(const ChromosomeAlphabe
   vector<int> rateChangeType,
   bool simulated):
     AbstractParameterAliasable("Chromosome."),
-    AbstractSubstitutionModel(alpha, std::shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), "Chromosome."),
+    AbstractSubstitutionModel(alpha, std::shared_ptr<const StateMap>(new CanonicalStateMap(alpha, alpha->getMin(), alpha->getMax(), false)), "Chromosome."),
     gain_(0),
     loss_(0),
     dupl_(0),
@@ -459,7 +459,7 @@ ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
         }
         lowerBound = lowerBoundBaseNumber;
         upperBound = std::max((int)chrRange, lowerBoundBaseNumber+1);
-        newBaseNumber = static_cast<int>(lowerBound + RandomTools::giveIntRandomNumberBetweenZeroAndEntry((int)(upperBound-lowerBound)));
+        newBaseNumber = static_cast<int>(lowerBound + RandomTools::giveIntRandomNumberBetweenZeroAndEntry(upperBound-lowerBound));
         continue;
 
       }else{

@@ -36,12 +36,12 @@
   The fact that you are presently reading this means that you have had
   knowledge of the CeCILL license and that you accept its terms.
 */
-#ifndef CHROMEVOL_COMPUTECHROMOSOMETRANSITIONSEXP_H
-#define CHROMEVOL_COMPUTECHROMOSOMETRANSITIONSEXP_H
+#ifndef _COMPUTECHROMOSOMETRANSITIONSEXP_H_
+#define _COMPUTECHROMOSOMETRANSITIONSEXP_H_
 
 
 #include "ChromosomeSubstitutionModel.h"
-#include "Bpp/Phyl/Likelihood/NonHomogeneousSubstitutionProcess.h"
+#include "Bpp/Phyl/NewLikelihood/NonHomogeneousSubstitutionProcess.h"
 #include "Bpp/Phyl/Tree/PhyloTree.h"
 #include "Bpp/Phyl/Tree/PhyloTreeTools.h"
 #include "ChromEvolOptions.h"
@@ -121,7 +121,7 @@ namespace bpp
             void updateBranchLengths(int initState, int iteration, size_t modelIndex, map <int, double>* ratesPerState);
             void getPosteriorAndExpForNonAccountedFor(map <uint, vector<pair<int, int>>>& nonAccountedForBranchesFromFirstRun);
             void computeExpPerTypeHeuristics(map <uint, vector<pair<int, int>>>& nonAccountedForBranchesFromFirstRun);
-            bool isMaxStateValid(int prevState, std::shared_ptr<const ChromosomeSubstitutionModel> model) const;
+            bool isMaxStateValid(int prevState, const ChromosomeSubstitutionModel* model) const;
             
         public:
             ComputeChromosomeTransitionsExp(const std::shared_ptr<NonHomogeneousSubstitutionProcess> model,  const PhyloTree* tree, const ChromosomeAlphabet* alphabet, map<uint, map<size_t, VVdouble>>& jointProbabilitiesFatherSon, int method = 0)
@@ -180,9 +180,9 @@ namespace bpp
             void computeExpectationAndPosterior();
             void runSimulations(int numOfSimulations);
             static bool compareBranches(Branch& edge1, Branch& edge2);//sorting function to sort the branches in ascending order of length
-            int getRandomState(int currentState, std::shared_ptr<const ChromosomeSubstitutionModel> model);
+            int getRandomState(int currentState, const ChromosomeSubstitutionModel* model);
             double getExpectation(uint nodeId, int startAncestral, int endAncestral, int typeOfChange);
-            void updateMapOfJumps(int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model);
+            void updateMapOfJumps(int startState, int endState, const ChromosomeSubstitutionModel* model);
             void updateExpectationsPerBranch(uint nodeId, pair<int, int> ancestralTerminals, pair<int, int> jumpStates);
             void runHeuristics(const string FilePath = "none");
             
@@ -206,4 +206,4 @@ namespace bpp
 
     };
 }
-#endif // CHROMEVOL_COMPUTECHROMOSOMETRANSITIONSEXP_H
+#endif // _COMPUTECHROMOSOMETRANSITIONSEXP_H_
