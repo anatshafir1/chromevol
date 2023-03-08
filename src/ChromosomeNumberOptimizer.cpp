@@ -2146,6 +2146,8 @@ void ChromosomeNumberOptimizer::getValidCandidatesForShift(std::vector<uint> &ca
         getValidCandidatesForShiftRec(shifting_nodes[j], candidateShiftNodesIds, minCladeSize, shifting_nodes, true);
 
     }
+    sort( candidateShiftNodesIds.begin(), candidateShiftNodesIds.end() );
+    candidateShiftNodesIds.erase( unique( candidateShiftNodesIds.begin(), candidateShiftNodesIds.end() ), candidateShiftNodesIds.end() );
 
     
     // for (size_t i = 0; i < nodes.size(); i++){
