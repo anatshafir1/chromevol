@@ -2146,25 +2146,6 @@ void ChromosomeNumberOptimizer::getValidCandidatesForShift(std::vector<uint> &ca
         getValidCandidatesForShiftRec(shifting_nodes[j], candidateShiftNodesIds, minCladeSize, shifting_nodes, true);
 
     }
-    sort( candidateShiftNodesIds.begin(), candidateShiftNodesIds.end() );
-    candidateShiftNodesIds.erase( unique( candidateShiftNodesIds.begin(), candidateShiftNodesIds.end() ), candidateShiftNodesIds.end() );
-
-    
-    // for (size_t i = 0; i < nodes.size(); i++){
-    //     if (tree_->isLeaf(nodes[i])){
-    //         continue;
-    //     }
-    //     if (tree_->getRootIndex() == tree_->getNodeIndex(nodes[i])){
-    //         continue;
-    //     }
-    //     if (std::find(ChromEvolOptions::initialModelNodes_.begin(), ChromEvolOptions::initialModelNodes_.end(), tree_->getNodeIndex(nodes[i])) != ChromEvolOptions::initialModelNodes_.end()){
-    //         continue;
-    //     }
-    //     auto leavesUnderNode = tree_->getLeavesUnderNode(nodes[i]);
-    //     if (leavesUnderNode.size() >= (size_t)minCladeSize){
-    //         candidateShiftNodesIds.push_back(tree_->getNodeIndex(nodes[i]));
-    //     }
-    // }
 
 }
 
