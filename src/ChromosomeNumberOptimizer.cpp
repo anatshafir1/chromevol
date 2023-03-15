@@ -1956,7 +1956,9 @@ void ChromosomeNumberOptimizer::runNewBranchModel(omp_lock_t &mutex, SingleProce
         perCandidateLikVec.pop_back();
         deleteLikObject(lik_to_del);
     }
+    #pragma omp flush
     omp_unset_lock(&mutex);
+    //#pragma omp flush
 
 }
 
