@@ -164,12 +164,19 @@ void ChromosomeNumberOptimizer::optimizeMultiProcessModel(std::map<int, std::vec
             }
             //If the number of optimization iterations is larger than zero, optimize the number of times as specified
             if (numOfIterations[i] > 0){
-                if (perCandidateLik){
-                    // add here baseNum candidates
-                    optimizeModelParameters((*perCandidateLik)[j], tolerance_, numOfIterations[i], baseNumCandidates, sharedParams, fixedParams, text, baseNumberUpperBounds);
-                }else{
-                    optimizeModelParameters(vectorOfLikelohoods_[j], tolerance_, numOfIterations[i], baseNumCandidates, sharedParams, fixedParams, text, baseNumberUpperBounds);
-                }
+                sleep(10);
+
+                /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                /////////////////////////////////////////////////////////////////
+                // FIXME: SHOULD UNCOMMENT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                ///////////////////////////////////////////////////////////////////
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                // if (perCandidateLik){
+                //     // add here baseNum candidates
+                //     optimizeModelParameters((*perCandidateLik)[j], tolerance_, numOfIterations[i], baseNumCandidates, sharedParams, fixedParams, text, baseNumberUpperBounds);
+                // }else{
+                //     optimizeModelParameters(vectorOfLikelohoods_[j], tolerance_, numOfIterations[i], baseNumCandidates, sharedParams, fixedParams, text, baseNumberUpperBounds);
+                // }
             }
             if ((i < numOfIterations.size()-1) && (j >= numOfPoints[i+1])){
                 if (mutex){
@@ -1844,27 +1851,14 @@ void ChromosomeNumberOptimizer::optimizeInParallel(std::map<uint, std::pair<int,
         //omp_set_num_threads(4);
         SingleProcessPhyloLikelihood* bestLikAmongCandidates = 0;
         double bestAICcScore = initialAICc;
-;
-        // just for test limiting openmp iterations
-        size_t numOfLoops = static_cast<size_t>(std::ceil((double)(candidateShiftNodesIds.size())/40));
-        std::vector<omp_lock_t> mutex_vec;
-        mutex_vec.resize(numOfLoops);
-        for (size_t j = 0; j < numOfLoops; j++){
-            size_t start =  40*j;
-            size_t stop = std::min(candidateShiftNodesIds.size(), 40*(j+1));
-            //omp_lock_t mutex;
-            omp_init_lock(&mutex_vec[j]);
-            #pragma omp parallel for schedule(dynamic)
-            for (size_t i = start; i < stop; i++){
-                runNewBranchModel(mutex_vec[j], lik, candidateShiftNodesIds, i, numOfShifts, parsimonyBound, numOfPoints, &bestLikAmongCandidates, &bestAICcScore, &minDetaAICcNode);
-                std::cout << "Number of threads in iteration  " << i << " : " << omp_get_num_threads() << std::endl;
-            }
-            omp_destroy_lock(&mutex_vec[j]);
-
+        omp_lock_t mutex;
+        omp_init_lock(&mutex);
+        #pragma omp parallel for schedule(dynamic)
+        for (size_t i = 0; i < candidateShiftNodesIds.size(); i++){
+            runNewBranchModel(mutex, lik, candidateShiftNodesIds, i, numOfShifts, parsimonyBound, numOfPoints, &bestLikAmongCandidates, &bestAICcScore, &minDetaAICcNode);
+            std::cout << "Number of threads in iteration  " << i << " : " << omp_get_num_threads() << std::endl;
         }
-
-        
-
+        omp_destroy_lock(&mutex);
 
         // get the best candidate
         // for each candidate calculate the AICc, and delete those which have a worse AICc than the best so far

@@ -76,6 +76,9 @@
 #include <string>
 #include <omp.h>
 #include <time.h>
+#include <unistd.h>
+#include <iostream>
+#include <cstdlib>
 using namespace std;
 namespace bpp
 {
