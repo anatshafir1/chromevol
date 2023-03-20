@@ -164,19 +164,13 @@ void ChromosomeNumberOptimizer::optimizeMultiProcessModel(std::map<int, std::vec
             }
             //If the number of optimization iterations is larger than zero, optimize the number of times as specified
             if (numOfIterations[i] > 0){
-                sleep(10);
 
-                /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                /////////////////////////////////////////////////////////////////
-                // FIXME: SHOULD UNCOMMENT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                ///////////////////////////////////////////////////////////////////
-                //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                // if (perCandidateLik){
-                //     // add here baseNum candidates
-                //     optimizeModelParameters((*perCandidateLik)[j], tolerance_, numOfIterations[i], baseNumCandidates, sharedParams, fixedParams, text, baseNumberUpperBounds);
-                // }else{
-                //     optimizeModelParameters(vectorOfLikelohoods_[j], tolerance_, numOfIterations[i], baseNumCandidates, sharedParams, fixedParams, text, baseNumberUpperBounds);
-                // }
+                if (perCandidateLik){
+                    // add here baseNum candidates
+                    optimizeModelParameters((*perCandidateLik)[j], tolerance_, numOfIterations[i], baseNumCandidates, sharedParams, fixedParams, text, baseNumberUpperBounds);
+                }else{
+                    optimizeModelParameters(vectorOfLikelohoods_[j], tolerance_, numOfIterations[i], baseNumCandidates, sharedParams, fixedParams, text, baseNumberUpperBounds);
+                }
             }
             if ((i < numOfIterations.size()-1) && (j >= numOfPoints[i+1])){
                 if (mutex){
