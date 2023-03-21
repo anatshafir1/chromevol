@@ -34,6 +34,11 @@
 #include "ChrFasta.h"
 #include <Bpp/Phyl/Io/Newick.h>
 #include <Bpp/Phyl/NewLikelihood/PhyloLikelihoods/SingleProcessPhyloLikelihood.h>
+#include <Bpp/Phyl/Model/FrequencySet/NucleotideFrequencySet.h>
+#include <Bpp/Phyl/Model/Nucleotide/T92.h>
+
+#include "sys/types.h"
+#include "sys/sysinfo.h"
 
 
 
@@ -200,6 +205,37 @@ void deleteLikObject(SingleProcessPhyloLikelihood* lik_to_del){
 
 }
 /****************************************************************************/
+SubstitutionProcess* createProcess(PhyloTree* tree, const NucleicAlphabet* alphabet,  std::map<uint, std::vector<uint>> &mapModelNodesIds){
+    auto rootFreqs = std::make_shared<GCFrequencySet>(alphabet);
+    auto model = std::make_shared<T92>(alphabet, 3., .1);
+    DiscreteDistribution* rdist = new GammaDiscreteRateDistribution(4, 1.0);
+    ParametrizablePhyloTree* parTree = new ParametrizablePhyloTree(*tree);
+    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
+    subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree);
+    subProSim->addModel(model, mapModelNodesIds[1]);
+    SubstitutionProcess* nsubPro= subProSim->clone();
+    return nsubPro;
+
+}
+
+/****************************************************************************/
+SingleProcessPhyloLikelihood* createLikInstanceNonChromevol(VectorSiteContainer* vsc, PhyloTree* tree, const NucleicAlphabet* alphabet,  std::map<uint, std::vector<uint>> &mapModelNodesIds){
+    
+    auto rootFreqs = std::make_shared<GCFrequencySet>(alphabet);
+    auto model = std::make_shared<T92>(alphabet, 3., .1);
+    DiscreteDistribution* rdist = new GammaDiscreteRateDistribution(4, 1.0);
+    ParametrizablePhyloTree* parTree = new ParametrizablePhyloTree(*tree);
+    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
+    subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree);
+    subProSim->addModel(model, mapModelNodesIds[1]);
+    SubstitutionProcess* nsubPro= subProSim->clone();
+    Context* context = new Context();
+    auto lik = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vsc->clone(), *nsubPro, false);
+    SingleProcessPhyloLikelihood* newLik = new SingleProcessPhyloLikelihood(*context, lik, lik->getParameters());
+    return newLik;
+}
+
+/****************************************************************************/
 SingleProcessPhyloLikelihood* createLikInstance(VectorSiteContainer* vsc, PhyloTree* tree, uint &numberOfUniqueStates, std::map<uint, uint> &chrRange, std::map<uint, int> &baseNum, int baseNumber, int numOfModels, std::map<uint, std::vector<uint>> &mapModelNodesIds, ChromosomeAlphabet* alphabet){
 
 
@@ -239,9 +275,26 @@ SingleProcessPhyloLikelihood* createLikInstance(VectorSiteContainer* vsc, PhyloT
 
 }
 /****************************************************************************/
+void test_memory(){
+    std::vector<int*> vec;
+    // 1000000000
+    for (int i = 0; i < 10000000; i++){
+        vec.push_back(new int(i));
+    }
+    system("free -h");
+    size_t vec_size = vec.size();
+    for (size_t i = 0; i < vec_size; i++){
+        int* toDel = vec.back();
+        delete toDel;
+        vec.pop_back();
 
-
-int main() {
+    }
+    vec.clear();
+    vec.shrink_to_fit();
+    return;
+}
+/****************************************************************************/
+void test_chromevol_memory(){
     time_t t1;
     time(&t1);
     time_t t2;
@@ -249,6 +302,7 @@ int main() {
     time_t t4;
     const string characterFilePath = "/home/anat/Docs/Crinum/counts.fasta";
     const string treeFilePath = "/home/anat/Docs/Crinum/tree.newick";
+    //system("free -h");
     ChromosomeAlphabet* alphabet; 
 
     int baseNumber = 11;
@@ -270,37 +324,183 @@ int main() {
             mapModelNodesIds[1].push_back(nodeId);
         }
     }
-    sleep(60);
     time(&t2);
     std::cout <<"Total running time before initialization: "<< static_cast<int>(t2-t1) <<endl;
-
-
-
     std::vector<SingleProcessPhyloLikelihood*> likVector;
-    size_t numberOfItems = 1000;
+    // //std::vector<SubstitutionProcess*> likVector;
+    // std::vector<VectorSiteContainer*> likVector;
+    size_t numberOfItems = 10000;
     for (size_t i = 0; i < numberOfItems; i++){
         auto lik = createLikInstance(vsc, tree, numberOfUniqueStates, chrRange, baseNum, baseNumber, numOfModels, mapModelNodesIds, alphabet);
+    //     //auto lik = createLikInstanceNonChromevol(vsc, tree, alphabet, mapModelNodesIds);
+    //     //auto process = createProcess(tree, alphabet,  mapModelNodesIds);
+    //     auto sites = vsc->clone();
+
+
+        auto lik_val = lik->getValue();
+        std::cout << "lik value is: " << lik_val << std::endl;
         likVector.push_back(lik);
+    //     likVector.push_back(sites);
+    //     //likVector.push_back(process);
     }
-    sleep(60);
+    sleep(5);
     time(&t3);
     std::cout <<"Total running time after initialization: "<< static_cast<int>(t3-t1) <<endl;
     size_t numOfObjects = likVector.size();
+    system("free -h");
+
     
 
     for (size_t i = 0; i < numOfObjects; i++){
         SingleProcessPhyloLikelihood* lik_to_del =likVector.back(); 
+        //SubstitutionProcess* processToDel = likVector.back(); 
+        //VectorSiteContainer* vsc_to_del = likVector.back(); 
         likVector.pop_back();
+        //delete vsc_to_del;
+        //delete processToDel;
         deleteLikObject(lik_to_del);
 
     }
 
+
     delete vsc;
     delete tree;
-    delete alphabet;
-    sleep(60);
+    sleep(15);
     time(&t4);
     std::cout <<"Total running time after deletion: "<< static_cast<int>(t4-t1) <<endl;
+    //system("free -h");
+
+}
+/****************************************************************************/
+void test(){
+    std::vector<int> vec;
+    for (int i = 0; i < 10; i++){
+        vec.push_back(i);
+    }
+    for (size_t i = 0; i < 5; i++){
+        vec.pop_back();
+    }
+    vec.shrink_to_fit();
+    for (size_t i = 0; i < vec.size(); i++){
+        std::cout << vec[i] << std::endl;
+    }
+}
+/****************************************************************************/
+
+
+int main() {
+    // Newick reader;
+    // PhyloTree* tree = reader.parenthesisToPhyloTree("((A:0.01, B:0.02):0.03,C:0.01,D:0.1);", false, "", false, false);
+    // const NucleicAlphabet* alphabet = &AlphabetTools::DNA_ALPHABET;
+
+
+    system("free -h");
+    test_memory();
+    //test();
+    //test_chromevol_memory();
+
+    //vec = vector<int*>();
+    //delete vec;
+    //vec.shrink_to_fit();
+
+
+    // std::vector<int>* vec = new vector<int>();
+    // for (int i = 0; i < 1000000000; i++){
+    //     vec->push_back(i);
+    // }
+    // size_t vec_size = vec->size();
+    // for (size_t i = 0; i < vec_size; i++){
+    //     vec->pop_back();
+    // }
+    // delete vec;
+    //sleep(10);
+    //system("free -h");
+    // time_t t1;
+    // time(&t1);
+    // time_t t2;
+    // time_t t3;
+    // time_t t4;
+    // // const st ring characterFilePath = "/home/anat/Docs/Crinum/counts.fasta";
+    // // const string treeFilePath = "/home/anat/Docs/Crinum/tree.newick";
+    // // system("free -h");
+    // // ChromosomeAlphabet* alphabet; 
+
+    // // int baseNumber = 11;
+    // // uint numberOfUniqueStates;
+    // // std::map<uint, uint> chrRange;
+    // // std::map<uint, int> baseNum;
+    // // baseNum[1] = baseNumber;
+    // // int numOfModels = 1;
+    // std::map<uint, std::vector<uint>> mapModelNodesIds;
+    // // VectorSiteContainer* vsc = getCharacterData (characterFilePath, numberOfUniqueStates, chrRange, baseNum, numOfModels, &alphabet);
+    // // PhyloTree* tree = getTree(treeFilePath, (double)numberOfUniqueStates);
+    // // adding nodes corresponding to the model
+    // auto nodes = tree->getAllNodes();
+    // for (size_t i = 0; i < nodes.size(); i++){
+    //     uint nodeId = tree->getNodeIndex(nodes[i]);
+    //     if (nodeId == tree->getRootIndex()){
+    //         continue;
+    //     }else{
+    //         mapModelNodesIds[1].push_back(nodeId);
+    //     }
+    // }
+
+    // VectorSiteContainer* vsc = new VectorSiteContainer(alphabet);
+    // vsc->addSequence(BasicSequence("A", "ATCCAGACATGCCGGGACTTTGCAGAGAAGGAGTTGTTTCCCATTGCAGCCCAGGTGGATAAGGAACAGC", alphabet));
+    // vsc->addSequence(BasicSequence("B", "CGTCAGACATGCCGTGACTTTGCCGAGAAGGAGTTGGTCCCCATTGCGGCCCAGCTGGACAGGGAGCATC", alphabet));
+    // vsc->addSequence(BasicSequence("C", "GGTCAGACATGCCGGGAATTTGCTGAAAAGGAGCTGGTTCCCATTGCAGCCCAGGTAGACAAGGAGCATC", alphabet));
+    // vsc->addSequence(BasicSequence("D", "TTCCAGACATGCCGGGACTTTACCGAGAAGGAGTTGTTTTCCATTGCAGCCCAGGTGGATAAGGAACATC", alphabet));
+
+    // sleep(5);
+    // time(&t2);
+    // std::cout <<"Total running time before initialization: "<< static_cast<int>(t2-t1) <<endl;
+    // system("free -h");
+
+
+
+    // //std::vector<SingleProcessPhyloLikelihood*> likVector;
+    // //std::vector<SubstitutionProcess*> likVector;
+    // std::vector<VectorSiteContainer*> likVector;
+    // size_t numberOfItems = 30000;
+    // for (size_t i = 0; i < numberOfItems; i++){
+    //     //auto lik = createLikInstance(vsc, tree, numberOfUniqueStates, chrRange, baseNum, baseNumber, numOfModels, mapModelNodesIds, alphabet);
+    //     //auto lik = createLikInstanceNonChromevol(vsc, tree, alphabet, mapModelNodesIds);
+    //     //auto process = createProcess(tree, alphabet,  mapModelNodesIds);
+    //     auto sites = vsc->clone();
+
+
+    //     //auto lik_val = lik->getValue();
+    //     //std::cout << "lik value is: " << lik_val << std::endl;
+    //     //likVector.push_back(lik);
+    //     likVector.push_back(sites);
+    //     //likVector.push_back(process);
+    // }
+    // sleep(5);
+    // time(&t3);
+    // std::cout <<"Total running time after initialization: "<< static_cast<int>(t3-t1) <<endl;
+    // size_t numOfObjects = likVector.size();
+    // system("free -h");
+
+    
+
+    // for (size_t i = 0; i < numOfObjects; i++){
+    //     //SingleProcessPhyloLikelihood* lik_to_del =likVector.back(); 
+    //     //SubstitutionProcess* processToDel = likVector.back(); 
+    //     VectorSiteContainer* vsc_to_del = likVector.back(); 
+    //     likVector.pop_back();
+    //     delete vsc_to_del;
+    //     //delete processToDel;
+    //     //deleteLikObject(lik_to_del);
+
+    // }
+
+
+    // delete vsc;
+    // delete tree;
+    sleep(15);
+    //std::cout <<"Total running time after deletion: "<< static_cast<int>(t4-t1) <<endl;
+    system("free -h");
 
     return 0;
+    
 }

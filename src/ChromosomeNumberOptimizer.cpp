@@ -286,6 +286,7 @@ void ChromosomeNumberOptimizer::clearVectorOfLikelihoods(size_t new_size){
 
         }
     }
+    vectorOfLikelohoods_.shrink_to_fit();
 }
 // /********************************************************************************/
 void ChromosomeNumberOptimizer::clearVectorOfLikelihoods(size_t new_size, std::vector<SingleProcessPhyloLikelihood*> &likelihoodsVec){
@@ -300,6 +301,7 @@ void ChromosomeNumberOptimizer::clearVectorOfLikelihoods(size_t new_size, std::v
         
 
     }
+    likelihoodsVec.shrink_to_fit();
 }
 
 // /***********************************************************************************/
