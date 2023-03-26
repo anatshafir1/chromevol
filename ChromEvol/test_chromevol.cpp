@@ -329,7 +329,7 @@ void test_chromevol_memory(){
     std::vector<SingleProcessPhyloLikelihood*> likVector;
     // //std::vector<SubstitutionProcess*> likVector;
     // std::vector<VectorSiteContainer*> likVector;
-    size_t numberOfItems = 10000;
+    size_t numberOfItems = 10;
     for (size_t i = 0; i < numberOfItems; i++){
         auto lik = createLikInstance(vsc, tree, numberOfUniqueStates, chrRange, baseNum, baseNumber, numOfModels, mapModelNodesIds, alphabet);
     //     //auto lik = createLikInstanceNonChromevol(vsc, tree, alphabet, mapModelNodesIds);
@@ -347,7 +347,7 @@ void test_chromevol_memory(){
     time(&t3);
     std::cout <<"Total running time after initialization: "<< static_cast<int>(t3-t1) <<endl;
     size_t numOfObjects = likVector.size();
-    system("free -h");
+    //system("free -h");
 
     
 
@@ -365,6 +365,7 @@ void test_chromevol_memory(){
 
     delete vsc;
     delete tree;
+    delete alphabet;
     sleep(15);
     time(&t4);
     std::cout <<"Total running time after deletion: "<< static_cast<int>(t4-t1) <<endl;
@@ -394,10 +395,10 @@ int main() {
     // const NucleicAlphabet* alphabet = &AlphabetTools::DNA_ALPHABET;
 
 
-    system("free -h");
-    test_memory();
+    //system("free -h");
+    //test_memory();
     //test();
-    //test_chromevol_memory();
+    test_chromevol_memory();
 
     //vec = vector<int*>();
     //delete vec;
@@ -497,9 +498,9 @@ int main() {
 
     // delete vsc;
     // delete tree;
-    sleep(15);
+    //sleep(15);
     //std::cout <<"Total running time after deletion: "<< static_cast<int>(t4-t1) <<endl;
-    system("free -h");
+    //system("free -h");
 
     return 0;
     
