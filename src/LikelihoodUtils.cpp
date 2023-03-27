@@ -173,3 +173,438 @@ std::map<uint, std::vector<uint>> LikelihoodUtils::findMRCAForEachModelNodes(Phy
     return modelWithRepresentitives;
 
 }
+/***************************************************************************************************************************/
+std::string LikelihoodUtils::getFunctionName(int func){
+    std::string functionName;
+    switch(func)
+    {
+    case ChromosomeNumberDependencyFunction::CONSTANT:
+        functionName = "CONST";
+        break;
+    case ChromosomeNumberDependencyFunction::LINEAR:
+        functionName = "LINEAR";
+        break;
+    case ChromosomeNumberDependencyFunction::LINEAR_BD:
+        functionName = "LINEAR_BD";
+        break;
+    case ChromosomeNumberDependencyFunction::EXP:
+        functionName = "EXP";
+        break;
+    case ChromosomeNumberDependencyFunction::POLYNOMIAL:
+        functionName = "POLYNOMIAL";
+        break;
+    case ChromosomeNumberDependencyFunction::LOGNORMAL:
+        functionName = "LOGNORMAL";
+        break;
+    case ChromosomeNumberDependencyFunction::REVERSE_SIGMOID:
+        functionName = "REVERSE_SIGMOID";
+        break;
+    case ChromosomeNumberDependencyFunction::IGNORE:
+        functionName = "IGNORE";
+        break;
+    default:
+        throw Exception("LikelihoodUtils::getFunctionName: parameter not found !!!");
+    }
+    return functionName;
+}
+
+/***************************************************************************************************************************/
+
+string LikelihoodUtils::getStringParamName(int type){
+    string strName;
+    if (type == ChromosomeSubstitutionModel::BASENUM){
+        strName = "baseNum";
+    }else if (type == ChromosomeSubstitutionModel::BASENUMR){
+        strName = "baseNumR";
+    }else if (type == ChromosomeSubstitutionModel::DUPL){
+        strName = "dupl";
+    }else if(type == ChromosomeSubstitutionModel::DEMIDUPL){
+        strName = "demi";
+    }else if (type == ChromosomeSubstitutionModel::GAIN){
+        strName = "gain";
+    }else if (type == ChromosomeSubstitutionModel::LOSS){
+        strName = "loss";
+    }else{
+        throw Exception("LikelihoodUtils::getStringParamName(): No such parameter exists!");
+    }
+    return strName;
+}
+// /****************************************************************************/
+vector <double> LikelihoodUtils::setFixedRootFrequencies(const std::string &path, std::shared_ptr<ChromosomeSubstitutionModel> chrModel){
+    ifstream stream;
+    stream.open(path.c_str());
+    vector <double> freqs;
+    vector <string> lines = FileTools::putStreamIntoVectorOfStrings(stream);
+    stream.close();
+    for (size_t i = 0; i < lines.size(); i++){
+        string freq_i_str = TextTools::removeSurroundingWhiteSpaces(lines[i]);
+        if (freq_i_str == ""){
+            continue;
+        }
+        double freq_i = TextTools::toDouble(freq_i_str);
+        if (static_cast<unsigned int>(freqs.size()) >= chrModel->getNumberOfStates()){
+            if (freq_i > 0){
+                throw Exception("Invalid fixed frequencies file!");
+            }
+
+        }else{
+            freqs.push_back(freq_i);
+        }
+        
+    }
+    size_t nbStates = chrModel->getNumberOfStates();
+    if (freqs.size() < nbStates){
+        for (size_t s = freqs.size(); s < nbStates; s++){
+            freqs.push_back(0);
+        }
+        
+    }
+    if (nbStates != freqs.size()){
+        throw Exception("Invalid fixed frequencies file!");
+    }
+    return freqs;
+}
+/**************************************************************************************/
+void LikelihoodUtils::updateWithTypeAndCorrespondingName(std::map<std::string, int> &typeGeneralName){
+    typeGeneralName["gain"] = static_cast<int>(ChromosomeSubstitutionModel::GAIN);
+    typeGeneralName["loss"] = static_cast<int>(ChromosomeSubstitutionModel::LOSS);
+    typeGeneralName["dupl"] = static_cast<int>(ChromosomeSubstitutionModel::DUPL);
+    typeGeneralName["demi"] = static_cast<int>(ChromosomeSubstitutionModel::DEMIDUPL);
+    typeGeneralName["baseNumR"] = static_cast<int>(ChromosomeSubstitutionModel::BASENUMR);
+    typeGeneralName["baseNum_"] = static_cast<int>(ChromosomeSubstitutionModel::BASENUM);
+    
+}
+/**********************************************************************************/
+int LikelihoodUtils::getTypeOfParamFromParamName(string name){
+    int type;
+    std::map<std::string, int> typeGeneralName;
+    LikelihoodUtils::updateWithTypeAndCorrespondingName(typeGeneralName);
+    auto itParamType = typeGeneralName.begin();
+    while(itParamType != typeGeneralName.end()){
+        string pattern = itParamType->first;
+        if (name.find(pattern) != string::npos){
+            type = typeGeneralName[pattern];
+            break;
+
+        }
+        itParamType ++;
+    }
+    return type;
+}
+/*******************************************************************************/
+size_t LikelihoodUtils::getNumberOfFixedParams(SingleProcessPhyloLikelihood* lik, std::map<uint, vector<int>> &fixedParams){
+    auto substitutionModelParams = lik->getSubstitutionModelParameters();
+    auto paramNames = substitutionModelParams.getParameterNames();
+    size_t numOfFixedParams = 0;
+    for (size_t i = 0; i < paramNames.size(); i++){
+        auto paramName = paramNames[i];
+        uint model = LikelihoodUtils::getModelFromParamName(paramName);
+        int type = LikelihoodUtils::getTypeOfParamFromParamName(paramName);
+        auto itMap = fixedParams.find(model);
+        if (itMap != fixedParams.end()){
+            auto fixedTypes = fixedParams[itMap->first];
+            for (size_t j = 0; j < fixedTypes.size(); j++){
+                if (fixedTypes[j] == type){
+                    numOfFixedParams ++;
+                    break;
+                }
+            }
+        }
+
+    }
+    return numOfFixedParams;
+
+}
+/**********************************************************************************/
+uint LikelihoodUtils::getModelFromParamName(string name){
+    std::regex modelPattern ("_([\\d]+)");
+    std::smatch sm;
+    std::regex_search(name, sm, modelPattern);
+    std::string modelSuffix = sm[sm.size()-1];
+    uint modelId = static_cast<uint>(stoi(modelSuffix));
+    return modelId;
+
+}
+/*************************************************************************************/
+uint LikelihoodUtils::getNumberOfParametersPerParamType(int paramType, vector<int> &funcTypes){
+    uint numOfParams;
+    if (paramType == ChromosomeSubstitutionModel::BASENUM){
+        if (ChromEvolOptions::baseNum_[1] == IgnoreParam){
+            numOfParams = 0;
+        }else{
+            numOfParams = 1;
+        }
+        
+    }else{
+        size_t startForComposite = ChromosomeSubstitutionModel::getNumberOfNonCompositeParams();
+        auto funcType = funcTypes[paramType-startForComposite];
+        if (funcType == ChromosomeNumberDependencyFunction::IGNORE){
+            numOfParams = 0;
+        }else{
+            ChromosomeNumberDependencyFunction* functionOp = compositeParameter::setDependencyFunction(static_cast<ChromosomeNumberDependencyFunction::FunctionType>(funcType));
+            //functionOp->setDomainsIfNeeded(alphabet_->getMin(), alphabet_->getMax());
+            numOfParams = static_cast<uint>(functionOp->getNumOfParameters());
+            delete functionOp;
+
+        }
+
+    }
+    return numOfParams;
+
+
+}
+// /*******************************************************************************/
+void LikelihoodUtils::updateMapsOfParamTypesAndNames(std::map<int, std::map<uint, std::vector<string>>> &typeWithParamNames, std::map<string, std::pair<int, uint>>* paramNameAndType, SingleProcessPhyloLikelihood* tl, std::map<int, std::vector<std::pair<uint, int>>>* sharedParams){
+    ParameterList substitutionModelParams = tl->getSubstitutionModelParameters();
+    std::vector<std::string> namesAllParams = substitutionModelParams.getParameterNames();
+    std::map<string, vector<std::pair<uint, int>>> sharedParamsNames;
+    if (sharedParams){
+        LikelihoodUtils::createMapOfSharedParameterNames(*sharedParams, sharedParamsNames);
+    }
+    for (size_t i = 0; i < namesAllParams.size(); i++){
+        uint modelId = LikelihoodUtils::getModelFromParamName(namesAllParams[i]);
+        int type = LikelihoodUtils::getTypeOfParamFromParamName(namesAllParams[i]);
+        //should get the type
+
+        
+        typeWithParamNames[type][modelId].push_back(namesAllParams[i]);
+        if (paramNameAndType){
+            (*paramNameAndType)[namesAllParams[i]] = std::pair<int, uint>(type, modelId);
+        }
+        if (sharedParams){
+            if (sharedParamsNames.find(namesAllParams[i]) != sharedParamsNames.end()){
+                for (size_t k = 0; k < sharedParamsNames[namesAllParams[i]].size(); k++ ){
+                    uint model = sharedParamsNames[namesAllParams[i]][k].first;
+                    int typeOfSharedParam = sharedParamsNames[namesAllParams[i]][k].second;
+                    typeWithParamNames[typeOfSharedParam][model].push_back(namesAllParams[i]);
+
+                }
+
+            }
+
+        }
+
+    }
+
+}
+/**********************************************************************************/
+void LikelihoodUtils::createMapOfSharedParameterNames(std::map<int, std::vector<std::pair<uint, int>>> &sharedParams, std::map<string, vector<std::pair<uint, int>>> &sharedParamsNames){
+    auto it = sharedParams.begin();
+    while (it != sharedParams.end()){
+        auto sharedPerParamNum = sharedParams[it->first];
+        uint model = sharedPerParamNum[0].first;
+        int type = sharedPerParamNum[0].second;
+        string paramBasicName = LikelihoodUtils::getStringParamName(type);
+        string paramName;
+        size_t numOfParams = LikelihoodUtils::getNumberOfParametersPerParamType(type, ChromEvolOptions::rateChangeType_);
+        for (size_t k = 0; k < numOfParams; k++){
+            if (type == ChromosomeSubstitutionModel::BASENUM){
+                paramName = "Chromosome." + paramBasicName +"_"+ std::to_string(model);
+
+            }else{
+                paramName = "Chromosome." + paramBasicName +std::to_string(k) + "_"+ std::to_string(model);
+            }
+            for (size_t i = 1; i < sharedPerParamNum.size(); i++){
+                sharedParamsNames[paramName].push_back(sharedPerParamNum[i]);
+            }
+        }
+
+        it ++;
+    }
+
+}
+
+/***********************************************************************************************/
+void LikelihoodUtils::getMutableMapOfModelAndNodeIds(std::map<uint, vector<uint>> &mapModelNodesIds, SingleProcessPhyloLikelihood* lik, uint rootId){
+    uint numOfModels = static_cast<uint>(lik->getSubstitutionProcess().getNumberOfModels());
+    if (rootId){
+        mapModelNodesIds[1].push_back(rootId);
+    }
+    for (uint i = 1; i <= numOfModels; i++){
+        auto vectorOfNodes = lik->getSubstitutionProcess().getNodesWithModel(i);
+        for (size_t j = 0; j < vectorOfNodes.size(); j++){
+            mapModelNodesIds[i].push_back(vectorOfNodes[j]);
+        }
+    }
+}
+/****************************************************************/
+std::map<uint, pair<int, std::map<int, std::vector<double>>>> LikelihoodUtils::getMapOfParamsForComplexModel(SingleProcessPhyloLikelihood* lik, std::map<int, std::map<uint, std::vector<string>>> typeWithParamNames, uint numOfModels) {
+    std::map<uint, pair<int, std::map<int, std::vector<double>>>> heterogeneousModelParams;
+    for (uint i = 1; i <= numOfModels; i++){
+        heterogeneousModelParams[i] = pair<int, std::map<int, std::vector<double>>>();
+    }
+    auto it = typeWithParamNames.begin();
+    while (it != typeWithParamNames.end()){
+        int type = it->first;
+        auto modelIt = typeWithParamNames[type].begin();
+        while(modelIt != typeWithParamNames[type].end()){
+            uint model = modelIt->first;
+            if (type == ChromosomeSubstitutionModel::BASENUM){
+                heterogeneousModelParams[model].first = static_cast<int>(lik->getParameter(typeWithParamNames[type][model][0]).getValue());
+            }else{
+                vector<string> paramNames = typeWithParamNames[type][model];
+                for (size_t i = 0; i < paramNames.size(); i++){
+                    double paramValue = lik->getParameter(paramNames[i]).getValue();
+                    heterogeneousModelParams[model].second[type].push_back(paramValue);
+                }
+                
+            }
+            modelIt ++;
+        }
+        it ++;
+    }
+    auto modelIterator = heterogeneousModelParams.begin();
+    // it is important to set base number as ignored if it is not used. Other parameters are manipulated
+    // by the function specification.
+    while (modelIterator != heterogeneousModelParams.end()){
+        uint model = modelIterator->first;
+        if ((heterogeneousModelParams[model].second[ChromosomeSubstitutionModel::BASENUMR]).size() == 0){
+            heterogeneousModelParams[model].first = IgnoreParam;
+        }
+        modelIterator ++;
+    }
+    return heterogeneousModelParams;
+
+}
+/***********************************************/
+void LikelihoodUtils::setParamsNameInForMultiProcess(std::map<uint, std::map<int, vector<string>>> &mapOfParamsNamesPerModelType, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams){
+    auto it = modelParams.begin();
+    while(it != modelParams.end()){
+        uint model = it->first;
+        for (int i = 0; i < ChromosomeSubstitutionModel::NUM_OF_CHR_PARAMS; i++){
+            vector<string> paramsFullNames;
+            auto strParamName = LikelihoodUtils::getStringParamName(i);
+            if (i == ChromosomeSubstitutionModel::BASENUM){
+                auto fullParamName = "Chromosome." + strParamName + "_"+ std::to_string(model);
+                mapOfParamsNamesPerModelType[model][i].push_back(fullParamName);
+                continue;
+            }
+            for (size_t j = 0; j < modelParams[model].second[i].size(); j++){
+                auto fullParamName = "Chromosome." + strParamName + std::to_string(j)+ "_"+ std::to_string(model);
+                mapOfParamsNamesPerModelType[model][i].push_back(fullParamName);
+            }
+            
+        }
+        it ++;
+    }
+
+}
+
+
+/**********************************************************************************************/
+void LikelihoodUtils::aliasParametersInSubstitutionProcess(std::map<uint, std::map<int, vector<string>>> &mapOfParamsNamesPerModelType, std::map<int, vector<std::pair<uint, int>>>* updatedSharedParams, std::shared_ptr<NonHomogeneousSubstitutionProcess> process){
+    std::map<uint, std::map<int, vector<string>>> mapOfUpdatedParamNames;
+    auto paramNumIt = updatedSharedParams->begin();
+    while (paramNumIt != updatedSharedParams->end()){
+        auto paramNum = paramNumIt->first;
+        auto pairsOfModelsAndTypes = (*updatedSharedParams)[paramNum]; // vector<pair<uint, int>>
+        if (pairsOfModelsAndTypes.size() < 2){
+            paramNumIt ++;
+            continue;
+        }
+        uint firstModel = pairsOfModelsAndTypes[0].first;// vector<pair<uint, int>>[0]-> pair<uint, int>.first->uint
+        int type = pairsOfModelsAndTypes[0].second;
+        
+        auto parametersOfFirstModel = mapOfParamsNamesPerModelType[firstModel][type];
+        mapOfUpdatedParamNames[firstModel][type] = parametersOfFirstModel;
+        for (size_t i = 1; i < pairsOfModelsAndTypes.size(); i++){ 
+            uint modelToAlias = pairsOfModelsAndTypes[i].first;
+            int typeToAlias = pairsOfModelsAndTypes[i].second;
+            auto paramsToAlias = mapOfParamsNamesPerModelType[modelToAlias][typeToAlias]; 
+            for (size_t j = 0; j < paramsToAlias.size(); j++){
+                process->aliasParameters(parametersOfFirstModel[j],paramsToAlias[j]);
+
+            }           
+        }
+        paramNumIt ++;
+    }
+}
+/***********************************************************************************/
+bool LikelihoodUtils::compareLikValues(SingleProcessPhyloLikelihood* lik1, SingleProcessPhyloLikelihood* lik2){
+    return (lik1->getValue() < lik2->getValue());
+}
+/***********************************************************************************/
+SingleProcessPhyloLikelihood* LikelihoodUtils::setHeterogeneousModel(const PhyloTree* tree, const VectorSiteContainer* vsc, const ChromosomeAlphabet* alphabet, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, uint numOfModels, std::map<int, vector<std::pair<uint, int>>>* updatedSharedParams){
+    std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+    std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*tree);
+    string fixedRootFreqPath = ChromEvolOptions::fixedFrequenciesFilePath_;
+    bool weightedRootFreqs;
+    std::map<uint, std::map<int, vector<string>>> mapOfParamsNamesPerModelType;
+    LikelihoodUtils::setParamsNameInForMultiProcess(mapOfParamsNamesPerModelType, modelParams);
+    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
+    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet, modelParams[1].second, modelParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
+    if (fixedRootFreqPath == "none"){
+        weightedRootFreqs = true;
+        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree);
+
+    }else{
+        weightedRootFreqs = false;
+        vector <double> rootFreqs = LikelihoodUtils::setFixedRootFrequencies(ChromEvolOptions::fixedFrequenciesFilePath_, chrModel);
+        std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqs);
+        std::shared_ptr<FrequencySet> rootFrequencies = static_pointer_cast<FrequencySet>(rootFreqsFixed);
+        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
+    }
+    
+    // adding models
+    for (uint i = 1; i <= numOfModels; i++){
+        if (i > 1){
+            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet, modelParams[i].second, modelParams[i].first, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
+        }   
+        subProSim->addModel(chrModel, mapModelNodesIds[i]);
+    }
+    LikelihoodUtils::aliasParametersInSubstitutionProcess(mapOfParamsNamesPerModelType, updatedSharedParams, subProSim);
+
+
+    SubstitutionProcess* nsubPro= subProSim->clone();
+    Context* context = new Context();
+    auto lik = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vsc->clone(), *nsubPro, weightedRootFreqs);
+    SingleProcessPhyloLikelihood* newLik = new SingleProcessPhyloLikelihood(*context, lik, lik->getParameters());
+    return newLik;
+
+}
+/**********************************************************************************************/
+SingleProcessPhyloLikelihood* LikelihoodUtils::setRandomHeterogeneousModel(const PhyloTree* tree, const VectorSiteContainer* vsc, const ChromosomeAlphabet* alphabet,
+    std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, 
+    std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, 
+    uint numOfModels, double parsimonyBound, 
+    std::map<uint, vector<int>> &fixedParams,
+    std::map<int, std::vector<std::pair<uint, int>>>* sharedParams)
+{
+
+
+    std::map<uint, std::map<int, vector<string>>> mapOfParamsNamesPerModelType;
+    LikelihoodUtils::setParamsNameInForMultiProcess(mapOfParamsNamesPerModelType, modelParams);
+    std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+    std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*tree);
+    string fixedRootFreqPath = ChromEvolOptions::fixedFrequenciesFilePath_;
+    bool weightedRootFreqs;
+    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
+    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::shared_ptr<ChromosomeSubstitutionModel>(ChromosomeSubstitutionModel::initRandomModel(alphabet, modelParams[1].first, modelParams[1].second, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, fixedParams[1], parsimonyBound));
+    if (fixedRootFreqPath == "none"){
+        weightedRootFreqs = true;
+        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree);
+
+    }else{
+        weightedRootFreqs = false;
+        vector <double> rootFreqs = LikelihoodUtils::setFixedRootFrequencies(ChromEvolOptions::fixedFrequenciesFilePath_, chrModel);
+        std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqs);
+        std::shared_ptr<FrequencySet> rootFrequencies = static_pointer_cast<FrequencySet>(rootFreqsFixed);
+        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
+    }
+
+    
+    // adding models
+    for (uint i = 1; i <= numOfModels; i++){
+        if (i > 1){
+            chrModel = std::shared_ptr<ChromosomeSubstitutionModel>(ChromosomeSubstitutionModel::initRandomModel(alphabet, modelParams[i].first, modelParams[i].second, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, fixedParams[i], parsimonyBound));
+        }  
+        subProSim->addModel(chrModel, mapModelNodesIds[i]);
+    }
+    LikelihoodUtils::aliasParametersInSubstitutionProcess(mapOfParamsNamesPerModelType, sharedParams, subProSim);
+    SubstitutionProcess* nsubPro= subProSim->clone();
+    Context* context = new Context();
+    auto lik = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vsc->clone(), *nsubPro, weightedRootFreqs);
+    SingleProcessPhyloLikelihood* newLik = new SingleProcessPhyloLikelihood(*context, lik, lik->getParameters());
+    return newLik;
+
+}
