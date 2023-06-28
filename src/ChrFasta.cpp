@@ -76,7 +76,8 @@ bool ChrFasta::nextSequence(std::istream& input, Sequence& seq, ChromosomeAlphab
   seq.setName(seqname);
   //need to check if 
   alpha->setCompositeState(content);
-  seq.setContent(content);
+  auto clean_content = alpha->extractChromosomeNumber(content);
+  seq.setContent(clean_content);
   return res;
 
 }
