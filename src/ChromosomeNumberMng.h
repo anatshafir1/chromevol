@@ -80,6 +80,7 @@
 #include "ChromosomeSubstitutionModel.h"
 #include "ChrFasta.h"
 #include <Bpp/Phyl/Simulation/SimpleSubstitutionProcessSequenceSimulator.h>
+#include "ChromosomeTraitOptimizer.h"
 
 
 //standard libraries
@@ -100,6 +101,7 @@ namespace bpp{
             VectorSiteContainer* vsc_;
             std::map<uint, uint> chrRange_; //maxObserved-minObserved chromosome number
             unsigned int numberOfUniqueStates_; // number of unique states (number of chromosomes)
+            bool nullHypothesisRejected_;
         public :
             typedef Table<double> DataTable;
 
@@ -108,7 +110,7 @@ namespace bpp{
 
         public:
             //constructor
-            ChromosomeNumberMng(): tree_(0), alphabet_(0), vsc_(0), chrRange_(), numberOfUniqueStates_(0){}
+            ChromosomeNumberMng(): tree_(0), alphabet_(0), vsc_(0), chrRange_(), numberOfUniqueStates_(0), nullHypothesisRejected_(false){}
             ChromosomeNumberMng(const ChromosomeNumberMng& mng):
                 tree_(mng.tree_->clone()), alphabet_(mng.alphabet_->clone()), vsc_(mng.vsc_->clone()), chrRange_(mng.chrRange_), numberOfUniqueStates_(mng.numberOfUniqueStates_)
             {}
@@ -118,6 +120,7 @@ namespace bpp{
                 vsc_ = mng.vsc_->clone();
                 chrRange_ = mng.chrRange_;
                 numberOfUniqueStates_ = mng.numberOfUniqueStates_;
+                nullHypothesisRejected_ = mng.nullHypothesisRejected_;
                 return *this;
             }
             virtual ~ChromosomeNumberMng(){
@@ -130,6 +133,7 @@ namespace bpp{
 
             //Functions for initialization of the model
             void getCharacterData(const string &path);
+            VectorSiteContainer* getTraitData() const;
             static void setMaxChrNum(unsigned int maxNumberOfChr);
             static void setMinChrNum(unsigned int minNumberOfChr);
             void getTree(const string &path, double treeLength = 0);
@@ -148,19 +152,27 @@ namespace bpp{
             void printStochasticMappingResults(StochasticMapping* stm, Vdouble &dwellingTimesPerState, std::map<pair<size_t, size_t>, double> &numOfOccurencesPerTransition, VVdouble &ratesPerTransition, std::map<int, double> &expectationsTotal, const string &outStMappingPath);
             void runStochasticMapping(ChromosomeNumberOptimizer* chrOptimizer);
             ChromosomeNumberOptimizer* optimizeLikelihoodMultiStartPoints() const;
-            void getJointMLAncestralReconstruction(ChromosomeNumberOptimizer* optimizer, int* inferredRootState) const;
-            void getMarginalAncestralReconstruction(ChromosomeNumberOptimizer* chrOptimizer, const string &filePath);
+            void runJointTraitChromosomeAnalysis();
+            void getJointMLAncestralReconstruction(ChromosomeNumberOptimizer* optimizer, int* inferredRootState, ChromosomeTraitOptimizer* traitOpt = 0) const;
+            void getMarginalAncestralReconstruction(ChromosomeNumberOptimizer* chrOptimizer, const string &filePath, ChromosomeTraitOptimizer* traitOpt = 0);
             // map<int, map<size_t, VVdouble>> getMarginalAncestralReconstruction(DRNonHomogeneousTreeLikelihood* lik) const;
-            void computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations) const;
+            void computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, ChromosomeTraitOptimizer* traitOpt = 0) const;
             void simulateData();
             void simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator);
             void printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath);
-            void printTreeWithStates(PhyloTree tree, std::map<uint, std::vector<size_t>> &ancestors, const string &filePath) const;
-            void convertNodesNames(PhyloTree &tree, uint nodeId, std::map<uint, std::vector<size_t>> &ancestors, bool alphabetStates = true) const;
+            void printTreeWithStates(PhyloTree tree, std::map<uint, std::vector<size_t>> &ancestors, const string &filePath, std::map<uint, string>* prevNames = 0) const;
+            void convertNodesNames(PhyloTree &tree, uint nodeId, std::map<uint, std::vector<size_t>> &ancestors, bool alphabetStates = true, std::map<uint, string>* prevNames = 0) const;
             void writeOutputToFile(ChromosomeNumberOptimizer* chrOptimizer, int &inferrredRootState) const;
             void printLikParameters(ChromosomeNumberOptimizer* chrOptimizer, SingleProcessPhyloLikelihood* lik, ofstream &outFile) const;
             uint findMinCladeSize(std::map<uint, vector<uint>> mapModelNodesIds) const;
             void writeTreeWithCorrespondingModels(PhyloTree tree, std::map<uint, vector<uint>> &modelAndNodes) const;
+            bool printOutputFileJointLikelihood(const string &fileName, ChromosomeTraitOptimizer* opt) const;
+            void createMapOfNodesAndTrait(std::shared_ptr<PhyloTree> stmTree, std::map<uint, string>** mapOfTraitStates, const Alphabet* alpha) const;
+            void setIndependentTraitNodeNames(std::map<uint, std::vector<size_t>> &ancestorsTrait, std::map<uint, string>** mapTraitIndependentAncestorNames, const Alphabet* alpha) const;
+            std::shared_ptr<LikelihoodCalculationSingleProcess> setTraitLikModel(SingleProcessPhyloLikelihood* lik, ParametrizablePhyloTree* parTree) const;
+            void updateMarginalAncestralProbabilitiesAndStates(MarginalAncestralReconstruction *asr, std::map<uint, VVdouble> &posteriorProbs, std::map<uint, vector<size_t>> &mapOfAncestors, const PhyloTree* tree, vector<shared_ptr<PhyloNode>> &nodes);
+            void printMarginalAncestralProbabilities(const string &filePath, const PhyloTree* tree, std::map<uint, VVdouble> &posteriorProbs, std::map<uint, vector<size_t>> &mapOfAncestors, const Alphabet* alpha);
+
             
 
 
@@ -169,6 +181,7 @@ namespace bpp{
             VectorSiteContainer* resizeAlphabetForSequenceContainer(VectorSequenceContainer* vsc, ChromosomeAlphabet* alphaInitial);
             std::map<std::string, std::map<string, double>> extract_alphabet_states(const string &file_path, int &min, int &max, vector<int> &uniqueStates, uint &numberOfComposite);
             void writeRunningParameters(ofstream &outFile) const;
+            VectorSiteContainer* createJointTraitChromosomeVscData(VectorSiteContainer* traitVsc) const;
             
             
             std::shared_ptr<LikelihoodCalculationSingleProcess> setHeterogeneousLikInstance(SingleProcessPhyloLikelihood* likProcess, ParametrizablePhyloTree* parTree, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, bool forAncestral = false) const;

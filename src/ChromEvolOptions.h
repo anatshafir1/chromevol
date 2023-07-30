@@ -38,6 +38,7 @@ class ChromEvolOptions
 public:
     static void initAllParameters(BppApplication& ChromEvol);
     static void getInitialValuesForComplexParams(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &mapOfParams);
+    static void getInitialValuesForComplexParamsForJointTraitModel(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &mapOfParams, uint numOfModels);
     //static void initVectorOfChrNumParameters(vector<double>& paramVector);
     virtual ~ChromEvolOptions(){};
     
@@ -106,6 +107,10 @@ public:
     static double fracAllowedFailedSimulations_;
     static bool correctBaseNumber_;
     static size_t numOfRequiredSimulatedData_;
+    static string traitFilePath_;
+    static string traitStateModel_;
+    static vector<string> fixedTraitParams_;
+    static vector<double> traitParams_;
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);
     static std::shared_ptr<PhyloNode> getMRCA(PhyloTree* tree, std::vector<shared_ptr<PhyloNode>> nodes);
@@ -122,7 +127,9 @@ private:
     //static void setSharedParametersInterModels();
     static void setSharedParametersPerModel(std::map<uint, std::map<int, std::pair<int, vector<double>>>> mapModelTypeValues, std::map<uint, std::pair<int, int>> mapModelBaseNumTypeAndVal, std::map<int, size_t> paramNumFreqs);
     static void setFixedParameters(BppApplication& ChromEvol);
+    static void setFixedParametersTrait(BppApplication& ChromEvol);
     static void updateModelParameter(uint model, int type, vector<double> paramValues);
+    static string getParameterNameWithoutNamespace(const std::string& name);
 
 };
 

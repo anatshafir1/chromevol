@@ -15,6 +15,10 @@ set (CPP_FILES
   ChromosomeNumberOptimizer.cpp
   ComputeChromosomeTransitionsExp.cpp
   ChromosomeNumberMng.cpp
+  BaseNumberOptimizer.cpp
+  TraitOptimizer.cpp
+  JointTraitChromosomeLikelihood.cpp
+  ChromosomeTraitOptimizer.cpp
   )
 
 IF(BUILD_STATIC)

@@ -66,6 +66,22 @@ size_t ChromEvolOptions::numOfSimulatedData_;
 double ChromEvolOptions::fracAllowedFailedSimulations_;
 bool ChromEvolOptions::correctBaseNumber_;
 size_t ChromEvolOptions::numOfRequiredSimulatedData_;
+string ChromEvolOptions::traitFilePath_;
+string ChromEvolOptions::traitStateModel_;
+vector<string> ChromEvolOptions::fixedTraitParams_;
+vector<double> ChromEvolOptions::traitParams_;
+/*************************************************************************/
+std::string getParameterNameWithoutNamespace(const std::string& name)
+{
+    string prefix = "_TwoParameterBinary.";
+    if (TextTools::startsWith(name, prefix)){
+        return name.substr(prefix.size());
+        
+    }
+    return name;
+        
+}
+
 
 /*************************************************************************/
 void ChromEvolOptions::initAllParameters(BppApplication& ChromEvol){
@@ -116,6 +132,7 @@ void ChromEvolOptions::initDefaultParameters(){
     fracAllowedFailedSimulations_ = 0.01;
     correctBaseNumber_ = true;
     numOfRequiredSimulatedData_ = numOfSimulatedData_;
+    traitStateModel_ = "Binary";
 
 
     
@@ -247,6 +264,14 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     fracAllowedFailedSimulations_ = ApplicationTools::getDoubleParameter("_fracAllowedFailedSimulations", ChromEvol.getParams(), fracAllowedFailedSimulations_, "", true, 0);
     correctBaseNumber_ = ApplicationTools::getBooleanParameter("_correctBaseNumber", ChromEvol.getParams(), correctBaseNumber_, "", true, 0);
     numOfRequiredSimulatedData_ = static_cast<size_t>(ApplicationTools::getIntParameter("_numOfRequiredSimulatedData", ChromEvol.getParams(), (int)numOfRequiredSimulatedData_, "", true, 0));
+    traitFilePath_ =  ApplicationTools::getAFilePath("_traitFilePath", ChromEvol.getParams(), false, true, "", true, "none", 0);
+    traitStateModel_ = ApplicationTools::getStringParameter("_traitStateModel", ChromEvol.getParams(), traitStateModel_, "", true, 0);
+    if (traitStateModel_ == "Binary"){
+        double mu = ApplicationTools::getDoubleParameter("_TwoParameterBinary.mu", ChromEvol.getParams(), 0, "", true, 0);
+        double pi0 = ApplicationTools::getDoubleParameter("_TwoParameterBinary.pi0", ChromEvol.getParams(), 0, "", true, 0);
+        traitParams_.push_back(mu);
+        traitParams_.push_back(pi0); 
+    }
 
 }
 /************************************************************************/
@@ -336,6 +361,13 @@ void ChromEvolOptions::updateModelParameter(uint model, int type, vector<double>
     default:
         break;
     }
+
+
+}
+/*************************************************************************/
+void ChromEvolOptions::setFixedParametersTrait(BppApplication& ChromEvol){
+    string paramName = "_fixedParamsTrait";
+    fixedTraitParams_ = ApplicationTools::getVectorParameter<string>(paramName, ChromEvol.getParams(), ',', "", "", true, 0);
 
 
 }
@@ -475,6 +507,19 @@ void ChromEvolOptions::getInitialValuesForComplexParams(std::map<uint, std::pair
    
 }
 /*************************************************************************/
+void ChromEvolOptions::getInitialValuesForComplexParamsForJointTraitModel(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &mapOfParams, uint numOfModels){
+    for (uint i = 1; i <= numOfModels; i++){
+        mapOfParams[i] = std::pair<int, std::map<int, std::vector<double>>>();
+        mapOfParams[i].first = baseNum_[1];
+        mapOfParams[i].second[static_cast<int>(ChromosomeSubstitutionModel::GAIN)] = gain_[1];
+        mapOfParams[i].second[static_cast<int>(ChromosomeSubstitutionModel::LOSS)] = loss_[1];
+        mapOfParams[i].second[static_cast<int>(ChromosomeSubstitutionModel::DUPL)] = dupl_[1];
+        mapOfParams[i].second[static_cast<int>(ChromosomeSubstitutionModel::DEMIDUPL)] = demiDupl_[1];
+        mapOfParams[i].second[static_cast<int>(ChromosomeSubstitutionModel::BASENUMR)] = baseNumR_[1];
+
+    }
+   
+}
 // void ChromEvolOptions::initVectorOfChrNumParameters(vector<double>& paramVector){
 //     for (size_t i = 0; i < ChromosomeSubstitutionModel::NUM_OF_CHR_PARAMS; i++){
 //         switch(i){

@@ -92,7 +92,7 @@ namespace bpp
             // into account all the encountered terminals. 
             map <uint, map <int, double>> expNumOfChangesPerBranch_;
 
-            // A map where the key is a node id, and the value is the exected number of changes over all types and ancestral terminals.
+            // A map where the key is a type of jump, and the value is the exected number of changes over all types and ancestral terminals.
             map <uint, double> expNumOfChanges_;
 
             int jumpTypeMethod_;    // which function to use for type classification- 0 if deterministic, 1 if probabilistic
@@ -122,7 +122,8 @@ namespace bpp
             void getPosteriorAndExpForNonAccountedFor(map <uint, vector<pair<int, int>>>& nonAccountedForBranchesFromFirstRun);
             void computeExpPerTypeHeuristics(map <uint, vector<pair<int, int>>>& nonAccountedForBranchesFromFirstRun);
             bool isMaxStateValid(int prevState, std::shared_ptr<const ChromosomeSubstitutionModel> model) const;
-            
+            void setNodesOnPathMap(std::map<uint,std::vector<uint>>* nodesOnPath);
+            double getSumOfAllDummyBranchesOnPath(std::map<uint,std::vector<uint>>* nodesOnPathMap, uint nodeId, int type);
         public:
             ComputeChromosomeTransitionsExp(const std::shared_ptr<NonHomogeneousSubstitutionProcess> model,  const PhyloTree* tree, const ChromosomeAlphabet* alphabet, map<uint, map<size_t, VVdouble>>& jointProbabilitiesFatherSon, int method = 0)
             :jointProbabilitiesFatherSon_(jointProbabilitiesFatherSon), tree_(tree), model_(model.get()), alphabet_(alphabet),
@@ -173,8 +174,8 @@ namespace bpp
 
 
             void computeExpectationPerType();
-            void printResults(const string path = "none");
-            PhyloTree* getResultTree();
+            void printResults(const string path = "none", bool jointTraitModel = false);
+            PhyloTree* getResultTree(const PhyloTree* = 0);
             // // from previous used class
             void runIteration(int state, size_t modelIndex, map <uint, vector<pair<int,int>>>* unAccountedNodesAndTerminals = 0);
             void computeExpectationAndPosterior();
