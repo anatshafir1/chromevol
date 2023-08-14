@@ -153,10 +153,10 @@ namespace bpp{
             void runStochasticMapping(ChromosomeNumberOptimizer* chrOptimizer);
             ChromosomeNumberOptimizer* optimizeLikelihoodMultiStartPoints() const;
             void runJointTraitChromosomeAnalysis();
-            void getJointMLAncestralReconstruction(ChromosomeNumberOptimizer* optimizer, int* inferredRootState, ChromosomeTraitOptimizer* traitOpt = 0) const;
+            void getJointMLAncestralReconstruction(ChromosomeNumberOptimizer* optimizer, int* inferredRootState, VectorSiteContainer* vsc, ChromosomeTraitOptimizer* traitOpt=0) const;
             void getMarginalAncestralReconstruction(ChromosomeNumberOptimizer* chrOptimizer, const string &filePath, ChromosomeTraitOptimizer* traitOpt = 0);
             // map<int, map<size_t, VVdouble>> getMarginalAncestralReconstruction(DRNonHomogeneousTreeLikelihood* lik) const;
-            void computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, ChromosomeTraitOptimizer* traitOpt = 0) const;
+            void computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, VectorSiteContainer* chromsomeVsc, ChromosomeTraitOptimizer* traitOpt = 0);
             void simulateData();
             void simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator);
             void printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath);
@@ -178,13 +178,16 @@ namespace bpp{
 
 
         protected:
+            void writeTraitMappingPath(std::shared_ptr<PhyloTree> stmTree, std::map<uint, std::vector<size_t>> &ancestors, const string &path) const;
+            void writeTraitMappingForNode(std::shared_ptr<PhyloTree> stmTree, std::shared_ptr<PhyloNode> node, std::map<uint, std::vector<size_t>> &ancestors, ofstream &stream) const;
+            void removeDummyNodes(std::map<uint, std::vector<size_t>>* ancestors, std::map<uint, std::vector<size_t>>* tempAncestors, const PhyloTree* tree, uint rootId) const;
             VectorSiteContainer* resizeAlphabetForSequenceContainer(VectorSequenceContainer* vsc, ChromosomeAlphabet* alphaInitial);
             std::map<std::string, std::map<string, double>> extract_alphabet_states(const string &file_path, int &min, int &max, vector<int> &uniqueStates, uint &numberOfComposite);
             void writeRunningParameters(ofstream &outFile) const;
             VectorSiteContainer* createJointTraitChromosomeVscData(VectorSiteContainer* traitVsc) const;
             
             
-            std::shared_ptr<LikelihoodCalculationSingleProcess> setHeterogeneousLikInstance(SingleProcessPhyloLikelihood* likProcess, ParametrizablePhyloTree* parTree, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, bool forAncestral = false) const;
+            std::shared_ptr<LikelihoodCalculationSingleProcess> setHeterogeneousLikInstance(SingleProcessPhyloLikelihood* likProcess, ParametrizablePhyloTree* parTree, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, VectorSiteContainer* vsc, bool forAncestral = false) const;
             std::shared_ptr<NonHomogeneousSubstitutionProcess> setHeterogeneousModel(std::shared_ptr<ParametrizablePhyloTree> tree, SingleProcessPhyloLikelihood* ntl, ValueRef <Eigen::RowVectorXd> rootFreqs,  std::map<int, vector<pair<uint, int>>> sharedParams) const;
             void rescale_tree(PhyloTree* tree, double chrRange);
             void getMaxParsimonyUpperBound(double* parsimonyScore) const;

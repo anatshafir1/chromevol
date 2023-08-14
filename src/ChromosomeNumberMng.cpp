@@ -390,7 +390,13 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
     std::cout <<"**** **** Total running time of the optimization procedure is: "<< (t2-t1) <<endl;
     nullHypothesisRejected_ = printOutputFileJointLikelihood(ChromEvolOptions::resultsPathDir_ + "//" + "chromEvol.res", opt);
     int inferredRootState;
-    getJointMLAncestralReconstruction(optIndependent, &inferredRootState, opt);
+    if (nullHypothesisRejected_){
+        getJointMLAncestralReconstruction(optIndependent, &inferredRootState, chromsomeVsc, opt);
+
+    }else{
+        getJointMLAncestralReconstruction(optIndependent, &inferredRootState, vsc_, opt);
+    }
+    
 
     
     //writeOutputToFile(chrOptimizer, inferredRootState);
@@ -399,12 +405,13 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
     getMarginalAncestralReconstruction(optIndependent, outFilePath, opt);
     //compute expectations
     if (nullHypothesisRejected_){
-        computeExpectations(optIndependent, ChromEvolOptions::NumOfSimulations_, opt);
+        computeExpectations(optIndependent, ChromEvolOptions::NumOfSimulations_, chromsomeVsc, opt);
 
     }else{
-        computeExpectations(optIndependent, ChromEvolOptions::NumOfSimulations_, opt);
-
+        computeExpectations(optIndependent, ChromEvolOptions::NumOfSimulations_, vsc_, opt);
     }
+    
+
     delete traitVsc;
     delete chromsomeVsc;
     
@@ -489,7 +496,18 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setTrai
 
 }
 /******************************************************************************************************/
-void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOptimizer* chrOptimizer, int* inferredRootState, ChromosomeTraitOptimizer* traitOpt) const{
+void ChromosomeNumberMng::removeDummyNodes(std::map<uint, std::vector<size_t>>* ancestors, std::map<uint, std::vector<size_t>>* tempAncestors, const PhyloTree* tree, uint rootId) const{
+    uint trueRootId = tree_->getRootIndex();
+    (*ancestors)[trueRootId] = (*ancestors)[rootId];
+    uint maxNodeId = static_cast<uint>(ancestors->size()-1);
+    auto startElem = ancestors->find(trueRootId);
+    startElem ++;
+    ancestors->erase(startElem, ancestors->end());
+
+
+}
+/******************************************************************************************************/
+void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOptimizer* chrOptimizer, int* inferredRootState, VectorSiteContainer* vsc, ChromosomeTraitOptimizer* traitOpt) const{
     SingleProcessPhyloLikelihood* lik;
     std::map<uint, string>* mapOfTraitStates = 0;
     std::map<int, vector<pair<uint, int>>> sharedParams;
@@ -523,6 +541,7 @@ void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOpti
 
     ParametrizablePhyloTree* parTree;
     // this is needed in case we consider a joint model of chromsome number and trait evolution.
+    uint rootId = tree_->getRootIndex();
     
 
     if ((traitOpt) && (nullHypothesisRejected_)){
@@ -530,6 +549,7 @@ void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOpti
         parTree = new ParametrizablePhyloTree(*stmTree);
         const BinaryAlphabet alpha = BinaryAlphabet();
         createMapOfNodesAndTrait(stmTree, &mapOfTraitStates, &alpha);
+        rootId = stmTree->getRootIndex();
 
     }else{
         parTree = new ParametrizablePhyloTree(*tree_);
@@ -544,7 +564,7 @@ void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOpti
         auto branchProcess = lik->getSubstitutionProcess().getModel(m);
         baseNumberUpperBound[static_cast<uint>(m)] = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(branchProcess)->getMaxChrRange();
     }
-    std::shared_ptr<LikelihoodCalculationSingleProcess> likAncestralRec = setHeterogeneousLikInstance(lik, parTree, baseNumberUpperBound, mapModelNodesIds, modelsParams, true);
+    std::shared_ptr<LikelihoodCalculationSingleProcess> likAncestralRec = setHeterogeneousLikInstance(lik, parTree, baseNumberUpperBound, mapModelNodesIds, modelsParams, vsc, true);
     //auto likAncestralRec = std::make_shared<LikelihoodCalculationSingleProcess>(context, *sequenceData, *subProcess, rootFreqs);
     ParameterList paramsUpdated = likAncestralRec->getParameters();
 
@@ -552,16 +572,23 @@ void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOpti
     JointMLAncestralReconstruction* ancr = new JointMLAncestralReconstruction(likAncestralRec);
     ancr->init();
     std::map<uint, std::vector<size_t>> ancestors = ancr->getAllAncestralStates();
-    std::map<uint, std::vector<size_t>>::iterator it = ancestors.begin();
+    //std::map<uint, std::vector<size_t>>::iterator it = ancestors.begin();
     std::cout <<"******* ******* ANCESTRAL RECONSTRUCTION ******* ********" << endl;
-    while(it != ancestors.end()){
+    if (rootId != tree_->getRootIndex()){
+        writeTraitMappingPath(traitOpt->getJointLikelihood()->getStochasticMappingTree(), ancestors, ChromEvolOptions::resultsPathDir_ +"//"+ "TraitEvolutionaryPath.txt");
+        std::map<uint, vector<size_t>> tempMap;
+        removeDummyNodes(&ancestors, &tempMap, tree_, rootId);
+    }
+    auto nodesOriginalTree = tree_->getAllNodes();
+    auto it = ancestors.begin();
+    while (it != ancestors.end()){
         uint nodeId = it->first;
         if(!(tree_->isLeaf(tree_->getNode(nodeId)))){
             cout << "   ----> N-" << nodeId <<" states are: " << endl;
             for (size_t s = 0; s < ancestors[nodeId].size(); s++){
                 cout << "           state: "<< ancestors[nodeId][s] + alphabet_->getMin() << endl;
                 if (tree_->getRootIndex() == nodeId){
-                    *inferredRootState = static_cast<int>(ancestors[nodeId][s]+ alphabet_->getMin());
+                    *inferredRootState = static_cast<int>(ancestors[tree_->getRootIndex()][s]+ alphabet_->getMin());
                 }
             }
         }else{
@@ -642,6 +669,54 @@ std::map<int, vector<double>> ChromosomeNumberMng::getVectorToSetModelParams(Sin
 
 }
 /***********************************************************************************/
+void ChromosomeNumberMng::writeTraitMappingPath(std::shared_ptr<PhyloTree> stmTree, std::map<uint, std::vector<size_t>> &ancestors, const string &path) const{
+    ofstream outFileStMapping;
+    outFileStMapping.open(path);
+    outFileStMapping << "**** Sanity check: *******" << std::endl;
+    outFileStMapping << "Original tree length: " << tree_->getTotalLength() << std::endl;
+    outFileStMapping << "Trait mapped tree length: " << stmTree->getTotalLength() << std::endl;
+    uint rootId = stmTree->getRootIndex();
+    outFileStMapping << "Root id is: " << rootId << " name (includes trait state): " << stmTree->getNode(rootId)->getName();
+    outFileStMapping << "-" << alphabet_->getMin() + ancestors[rootId][0] << std::endl;
+    auto sons =  stmTree->getSons(rootId);
+    for (size_t i = 0; i < sons.size(); i++){
+        writeTraitMappingForNode(stmTree, stmTree->getNode(sons[i]), ancestors, outFileStMapping);
+    }
+
+    outFileStMapping.close();
+    
+}
+/***********************************************************************************/
+void ChromosomeNumberMng::writeTraitMappingForNode(std::shared_ptr<PhyloTree> stmTree, std::shared_ptr<PhyloNode> node, std::map<uint, std::vector<size_t>> &ancestors, ofstream &stream) const{
+    uint nodeId = stmTree->getNodeIndex(node);
+    if (stmTree->isLeaf(node)){
+        stream << "--> Node id: " << nodeId << " Name: "<< node->getName() << "-" << alphabet_->getMin() + ancestors[nodeId][0] << " t = " << (stmTree->getIncomingEdges(node)[0])->getLength() << std::endl;
+    }else{
+        stream << "--> " << node->getName() << "-"<< alphabet_->getMin()+ancestors[nodeId][0] << " t = " << (stmTree->getIncomingEdges(node)[0])->getLength();
+        string name = node->getName();
+        size_t foundPos = name.find("dummy");
+        if (foundPos != std::string::npos){
+            auto son = stmTree->getSons(node)[0];    
+            writeTraitMappingForNode(stmTree, son, ancestors, stream);
+            //stream << "****" << std::endl;
+
+
+        }else{
+            stream << "\n" << node->getName() << "-"<< alphabet_->getMin()+ancestors[nodeId][0] << " t = " << (stmTree->getIncomingEdges(node)[0])->getLength();
+            auto sons = stmTree->getSons(node);
+            for (size_t i = 0; i < sons.size(); i++){
+                stream << "\nCurrent node is " << node->getName() << "; Son is "<< sons[i]->getName() << std::endl;
+                writeTraitMappingForNode(stmTree, sons[i], ancestors, stream);
+            }
+
+        }
+        
+        
+        
+    }
+
+}
+/***********************************************************************************/
 void ChromosomeNumberMng::createMapOfNodesAndTrait(std::shared_ptr<PhyloTree> stmTree, std::map<uint, string>** mapOfTraitStates, const Alphabet* alpha) const{
     // Only dummy nodes should be removed
     // Indices are all the same except for the root Id (due to dummy nodes construction).
@@ -703,7 +778,7 @@ std::shared_ptr<NonHomogeneousSubstitutionProcess> ChromosomeNumberMng::setHeter
 
 }
 /***********************************************************************************/
-std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setHeterogeneousLikInstance(SingleProcessPhyloLikelihood* likProcess, ParametrizablePhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, bool forAncestral) const{
+std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setHeterogeneousLikInstance(SingleProcessPhyloLikelihood* likProcess, ParametrizablePhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, VectorSiteContainer* vsc, bool forAncestral) const{
     ValueRef <Eigen::RowVectorXd> rootFreqs = likProcess->getLikelihoodCalculationSingleProcess()->getRootFreqs();
     auto rootFreqsValues =  rootFreqs->getTargetValue();
     Vdouble rootFreqsBpp;
@@ -731,10 +806,10 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setHete
     Context* context = new Context();
     std::shared_ptr<LikelihoodCalculationSingleProcess> lik;
     if (forAncestral){
-        lik = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vsc_->clone(), *nsubPro, rootFreqs);
+        lik = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vsc->clone(), *nsubPro, rootFreqs);
 
     }else{
-        lik = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vsc_->clone(), *nsubPro, false);
+        lik = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vsc->clone(), *nsubPro, false);
     }
     
 
@@ -907,7 +982,7 @@ void ChromosomeNumberMng::runChromEvol(){
     
     // get joint ML ancestral reconstruction
     int inferredRootState;
-    getJointMLAncestralReconstruction(chrOptimizer, &inferredRootState);
+    getJointMLAncestralReconstruction(chrOptimizer, &inferredRootState, vsc_);
     writeOutputToFile(chrOptimizer, inferredRootState);
     //get Marginal ML ancestral reconstruction, and with the help of them- calculate expectations of transitions
     const string outFilePath = ChromEvolOptions::resultsPathDir_ +"//"+ "ancestorsProbs.txt";
@@ -918,7 +993,7 @@ void ChromosomeNumberMng::runChromEvol(){
 
     }
     //compute expectations
-    computeExpectations(chrOptimizer, ChromEvolOptions::NumOfSimulations_);
+    computeExpectations(chrOptimizer, ChromEvolOptions::NumOfSimulations_, vsc_);
     //The optimizer is deleted inside the computeExpectations object!
 
 
@@ -1120,7 +1195,7 @@ void ChromosomeNumberMng::getMarginalAncestralReconstruction(ChromosomeNumberOpt
     
     // get the best likelihood
     SingleProcessPhyloLikelihood* lik;
-    if ((!traitOpt) || (nullHypothesisRejected_)){
+    if ((!traitOpt) || (!nullHypothesisRejected_)){
         vector<SingleProcessPhyloLikelihood*> vectorOfLikelihoods = chrOptimizer->getVectorOfLikelihoods();
         lik = vectorOfLikelihoods[0];
     }else{
@@ -1421,7 +1496,7 @@ void ChromosomeNumberMng::printSimulatedDataAndAncestors(SiteSimulationResult* s
 
 /*****************************************************************************************************/
 
-void ChromosomeNumberMng::computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, ChromosomeTraitOptimizer* traitOpt) const{
+void ChromosomeNumberMng::computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, VectorSiteContainer* chromsomeVsc, ChromosomeTraitOptimizer* traitOpt){
     if (numOfSimulations == 0){
         return;
     }
@@ -1441,22 +1516,46 @@ void ChromosomeNumberMng::computeExpectations(ChromosomeNumberOptimizer* chrOpti
     }
 
     auto lik = ntl->getLikelihoodCalculationSingleProcess();
+
+    //auto likelihood = lik->getSiteLikelihoodsForAClass(0, true).col(0).sum();
+
     std::cout << ntl->getValue() << std::endl;
-    ParametrizablePhyloTree* parTreeRaw;
     const PhyloTree* tree;
+    PhyloTree jointLikTree;
     if ((traitOpt) && (nullHypothesisRejected_)){
-        auto treeMapping = traitOpt->getJointLikelihood()->getStochasticMappingTree();
-        parTreeRaw =  new ParametrizablePhyloTree(*treeMapping);
-        tree = treeMapping.get();
+        auto treeOfTraitJoint = traitOpt->getJointLikelihood()->getStochasticMappingTree();
+        jointLikTree = treeOfTraitJoint->deepClone();
+        tree = &jointLikTree;
+        
 
     }else{
-        parTreeRaw =  new ParametrizablePhyloTree(*tree_);
         tree = tree_;
+        
     }
+     std::shared_ptr<ParametrizablePhyloTree> parTree =  std::make_shared<ParametrizablePhyloTree>(*tree);
      
-    std::shared_ptr<ParametrizablePhyloTree> parTree = std::shared_ptr<ParametrizablePhyloTree>(parTreeRaw);
+    //std::shared_ptr<ParametrizablePhyloTree> parTree = std::shared_ptr<ParametrizablePhyloTree>(parTreeRaw);
     ValueRef <Eigen::RowVectorXd> rootFreqs = ntl->getLikelihoodCalculationSingleProcess()->getRootFreqs();
     std::shared_ptr<NonHomogeneousSubstitutionProcess> multiModelProcess =  setHeterogeneousModel(parTree, ntl, rootFreqs, sharedParams);
+    ///////////////////////////////////////////////////////////////////////////
+    Context context;
+    std::shared_ptr<LikelihoodCalculationSingleProcess> likObjectOpt;
+    if ((traitOpt) && (nullHypothesisRejected_)){
+        SubstitutionProcess* nsubPro= multiModelProcess->clone();
+        bool weightedRootFreqs = (ChromEvolOptions::fixedFrequenciesFilePath_ == "none") ? true:false;
+        likObjectOpt = std::make_shared<LikelihoodCalculationSingleProcess>(context, *chromsomeVsc->clone(), *nsubPro, weightedRootFreqs);
+        auto likTest = SingleProcessPhyloLikelihood(context, likObjectOpt, likObjectOpt->getParameters());
+        std::cout << "After :::: "<< likTest.getValue() << std::endl;
+        std::cout << "Before ::: " << ntl->getValue() << std::endl;
+        lik  = likObjectOpt;
+        auto nodes = tree->getAllNodes();
+        for (size_t i = 0; i < nodes.size(); i++){
+            lik->getLikelihoodsAtNode(tree->getNodeIndex(nodes[i]), true);
+        }
+
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
 
 
     size_t nbStates = alphabet_->getSize();
@@ -1509,11 +1608,11 @@ void ChromosomeNumberMng::computeExpectations(ChromosomeNumberOptimizer* chrOpti
         //const string outFilePathForNonAccounted = ChromEvolOptions::resultsPathDir_+"//"+ "exp_nonAccounted_branches.txt";
         const string outFilePathHeuristics = ChromEvolOptions::resultsPathDir_+"//"+ "expectations_second_round.txt";
         const string outTreePath = ChromEvolOptions::resultsPathDir_+"//"+ "exp.tree";
-        expCalculator->printResults(outFilePath);
+        expCalculator->printResults(outFilePath, nullHypothesisRejected_);
         std::cout << "Run heuristics if needed ..." << std::endl;
         expCalculator->runHeuristics();
         std::cout << "Printing heuristics results ... " << std::endl;
-        expCalculator->printResults(outFilePathHeuristics);
+        expCalculator->printResults(outFilePathHeuristics, nullHypothesisRejected_);
         std::cout << "Printing the tree of expectations ... " << std::endl;
         PhyloTree* expTree;
         if ((traitOpt) && (nullHypothesisRejected_)){

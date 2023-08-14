@@ -68,24 +68,24 @@ void ComputeChromosomeTransitionsExp::computeExpectationPerType(){
 
 }
 /**************************************************************************************/
-void ComputeChromosomeTransitionsExp::setNodesOnPathMap(std::map<uint,std::vector<uint>>* nodesOnPath){
-    nodesOnPath = new std::map<uint,std::vector<uint>>();
+void ComputeChromosomeTransitionsExp::setNodesOnPathMap(std::map<uint,std::vector<uint>>** nodesOnPath){
+    *nodesOnPath = new std::map<uint,std::vector<uint>>();
     uint rootId = tree_->getRootIndex();
     auto nodes = tree_->getAllNodes();
     for (size_t i = 0; i < nodes.size(); i++){
         auto name = nodes[i]->getName();
         if (rootId == tree_->getNodeIndex(nodes[i])){
-            (*nodesOnPath)[rootId].push_back(rootId);
+            (**nodesOnPath)[rootId].push_back(rootId);
             continue;
         }
         if (name.find("dummy") != std::string::npos){
             continue;
         }
         uint nodeId = tree_->getNodeIndex(nodes[i]);
-        (*nodesOnPath)[nodeId].push_back(nodeId);
+        (**nodesOnPath)[nodeId].push_back(nodeId);
         auto fatherNode = tree_->getFatherOfNode(nodes[i]);
         while((fatherNode->getName()).find("dummy") != std::string::npos){
-            (*nodesOnPath)[nodeId].push_back(tree_->getNodeIndex(fatherNode));
+            (**nodesOnPath)[nodeId].push_back(tree_->getNodeIndex(fatherNode));
             fatherNode = tree_->getFatherOfNode(fatherNode);
         }
     }
@@ -96,7 +96,7 @@ double ComputeChromosomeTransitionsExp::getSumOfAllDummyBranchesOnPath(std::map<
     auto &nodesOnPath = (*nodesOnPathMap)[nodeId];
     double sumOfBranchesOnPath = 0;
     for (size_t i = 0; i < nodesOnPath.size(); i++){
-        sumOfBranchesOnPath += expNumOfChangesPerBranch_[nodeId][type];
+        sumOfBranchesOnPath += expNumOfChangesPerBranch_[nodesOnPath[i]][type];
     }
     return sumOfBranchesOnPath;
 
@@ -109,7 +109,7 @@ void ComputeChromosomeTransitionsExp::printResults(const string path, bool joint
     }
     std::map<uint,std::vector<uint>>* nodesOnPath = 0;
     if (jointTraitModel){
-        setNodesOnPathMap(nodesOnPath);
+        setNodesOnPathMap(&nodesOnPath);
 
     }
     outFile.open(path);
@@ -326,7 +326,7 @@ void ComputeChromosomeTransitionsExp::printResults(const string path, bool joint
 PhyloTree* ComputeChromosomeTransitionsExp::getResultTree(const PhyloTree* originalTree){
     std::map<uint,std::vector<uint>>* nodesOnPath = 0;
     if (originalTree){
-        setNodesOnPathMap(nodesOnPath);
+        setNodesOnPathMap(&nodesOnPath);
 
     }
 
@@ -358,13 +358,13 @@ PhyloTree* ComputeChromosomeTransitionsExp::getResultTree(const PhyloTree* origi
         string expected = "[";
         for (int i = 0; i < ChromosomeSubstitutionModel::NUMTYPES; i++){
             double expectedNumOfChangesPerBranch;
+            if (originalTree){
+                expectedNumOfChangesPerBranch = getSumOfAllDummyBranchesOnPath(nodesOnPath, nodeId, i);
+            }else{
+                expectedNumOfChangesPerBranch = expNumOfChangesPerBranch_[nodeId][i];
+            }
             if (i == ChromosomeSubstitutionModel::NUMTYPES - 1){
-                if (originalTree){
-                    expectedNumOfChangesPerBranch = getSumOfAllDummyBranchesOnPath(nodesOnPath, nodeId, i);
-                }else{
-                    expectedNumOfChangesPerBranch = expNumOfChangesPerBranch_[nodeId][i];
 
-                }
                 
                 expected = expected + to_string(expectedNumOfChangesPerBranch) + "]";
             }else{

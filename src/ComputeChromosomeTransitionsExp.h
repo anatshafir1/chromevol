@@ -122,7 +122,7 @@ namespace bpp
             void getPosteriorAndExpForNonAccountedFor(map <uint, vector<pair<int, int>>>& nonAccountedForBranchesFromFirstRun);
             void computeExpPerTypeHeuristics(map <uint, vector<pair<int, int>>>& nonAccountedForBranchesFromFirstRun);
             bool isMaxStateValid(int prevState, std::shared_ptr<const ChromosomeSubstitutionModel> model) const;
-            void setNodesOnPathMap(std::map<uint,std::vector<uint>>* nodesOnPath);
+            void setNodesOnPathMap(std::map<uint,std::vector<uint>>** nodesOnPath);
             double getSumOfAllDummyBranchesOnPath(std::map<uint,std::vector<uint>>* nodesOnPathMap, uint nodeId, int type);
         public:
             ComputeChromosomeTransitionsExp(const std::shared_ptr<NonHomogeneousSubstitutionProcess> model,  const PhyloTree* tree, const ChromosomeAlphabet* alphabet, map<uint, map<size_t, VVdouble>>& jointProbabilitiesFatherSon, int method = 0)

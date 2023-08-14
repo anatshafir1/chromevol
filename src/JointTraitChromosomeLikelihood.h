@@ -107,6 +107,31 @@ public:
 
   ~JointTraitChromosomeLikelihood() {
     //delete chromosomeVsc_;
+    SingleProcessPhyloLikelihood* traitLik = dynamic_cast<SingleProcessPhyloLikelihood*>(getAbstractPhyloLikelihood(nPhylo_[0]));
+    SingleProcessPhyloLikelihood* chrLik = dynamic_cast<SingleProcessPhyloLikelihood*>(getAbstractPhyloLikelihood(nPhylo_[1]));
+    auto sequenceDataTrait = traitLik->getData();
+    auto processTrait = &(traitLik->getSubstitutionProcess());
+    //auto tree = &(lik_to_del->getTree());
+    auto contextT = &(traitLik->getContext());
+    auto sequenceDataChromosome = chrLik->getData();
+    auto processChromosome= &(chrLik->getSubstitutionProcess());
+    //auto tree = &(lik_to_del->getTree());
+    auto contextC = &(chrLik->getContext());
+    delete processTrait;
+    delete sequenceDataTrait;
+    
+    delete processChromosome;
+    delete sequenceDataChromosome;
+    if (contextT == contextC){
+      delete contextT;
+    }else{
+      delete contextT;
+      delete contextC;
+    }
+    //delete traitLik;
+    //delete chrLik;
+
+
   }
 
   JointTraitChromosomeLikelihood* clone() const

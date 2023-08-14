@@ -40,7 +40,7 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
   std::vector<uint> modelNodesTrait;
   std::shared_ptr<FrequencySet> rootFrequenciesTrait;
   std::shared_ptr<DiscreteDistribution> rdistTrait = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));  
-  Context* contextT = new Context();
+  Context contextT = Context();
   if (traitModel_ == "Binary"){
     const BinaryAlphabet* traitAlpha = dynamic_cast<const BinaryAlphabet*>(vscTrait_->getAlphabet());
     double mu;
@@ -90,8 +90,8 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
 
   }
   Context* context = new Context();
-  likT = std::make_shared<LikelihoodCalculationSingleProcess>(*contextT, *vscTrait_->clone(), *nsubProT);
-  auto phyloT = std::make_shared<SingleProcessPhyloLikelihood>(*contextT, likT);
+  likT = std::make_shared<LikelihoodCalculationSingleProcess>(contextT, *vscTrait_->clone(), *nsubProT);
+  auto phyloT = std::make_shared<SingleProcessPhyloLikelihood>(contextT, likT);
   phyloT->getValue(); // calculate now because it will be needed for stochastic mapping
 
   // get expected tree for the chromosome model
@@ -155,6 +155,7 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
     // Likelihoods
   SubstitutionProcess* sP1c=nsubProT->clone();
   SubstitutionProcess* sP2c=subProcess->clone(); // no need to clone again- it was already cloned.
+  delete subProcess;
   auto pc(std::make_shared<PhyloLikelihoodContainer>(*context, *modelColl));
 
 
@@ -168,6 +169,7 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
   pc->addPhyloLikelihood(2, new SingleProcessPhyloLikelihood(*context, lik2_j));
   //   JointTraitChromosomeLikelihood(Context& context, std::shared_ptr<PhyloLikelihoodContainer> pC, bool expectedHistory, bool weightedFrequencies, size_t numOfMappings, std::string traitModel, std::vector<int> &rateChangeType, VectorSiteContainer* chromosomeVsc, std::vector<unsigned int> &baseNumberCandidates, bool inCollection = true);
   JointTraitChromosomeLikelihood* jl = new JointTraitChromosomeLikelihood(*context, pc, true, true, numberOfStochasticMappings_, traitModel_, ChromEvolOptions::rateChangeType_, vscChr_->clone(), baseNumberCandidates_);
+  jl->setStochasticMappingTree(treeChr);
   jl->setSharedParams(sharedParams_);
   jl->setFixedParams(fixedParams_);
   vectorOfJointLikelohoods_.push_back(jl);
