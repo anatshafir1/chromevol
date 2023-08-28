@@ -372,7 +372,11 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
         getMaxParsimonyUpperBound(&parsimonyBound);
     }
     std::map<uint, uint> maxBaseNumTransition = chrRange_;
-    maxBaseNumTransition[2] = chrRange_.at(1);
+    if (ChromEvolOptions::baseNum_[1] != IgnoreParam){
+        maxBaseNumTransition[2] = chrRange_.at(1);
+
+    }
+    
     bool weightedFreqs = LikelihoodUtils::getIfWeightedRootFreq();
     ChromosomeTraitOptimizer* opt = new ChromosomeTraitOptimizer(tree_,alphabet_, chromsomeVsc, traitVsc, maxBaseNumTransition,ChromEvolOptions::traitStateModel_, ChromEvolOptions::NumOfSimulations_,weightedFreqs, false,
                 parsimonyBound,
