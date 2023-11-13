@@ -73,6 +73,7 @@
 #include "BaseNumberOptimizer.h"
 #include "JointTraitChromosomeLikelihood.h"
 #include <Bpp/Phyl/Model/TwoParameterBinarySubstitutionModel.h>
+#include <Bpp/Phyl/Model/Character/CharacterSubstitutionModel.h>
 // From Seqlib:
 #include <vector>
 #include <map>
@@ -276,8 +277,8 @@ namespace bpp
             const JointTraitChromosomeLikelihood* getJointLikelihood() const{
                 return vectorOfJointLikelohoods_[0];
             }
-            void initMultipleLikelihoodPoints(std::vector<double> &traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> &modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait);
-            void initJointLikelihood(std::vector<double> traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool random, double factor);
+            void initMultipleLikelihoodPoints(std::vector<double> &traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> &modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool ml);
+            void initJointLikelihood(std::vector<double> traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool random, double factor, bool ml);
             static std::map <uint, std::vector<uint>> getNodesForEachModel(std::shared_ptr<PhyloTree> expectedMapping, StochasticMapping* stm);
             void optimizeJointLikelihood();
             void optimizeIndependentLikelihood();

@@ -30,7 +30,7 @@ The initiation of the likelihood function is either with some fixed values or wi
 it makes sense to start from assigning the same model for both states.
 */
 
-void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool random, double maxParsimonyFactor){
+void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool random, double maxParsimonyFactor, bool ml){
   std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*tree);
   std::shared_ptr<NonHomogeneousSubstitutionProcess> subProT;
   std::shared_ptr<NonHomogeneousSubstitutionProcess> nsubProT;
@@ -168,7 +168,7 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
 
   pc->addPhyloLikelihood(2, new SingleProcessPhyloLikelihood(*context, lik2_j));
   //   JointTraitChromosomeLikelihood(Context& context, std::shared_ptr<PhyloLikelihoodContainer> pC, bool expectedHistory, bool weightedFrequencies, size_t numOfMappings, std::string traitModel, std::vector<int> &rateChangeType, VectorSiteContainer* chromosomeVsc, std::vector<unsigned int> &baseNumberCandidates, bool inCollection = true);
-  JointTraitChromosomeLikelihood* jl = new JointTraitChromosomeLikelihood(*context, pc, true, true, numberOfStochasticMappings_, traitModel_, ChromEvolOptions::rateChangeType_, vscChr_->clone(), baseNumberCandidates_);
+  JointTraitChromosomeLikelihood* jl = new JointTraitChromosomeLikelihood(*context, pc, true, true, numberOfStochasticMappings_, traitModel_, ChromEvolOptions::rateChangeType_, vscChr_->clone(), baseNumberCandidates_, ml);
   jl->setStochasticMappingTree(treeChr);
   jl->setSharedParams(sharedParams_);
   jl->setFixedParams(fixedParams_);
@@ -184,7 +184,7 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
 }
 // std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, const VectorSiteContainer* vsc_chr, const VectorSiteContainer* vsc_trait, const ChromosomeAlphabet* alphabet_chr, std::vector<double>* traitModelParams, std::map<uint, uint> baseNumberUpperBound, std::map<uint, pair<int, std::map<int, std::vector<double>>>>* modelParams_chr, std::map<int, vector<std::pair<uint,int>>>* updatedSharedParams_chr, std::vector<double>* rootFreqsChr, std::vector<double>* rootFreqsTrait, bool random
 
-void ChromosomeTraitOptimizer::initMultipleLikelihoodPoints(std::vector<double> &traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> &modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait){
+void ChromosomeTraitOptimizer::initMultipleLikelihoodPoints(std::vector<double> &traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> &modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool ml){
     std::cout << "******************************************************" << std::endl;
     std::cout << "*  Optimizing joint likelihood function  *" << std::endl;
     std::cout << "******************************************************" << std::endl;
@@ -196,7 +196,7 @@ void ChromosomeTraitOptimizer::initMultipleLikelihoodPoints(std::vector<double> 
     for (size_t n = 0; n < numOfPoints_[0]; n++){
         std::cout << "Starting cycle with Point #" << n <<"...."<<endl;
         if (n == 0){
-          initJointLikelihood(traitModelParams, modelParams, tree, baseNumberUpperBound, rootFreqsTrait, false, 0);
+          initJointLikelihood(traitModelParams, modelParams, tree, baseNumberUpperBound, rootFreqsTrait, false, 0, ml);
         }else{
           double factor;
           if (n > 1){
@@ -206,7 +206,7 @@ void ChromosomeTraitOptimizer::initMultipleLikelihoodPoints(std::vector<double> 
             factor = parsimonyBound_ * static_cast<double>(n);
           }
           
-          initJointLikelihood(traitModelParams, modelParams, tree, baseNumberUpperBound, rootFreqsTrait, true, factor);
+          initJointLikelihood(traitModelParams, modelParams, tree, baseNumberUpperBound, rootFreqsTrait, true, factor, ml);
     
         }   
     }

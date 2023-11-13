@@ -43,9 +43,9 @@
 using namespace std;
 using namespace bpp;
 
-JointTraitChromosomeLikelihood::JointTraitChromosomeLikelihood(Context& context, std::shared_ptr<PhyloLikelihoodContainer> pC, bool expectedHistory, bool weightedFrequencies, size_t numOfMappings, std::string traitModel, std::vector<int> &rateChangeType, VectorSiteContainer* chromosomeVsc, std::vector<unsigned int> &baseNumberCandidates, bool inCollection):
+JointTraitChromosomeLikelihood::JointTraitChromosomeLikelihood(Context& context, std::shared_ptr<PhyloLikelihoodContainer> pC, bool expectedHistory, bool weightedFrequencies, size_t numOfMappings, std::string traitModel, std::vector<int> &rateChangeType, VectorSiteContainer* chromosomeVsc, std::vector<unsigned int> &baseNumberCandidates, bool ml, bool inCollection):
     AbstractPhyloLikelihood(context),
-    JointPhyloLikelihood(context, pC, expectedHistory, weightedFrequencies, numOfMappings, inCollection),
+    JointPhyloLikelihood(context, pC, expectedHistory, weightedFrequencies, numOfMappings, ml, inCollection),
     //BaseNumberOptimizer(std::dynamic_pointer_cast<LikelihoodCalculationSingleProcess>(tempLik_->getLikelihoodCalculation()), optimizeBaseNumber, baseNumOptimizationMethod, baseNumberUpperBound),
     
     //Context& context, std::shared_ptr<PhyloLikelihoodContainer> pC, bool expectedHistory, bool weightedFrequencies, size_t numOfMappings, bool inCollection = true);

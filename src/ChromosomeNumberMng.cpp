@@ -382,7 +382,7 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
                 parsimonyBound,
                 ChromEvolOptions::fixedTraitParams_);
     opt->initOptimizer(ChromEvolOptions::OptPointsNum_, ChromEvolOptions::OptIterNum_, ChromEvolOptions::baseNumOptimizationMethod_, ChromEvolOptions::tolerance_);
-    opt->initMultipleLikelihoodPoints(ChromEvolOptions::traitParams_, mapOfParams, tree_, maxBaseNumTransition, 0);
+    opt->initMultipleLikelihoodPoints(ChromEvolOptions::traitParams_, mapOfParams, tree_, maxBaseNumTransition, 0, ChromEvolOptions::useMLReconstruction_);
     time_t t1;
     time(&t1);
     time_t t2;
@@ -570,7 +570,6 @@ void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOpti
     }
     std::shared_ptr<LikelihoodCalculationSingleProcess> likAncestralRec = setHeterogeneousLikInstance(lik, parTree, baseNumberUpperBound, mapModelNodesIds, modelsParams, vsc, true);
     //auto likAncestralRec = std::make_shared<LikelihoodCalculationSingleProcess>(context, *sequenceData, *subProcess, rootFreqs);
-    ParameterList paramsUpdated = likAncestralRec->getParameters();
 
     likAncestralRec->makeJointMLAncestralReconstruction();
     JointMLAncestralReconstruction* ancr = new JointMLAncestralReconstruction(likAncestralRec);

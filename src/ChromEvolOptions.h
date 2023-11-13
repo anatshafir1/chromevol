@@ -111,6 +111,7 @@ public:
     static string traitStateModel_;
     static vector<string> fixedTraitParams_;
     static vector<double> traitParams_;
+    static bool useMLReconstruction_;
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);
     static std::shared_ptr<PhyloNode> getMRCA(PhyloTree* tree, std::vector<shared_ptr<PhyloNode>> nodes);

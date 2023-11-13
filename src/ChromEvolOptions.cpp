@@ -70,6 +70,7 @@ string ChromEvolOptions::traitFilePath_;
 string ChromEvolOptions::traitStateModel_;
 vector<string> ChromEvolOptions::fixedTraitParams_;
 vector<double> ChromEvolOptions::traitParams_;
+bool ChromEvolOptions::useMLReconstruction_;
 /*************************************************************************/
 std::string getParameterNameWithoutNamespace(const std::string& name)
 {
@@ -133,6 +134,7 @@ void ChromEvolOptions::initDefaultParameters(){
     correctBaseNumber_ = true;
     numOfRequiredSimulatedData_ = numOfSimulatedData_;
     traitStateModel_ = "Binary";
+    useMLReconstruction_ = false;
 
 
     
@@ -272,6 +274,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
         traitParams_.push_back(mu);
         traitParams_.push_back(pi0); 
     }
+    useMLReconstruction_ = ApplicationTools::getBooleanParameter("_useMLReconstruction", ChromEvol.getParams(), useMLReconstruction_, "", true, 0);
 
 }
 /************************************************************************/
