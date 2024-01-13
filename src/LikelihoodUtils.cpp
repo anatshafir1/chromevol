@@ -78,7 +78,24 @@ void LikelihoodUtils::setNodeIdsForAllModels(PhyloTree* phyltree, std::map<uint,
         it_tmp ++;
     }
 
+} 
+/************************************************************************/
+std::shared_ptr<CharacterSubstitutionModel> LikelihoodUtils::setTraitModel(const IntegerAlphabet* traitAlpha, shared_ptr<IntegerFrequencySet> freqset){
+    if (ChromEvolOptions::traitStateModel_ == "singleRate"){
+        return std::make_shared<SingleRateModel>(traitAlpha, freqset, false);
+    }else if (ChromEvolOptions::traitStateModel_ == "symPairRate"){
+        return std::make_shared<RatePerPairSymModel>(traitAlpha, freqset, false);
+    }else if (ChromEvolOptions::traitStateModel_ == "pairRateModel"){
+        return std::make_shared<RatePerPairModel>(traitAlpha, freqset, false);
+    }else if (ChromEvolOptions::traitStateModel_ == "ratePerEntry"){
+        return std::make_shared<RatePerEntryModel>(traitAlpha, freqset, false);
+    }else if (ChromEvolOptions::traitStateModel_ == "ratePerExit"){
+        return std::make_shared<RatePerExitModel>(traitAlpha, freqset, false);
+    }else{
+        throw Exception("ERROR!!! LikelihoodUtils::setTraitModel(): No such trait model exists!!!");
+    }
 }
+
 /*************************************************************************/
 void LikelihoodUtils::getNodeIdsPerModelFromLine(string &content, PhyloTree* tree, std::map<uint, std::pair<uint, std::vector<uint>>> &modelAndNodeIds, std::map<uint,uint> &mapOriginalToAssignedModel, std::vector<uint> &initialModelNodes){
     vector<string> paramValues;
@@ -826,22 +843,17 @@ SingleProcessPhyloLikelihood* LikelihoodUtils::setRandomHeterogeneousModel(const
 }
 /***************************************************************************************************************************************/
 void LikelihoodUtils::separateBetweenModels(JointPhyloLikelihood* lik, std::string &traitModel, std::map<uint, std::vector<std::string>> &paramsPerModel){
-  string traitModelPrefix;
   string chromosomeModelPrefix = "Chromosome";
-  if (traitModel == "Binary"){
-    traitModelPrefix = "TwoParameterBinary";
-
-  }else{
-    throw Exception("JointTraitChromosomeLikelihood::separateBetweenModels(): only binary trait model is implemented now!");
-  }
+  auto characterLik = dynamic_cast<SingleProcessPhyloLikelihood*>(lik->getAbstractPhyloLikelihood(lik->getNumbersOfPhyloLikelihoods()[0]));
+  auto characterModel = (characterLik->getSubstitutionProcess()).getModel(1); 
+  string traitPrefix = characterModel->getNamespace();
   auto parameters = lik->getParameters();
   auto paramsNames = parameters.getParameterNames();
   for (size_t i = 0; i < paramsNames.size(); i++){
-    if (paramsNames[i].size() >= traitModelPrefix.size() && paramsNames[i].compare(0, traitModelPrefix.size(), traitModelPrefix) == 0){
-      paramsPerModel[1].push_back(paramsNames[i]);
-
-    }else if (paramsNames[i].size() >= chromosomeModelPrefix.size() && paramsNames[i].compare(0, chromosomeModelPrefix.size(), chromosomeModelPrefix) == 0){
+    if (paramsNames[i].size() >= chromosomeModelPrefix.size() && paramsNames[i].compare(0, chromosomeModelPrefix.size(), chromosomeModelPrefix) == 0){
       paramsPerModel[2].push_back(paramsNames[i]);
+    }else if (paramsNames[i].size() >= traitPrefix.size() && paramsNames[i].compare(0, traitPrefix.size(), traitPrefix) == 0){
+      paramsPerModel[1].push_back(paramsNames[i]);
     }
   }
   return;
