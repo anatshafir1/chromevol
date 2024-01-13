@@ -18,11 +18,27 @@ std::map <uint, std::vector<uint>> ChromosomeTraitOptimizer::getNodesForEachMode
   return nodeModels;
 }
 
-void ChromosomeTraitOptimizer::setRandomTraitModel(double* mu, double* pi0){
-  *mu = RandomTools::giveRandomNumberBetweenTwoPoints(1e-3, 100);
-  *pi0 = RandomTools::giveRandomNumberBetweenTwoPoints(0.05, 0.95);
 
+vector<double> ChromosomeTraitOptimizer::getFrequenciesFromMapOfParams(std::map<string, double> &traitModelParams, bool random){
+  vector<double> freqs;
+  double sumOfFreqs = 0;
+  for (size_t i = 0; i < static_cast<size_t>(ChromEvolOptions::numberOfTraitStates_); i++){
+    if (random){
+      if (i == static_cast<size_t>(ChromEvolOptions::numberOfTraitStates_)-1){
+        freqs.push_back(1-sumOfFreqs);
+      }else{
+        auto freq = RandomTools::giveRandomNumberBetweenTwoPoints(0.05, std::min(0.95, 1-sumOfFreqs));
+        sumOfFreqs += freq;
+        freqs.push_back(freq);
+      }
+    }else{
+      freqs.push_back(traitModelParams["pi"+ std::to_string(i)]);
+    }
+  }
+  return freqs;
 }
+
+
 
 
 /*
@@ -30,7 +46,7 @@ The initiation of the likelihood function is either with some fixed values or wi
 it makes sense to start from assigning the same model for both states.
 */
 
-void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool random, double maxParsimonyFactor, bool ml){
+void ChromosomeTraitOptimizer::initJointLikelihood(std::map<string, double> traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool random, double maxParsimonyFactor, bool ml){
   std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*tree);
   std::shared_ptr<NonHomogeneousSubstitutionProcess> subProT;
   std::shared_ptr<NonHomogeneousSubstitutionProcess> nsubProT;
@@ -38,57 +54,24 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
   //bool traitWeightedFrequencies = true;
   std::shared_ptr<BranchModel> traitModel;
   std::vector<uint> modelNodesTrait;
-  std::shared_ptr<FrequencySet> rootFrequenciesTrait;
   std::shared_ptr<DiscreteDistribution> rdistTrait = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));  
   Context contextT = Context();
-  if (traitModel_ == "Binary"){
-    const BinaryAlphabet* traitAlpha = dynamic_cast<const BinaryAlphabet*>(vscTrait_->getAlphabet());
-    double mu;
-    double pi0;
-    if (!random){
-      mu = traitModelParams[0];
-      pi0 = traitModelParams[1];
-    }else{
-      setRandomTraitModel(&mu, &pi0);
+  const IntegerAlphabet* traitAlpha = dynamic_cast<const IntegerAlphabet*>(vscTrait_->getAlphabet());
+  vector<double> freqVals = getFrequenciesFromMapOfParams(traitModelParams, random); 
+  shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
+  std::shared_ptr<CharacterSubstitutionModel> model = LikelihoodUtils::setTraitModel(traitAlpha, freqs);
+  
+  //ratePerPairModel.setParameterValue("rate_1_0", rateVals(1, 0));
+  setParametersToNewTraitModel(traitModelParams, model, freqs, random);
 
-    }
-    auto twoParamModel = std::make_shared<TwoParameterBinarySubstitutionModel>(traitAlpha,mu,pi0);
-    traitModel = static_pointer_cast<BranchModel>(twoParamModel);
-    subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
-
+  traitModel = static_pointer_cast<BranchModel>(model);
+  subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
+  getTraitNodes(modelNodesTrait);
     
-    // if (rootFreqsTrait){
-      
-    //   if (fixedTraitRootFreq_){
-    //     std::shared_ptr<FixedFrequencySet> rootFreqsFixedTrait = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(twoParamModel->getStateMap(), false)), *rootFreqsTrait);
-    //     rootFrequenciesTrait = static_pointer_cast<FrequencySet>(rootFreqsFixedTrait);
+  subProT->addModel(std::shared_ptr<CharacterSubstitutionModel>(model->clone()), modelNodesTrait);
+  nsubProT = std::shared_ptr<NonHomogeneousSubstitutionProcess>(subProT->clone());
 
-    //   }else{
-    //     if (random){
-    //       setRandomRootFreqs(rootFrequenciesTrait, traitModel_);
-    //       // do something
-    //     }else{
-    //       std::shared_ptr<FullFrequencySet> estimatedRootFreqs = std::make_shared<FullFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(twoParamModel->getStateMap(), false)));
-    //       rootFrequenciesTrait = static_pointer_cast<FrequencySet>(estimatedRootFreqs);
-
-    //     }
-
-    //   }
-      
-      
-    //   subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree, rootFrequenciesTrait);
-    //   traitWeightedFrequencies = false;        
-
-    // }else{
-    //   subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
-
-    // }
-    getTraitNodes(modelNodesTrait);
-    
-    subProT->addModel(std::shared_ptr<TwoParameterBinarySubstitutionModel>(twoParamModel->clone()), modelNodesTrait);
-    nsubProT = std::shared_ptr<NonHomogeneousSubstitutionProcess>(subProT->clone());
-
-  }
+  
   Context* context = new Context();
   likT = std::make_shared<LikelihoodCalculationSingleProcess>(contextT, *vscTrait_->clone(), *nsubProT);
   auto phyloT = std::make_shared<SingleProcessPhyloLikelihood>(contextT, likT);
@@ -96,7 +79,12 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
 
   // get expected tree for the chromosome model
   StochasticMapping* stm = new StochasticMapping(likT, numberOfStochasticMappings_);
-  auto treeChr = createExpectedMappingHistory(numberOfStochasticMappings_, stm);
+  std::map<uint, std::vector<size_t>> mlAncestors;
+  if (ml){
+    mlAncestors = JointPhyloLikelihood::getMLAncestralReconstruction(phyloT.get(), phyloT->getParameters(), 2);
+    stm->setMLAncestors(&mlAncestors);
+  }
+  auto treeChr = stm->createExpectedMappingHistory(numberOfStochasticMappings_);
   // creating the chromosome number model
   auto rdistC = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
   std::map<uint, vector<uint>> mapModelNodesIds = getNodesForEachModel(treeChr, stm);
@@ -105,10 +93,10 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
   std::vector<std::shared_ptr<ChromosomeSubstitutionModel>> models;
   SubstitutionProcess* subProcess;
   if (random){
-    subProcess = LikelihoodUtils::setRandomChromosomeSubstitutionModel(treeChr.get(), vscChr_, alphabetChr_, baseNumberUpperBound_, mapModelNodesIds, modelParams, 2, maxParsimonyFactor, fixedParams_, &sharedParams_, weightedFreqs_, &models, parTreeChr);
+    subProcess = LikelihoodUtils::setRandomChromosomeSubstitutionModel(treeChr.get(), vscChr_, alphabetChr_, baseNumberUpperBound_, mapModelNodesIds, modelParams, ChromEvolOptions::numberOfTraitStates_, maxParsimonyFactor, fixedParams_, &sharedParams_, weightedFreqs_, &models, parTreeChr);
 
   }else{
-    subProcess = LikelihoodUtils::setChromosomeSubstitutionModel(treeChr.get(), vscChr_, alphabetChr_, baseNumberUpperBound_, mapModelNodesIds, modelParams, 2, &sharedParams_, weightedFreqs_, &models, parTreeChr);
+    subProcess = LikelihoodUtils::setChromosomeSubstitutionModel(treeChr.get(), vscChr_, alphabetChr_, baseNumberUpperBound_, mapModelNodesIds, modelParams, ChromEvolOptions::numberOfTraitStates_, &sharedParams_, weightedFreqs_, &models, parTreeChr);
 
   }
   auto parTree2 =  std::make_shared<ParametrizablePhyloTree>(*treeChr);
@@ -117,8 +105,11 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
   auto modelColl=std::make_shared<SubstitutionProcessCollection>();
   
   modelColl->addModel(traitModel, 1);
-  modelColl->addModel(models[0], 2);
-  modelColl->addModel(models[1], 3);
+  for (size_t i = 0; i < models.size(); i++){
+    modelColl->addModel(models[i], i+2);
+
+  }
+
   // if (!traitWeightedFrequencies){
   //   modelColl->addFrequencies(rootFrequenciesTrait, 1);
 
@@ -144,10 +135,11 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
   modelColl->addSubstitutionProcess(1, mModBr1, 1, 1);
                                    
   map<size_t, Vuint> mModBr2;
-  std::vector<uint> vP2m1 = mapModelNodesIds[1];
-  std::vector<uint> vP2m2 = mapModelNodesIds[2];
-  mModBr2[2]=vP2m1;
-  mModBr2[3]=vP2m2;
+
+  for (size_t i = 0; i < models.size(); i++){
+    mModBr2[i+2]= mapModelNodesIds[i+1];
+  }
+
 
   modelColl->addSubstitutionProcess(2, mModBr2, 2, 2);
 
@@ -184,7 +176,7 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::vector<double> traitMode
 }
 // std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, const VectorSiteContainer* vsc_chr, const VectorSiteContainer* vsc_trait, const ChromosomeAlphabet* alphabet_chr, std::vector<double>* traitModelParams, std::map<uint, uint> baseNumberUpperBound, std::map<uint, pair<int, std::map<int, std::vector<double>>>>* modelParams_chr, std::map<int, vector<std::pair<uint,int>>>* updatedSharedParams_chr, std::vector<double>* rootFreqsChr, std::vector<double>* rootFreqsTrait, bool random
 
-void ChromosomeTraitOptimizer::initMultipleLikelihoodPoints(std::vector<double> &traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> &modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool ml){
+void ChromosomeTraitOptimizer::initMultipleLikelihoodPoints(std::map<string, double> &traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> &modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool ml){
     std::cout << "******************************************************" << std::endl;
     std::cout << "*  Optimizing joint likelihood function  *" << std::endl;
     std::cout << "******************************************************" << std::endl;
@@ -246,7 +238,8 @@ size_t ChromosomeTraitOptimizer::getNumberOfParametersNull(){
   vector<string> parameterNames;
   LikelihoodUtils::fixSuffixForJointLikParamNames(params, parameterNames);
   std::vector<string> traitParamNames;
-  fillTraitParameters(traitModel_, parameterNames, traitParamNames);
+  string traitPrefix = vectorOfLikelihoodsTrait_[0]->getSubstitutionProcess().getModel(1)->getNamespace();
+  fillTraitParameters(traitPrefix, parameterNames, traitParamNames);
   size_t totalNumOfTraitParams = traitParamNames.size();
   size_t totalNumberOfChromosomeParameters = optimizedChromosomeLikelihood_->getSubstitutionModelParameters().size();
   size_t numOfActualParams = totalNumOfTraitParams + totalNumberOfChromosomeParameters - fixedChromosomeParams - fixedTraitParams_.size();
@@ -293,7 +286,7 @@ void ChromosomeTraitOptimizer::optimizeIndependentLikelihood(){
 
 }
 /*******************************************************************************************************/
-void ChromosomeTraitOptimizer::initTraitLikelihoods(double mu, double pi0){
+void ChromosomeTraitOptimizer::initTraitLikelihoods(std::map<string, double> &traitParams){
     size_t index = min((int)numOfPoints_.size()-1, 1);
     vectorOfLikelihoodsTrait_.reserve(numOfPoints_[index]);
     // If base number is one of the parameters
@@ -302,9 +295,9 @@ void ChromosomeTraitOptimizer::initTraitLikelihoods(double mu, double pi0){
     for (size_t n = 0; n < numOfPoints_[0]; n++){
         std::cout << "Starting cycle with Point #" << n <<"...."<<endl;
         if (n == 0){
-          initTraitLikelihood(mu, pi0, false);
+          initTraitLikelihood(traitParams, false);
         }else{
-          initTraitLikelihood(mu, pi0, true);
+          initTraitLikelihood(traitParams, true);
         }   
     }
 
@@ -312,22 +305,22 @@ void ChromosomeTraitOptimizer::initTraitLikelihoods(double mu, double pi0){
 
 }
 /*********************************************************************************************************/
-void ChromosomeTraitOptimizer::initTraitLikelihood(double mu, double pi0, bool random){
+void ChromosomeTraitOptimizer::initTraitLikelihood(std::map<string, double> &traitParams, bool random){
   std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*tree_);
-  const BinaryAlphabet* traitAlpha = dynamic_cast<const BinaryAlphabet*>(vscTrait_->getAlphabet());
+  const IntegerAlphabet* traitAlpha = dynamic_cast<const IntegerAlphabet*>(vscTrait_->getAlphabet());
   std::shared_ptr<DiscreteDistribution> rdistTrait = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
-  if (random){
-    setRandomTraitModel(&mu, &pi0);
-  } 
-  auto twoParamModel = std::make_shared<TwoParameterBinarySubstitutionModel>(traitAlpha,mu,pi0);
-  //traitModel = static_pointer_cast<BranchModel>(twoParamModel);
+
+  vector<double> freqVals = getFrequenciesFromMapOfParams(traitParams, random); 
+  shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
+  std::shared_ptr<CharacterSubstitutionModel> characterModel = LikelihoodUtils::setTraitModel(traitAlpha, freqs);
+  
+  setParametersToNewTraitModel(traitParams, characterModel, freqs, random);
+
   std::shared_ptr<NonHomogeneousSubstitutionProcess> subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
   std::vector<uint> modelNodesTrait;
   getTraitNodes(modelNodesTrait);
       
-  subProT->addModel(std::shared_ptr<TwoParameterBinarySubstitutionModel>(twoParamModel->clone()), modelNodesTrait);
-  //std::shared_ptr<NonHomogeneousSubstitutionProcess> nsubProT = std::shared_ptr<NonHomogeneousSubstitutionProcess>(subProT->clone());
-
+  subProT->addModel(std::shared_ptr<CharacterSubstitutionModel>(characterModel->clone()), modelNodesTrait);
   Context* context = new Context();
   auto likT = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vscTrait_->clone(), *(subProT->clone()));
   auto phyloT = new SingleProcessPhyloLikelihood(*context, likT);
@@ -341,8 +334,110 @@ void ChromosomeTraitOptimizer::initTraitLikelihood(double mu, double pi0, bool r
 
 
 }
+/******************************************************************************************/
+std::map<string, double> ChromosomeTraitOptimizer::getTraitMLParamsIndependentLik(){
+  auto paramsNames = vectorOfLikelihoodsTrait_[0]->getSubstitutionModelParameters().getParameterNames();
+  auto allParams = vectorOfLikelihoodsTrait_[0]->getParameters();
+  ValueRef <Eigen::RowVectorXd> rootFreqs = vectorOfLikelihoodsTrait_[0]->getLikelihoodCalculationSingleProcess()->getRootFreqs();
+  auto characterModel = (vectorOfLikelihoodsTrait_[0]->getSubstitutionProcess()).getModel(1);
+  string modelPrefix = characterModel->getNamespace();
+  string suffix = "_1"; // this is always the suffix, because in the trait model we only have one model
 
+  auto rootFreqsValues =  rootFreqs->getTargetValue();
+  Vdouble rootFreqsBpp;
+  copyEigenToBpp(rootFreqsValues, rootFreqsBpp);
+  size_t numberOfStates = rootFreqsBpp.size();
 
+  std::map<string, double> traitParams;
+  // setting root frequencies
+  for (size_t i = 0; i < numberOfStates; i++){
+      traitParams["pi"+ std::to_string(i)] = rootFreqsBpp[i];
+  }
+  for (size_t i = 0; i < paramsNames.size(); i++){
+    auto nameWithoutPrefix = (paramsNames[i]).substr(modelPrefix.length());
+    auto name = nameWithoutPrefix.substr(0, nameWithoutPrefix.size() - suffix.length());
+    size_t found = name.find("theta");
+    if (found != std::string::npos){
+      continue;
+    }
+    traitParams[name] = allParams.getParameter(paramsNames[i]).getValue();
+  }
+  return traitParams;
+}
+
+/******************************************************************************************/
+std::map<uint, std::pair<int, std::map<int, vector<double>>>> ChromosomeTraitOptimizer::getChromosomeMLParamsIndependent(uint numOfRequiredModels){
+  std::map<uint, std::pair<int, std::map<int, vector<double>>>> chromEvolParams;
+  auto &lik = optimizedChromosomeLikelihood_;
+  std::map<std::string, int> typeGeneralName;
+  LikelihoodUtils::updateWithTypeAndCorrespondingName(typeGeneralName);
+  auto allParams = lik->getParameters();
+  auto paramNames = lik->getSubstitutionModelParameters().getParameterNames();
+  uint numOfModels = static_cast<uint>(lik->getSubstitutionProcess().getNumberOfModels());
+  std::map<uint, vector<string>> modelsToNames;
+  for (auto &paramName : paramNames){
+    for (uint i = 1; i <= numOfModels; i++){
+      std::string suffix = "_" + std::to_string(i);
+      if (paramName.compare(paramName.length() - suffix.length(), suffix.length(), suffix) == 0){
+        modelsToNames[i].push_back(paramName);
+        break;
+      }
+
+    }
+  }
+  for (uint i = 1; i <= numOfModels; i++){
+    auto &paramsPerModel = modelsToNames[i];
+    chromEvolParams[i];
+    for (auto &fullName : paramsPerModel){
+      auto it = typeGeneralName.begin();
+      while (it != typeGeneralName.end()){
+        auto &shortName = it->first;
+        if(fullName.find(shortName) != std::string::npos){
+          int type = typeGeneralName[shortName];
+          if (type == static_cast<int>(ChromosomeSubstitutionModel::BASENUM)){
+            chromEvolParams[i].first = static_cast<int>(allParams.getParameter(fullName).getValue());
+          }else{
+            if (chromEvolParams[i].second.find(type) != chromEvolParams[i].second.end()){
+              chromEvolParams[i].second[type].push_back(allParams.getParameter(fullName).getValue());
+
+            }else{
+              chromEvolParams[i].second[type];
+              chromEvolParams[i].second[type].push_back(allParams.getParameter(fullName).getValue());
+
+            }
+            
+          }
+          break;
+        }
+        it ++;
+      }
+    }
+  }
+  uint numOfRetainedModels = numOfRequiredModels-numOfModels;
+  for (uint i = 1; i <= numOfRetainedModels; i++){
+    chromEvolParams[i + numOfModels] = chromEvolParams[numOfModels]; 
+  }
+  return chromEvolParams;
+}
+/******************************************************************************************/
+
+void ChromosomeTraitOptimizer::setParametersToNewTraitModel(std::map<string, double> &traitModelParams, std::shared_ptr<CharacterSubstitutionModel> traitModel, shared_ptr<IntegerFrequencySet> freqs, bool random){
+  traitModel->setFrequencySet(*freqs);
+  auto it = traitModelParams.begin();
+  while (it != traitModelParams.end()){
+    auto paramName = it->first;
+    string prefix = "pi";
+    if (paramName.compare(0, prefix.length(), prefix) != 0){
+      if (random){
+        auto value = RandomTools::giveRandomNumberBetweenTwoPoints(1e-3, 100);
+        traitModel->setParameterValue(paramName, value);
+      }else{
+        traitModel->setParameterValue(paramName, traitModelParams[paramName]);
+      }
+    }
+    it ++;
+  }
+}
 
 void ChromosomeTraitOptimizer::optimizeJointLikelihood()
 {

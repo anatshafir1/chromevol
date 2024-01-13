@@ -55,6 +55,12 @@
 #include <Bpp/Phyl/Likelihood/ParametrizablePhyloTree.h>
 #include <Bpp/Phyl/Io/IoTree.h>
 #include <Bpp/Phyl/Io/Newick.h>
+#include <Bpp/Phyl/Model/Character/CharacterSubstitutionModel.h>
+#include <Bpp/Phyl/Model/Character/RatePerPairModel.h>
+#include <Bpp/Phyl/Model/Character/RatePerPairSymModel.h>
+#include <Bpp/Phyl/Model/Character/SingleRateModel.h>
+#include <Bpp/Phyl/Model/Character/RatePerExitModel.h>
+#include <Bpp/Phyl/Model/Character/RatePerEntryModel.h>
 #include <Bpp/Phyl/Likelihood/ParametrizablePhyloTree.h>
 #include <Bpp/Phyl/Likelihood/NonHomogeneousSubstitutionProcess.h>
 #include <Bpp/Phyl/Likelihood/PhyloLikelihoods/SingleProcessPhyloLikelihood.h>
@@ -80,6 +86,10 @@ namespace bpp{
       virtual ~LikelihoodUtils() {}
 
     public:
+        //template <typename T>
+        //typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value),vector<string>>::type
+        static std::shared_ptr<CharacterSubstitutionModel> setTraitModel(const IntegerAlphabet* traitAlpha, shared_ptr<IntegerFrequencySet> freqset);
+
         static void setNodeIdsForAllModels(PhyloTree* phyltree, std::map<uint, std::vector<uint>> &mapModelNodesIds, string &path, std::vector<uint> &initialModelNodes);
         static void getNodeIdsPerModelFromLine(string &content, PhyloTree* tree, std::map<uint, std::pair<uint, std::vector<uint>>> &modelAndNodeIds, std::map<uint,uint> &mapOriginalToAssignedModel, std::vector<uint> &initialModelNodes);
         static std::map<uint, std::vector<uint>> findMRCAForEachModelNodes(PhyloTree* tree, std::map<uint, vector<uint>> mapOfModelsAndNodes);

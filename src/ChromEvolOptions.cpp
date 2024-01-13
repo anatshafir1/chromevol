@@ -69,19 +69,21 @@ size_t ChromEvolOptions::numOfRequiredSimulatedData_;
 string ChromEvolOptions::traitFilePath_;
 string ChromEvolOptions::traitStateModel_;
 vector<string> ChromEvolOptions::fixedTraitParams_;
-vector<double> ChromEvolOptions::traitParams_;
+std::map<string, double> ChromEvolOptions::traitParams_;
 bool ChromEvolOptions::useMLReconstruction_;
+int ChromEvolOptions::numberOfTraitStates_;
+bool ChromEvolOptions::runOnlyJointModel_;
 /*************************************************************************/
-std::string getParameterNameWithoutNamespace(const std::string& name)
-{
-    string prefix = "_TwoParameterBinary.";
-    if (TextTools::startsWith(name, prefix)){
-        return name.substr(prefix.size());
+// std::string getParameterNameWithoutNamespace(const std::string& name)
+// {
+//     string prefix = "_TwoParameterBinary.";
+//     if (TextTools::startsWith(name, prefix)){
+//         return name.substr(prefix.size());
         
-    }
-    return name;
+//     }
+//     return name;
         
-}
+// }
 
 
 /*************************************************************************/
@@ -133,8 +135,12 @@ void ChromEvolOptions::initDefaultParameters(){
     fracAllowedFailedSimulations_ = 0.01;
     correctBaseNumber_ = true;
     numOfRequiredSimulatedData_ = numOfSimulatedData_;
-    traitStateModel_ = "Binary";
+    traitStateModel_ = "singleRate";
     useMLReconstruction_ = false;
+    numberOfTraitStates_ = 0;
+    runOnlyJointModel_ = false;
+    
+    
 
 
     
@@ -268,13 +274,65 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     numOfRequiredSimulatedData_ = static_cast<size_t>(ApplicationTools::getIntParameter("_numOfRequiredSimulatedData", ChromEvol.getParams(), (int)numOfRequiredSimulatedData_, "", true, 0));
     traitFilePath_ =  ApplicationTools::getAFilePath("_traitFilePath", ChromEvol.getParams(), false, true, "", true, "none", 0);
     traitStateModel_ = ApplicationTools::getStringParameter("_traitStateModel", ChromEvol.getParams(), traitStateModel_, "", true, 0);
-    if (traitStateModel_ == "Binary"){
-        double mu = ApplicationTools::getDoubleParameter("_TwoParameterBinary.mu", ChromEvol.getParams(), 0, "", true, 0);
-        double pi0 = ApplicationTools::getDoubleParameter("_TwoParameterBinary.pi0", ChromEvol.getParams(), 0, "", true, 0);
-        traitParams_.push_back(mu);
-        traitParams_.push_back(pi0); 
-    }
+
     useMLReconstruction_ = ApplicationTools::getBooleanParameter("_useMLReconstruction", ChromEvol.getParams(), useMLReconstruction_, "", true, 0);
+    numberOfTraitStates_ = ApplicationTools::getIntParameter("_numberOfTraitStates", ChromEvol.getParams(), numberOfTraitStates_, "", true, 0);
+    if (numberOfTraitStates_ == 0){
+        return;
+    }
+    for (size_t i = 0; i < static_cast<size_t>(numberOfTraitStates_); i++){
+        //if (equalTraitFreqs_){
+        traitParams_["pi"+ std::to_string(i)] = ApplicationTools::getDoubleParameter("_pi"+ std::to_string(i), ChromEvol.getParams(), 1/numberOfTraitStates_, "", true, 0);
+    }
+    std::string missingParamsError = "MISSING PARAMETERS : No trait rate parameters were defined!";
+    if (traitStateModel_ == "singleRate"){
+        traitParams_["global_rate"] = ApplicationTools::getDoubleParameter("_global_rate", ChromEvol.getParams(), -1, "", true, 0);
+        if (traitParams_["global_rate"] < 0){
+            throw Exception(missingParamsError);
+        }
+    }else if (traitStateModel_ == "ratePerExit"){
+        for (size_t i = 0; i < static_cast<size_t>(numberOfTraitStates_); i++){
+            traitParams_["exit_rate_"+ std::to_string(i)] = ApplicationTools::getDoubleParameter("_exit_rate_"+ std::to_string(i), ChromEvol.getParams(), -1, "", true, 0);
+            if (traitParams_["exit_rate_"+ std::to_string(i)] < 0){
+                throw Exception(missingParamsError);
+            }
+
+        }
+    }else if (traitStateModel_ == "ratePerEntry"){
+        for (size_t i = 0; i < static_cast<size_t>(numberOfTraitStates_); i++){
+           traitParams_["entry_rate_"+ std::to_string(i)] = ApplicationTools::getDoubleParameter("_entry_rate_"+ std::to_string(i), ChromEvol.getParams(), -1, "", true, 0); 
+           if (traitParams_["entry_rate_"+ std::to_string(i)] < 0){
+            throw Exception(missingParamsError);
+           }
+        }
+    }else if (traitStateModel_ == "symPairRate"){
+        for (size_t i = 0; i < static_cast<size_t>(numberOfTraitStates_)-1; i++){
+            for (size_t j = i+1; j < static_cast<size_t>(numberOfTraitStates_); j++){
+                traitParams_["rate_"+ std::to_string(i) + "_" + std::to_string(j)] = ApplicationTools::getDoubleParameter("_rate_"+ std::to_string(i)+"_"+std::to_string(j), ChromEvol.getParams(), -1, "", true, 0); 
+                if (traitParams_["rate_"+ std::to_string(i) + "_" + std::to_string(j)] < 0){
+                    throw Exception(missingParamsError);
+                }
+            }
+        }
+    }else if (traitStateModel_ == "pairRateModel"){
+        for (size_t i = 0; i < static_cast<size_t>(numberOfTraitStates_); i++){
+            for (size_t j = 0; j < static_cast<size_t>(numberOfTraitStates_); j++){
+                if (i == j){
+                    continue;
+                }
+                traitParams_["rate_"+ std::to_string(i) + "_" + std::to_string(j)] = ApplicationTools::getDoubleParameter("_rate_"+ std::to_string(i)+"_"+std::to_string(j), ChromEvol.getParams(), -1, "", true, 0);
+                if (traitParams_["rate_"+ std::to_string(i) + "_" + std::to_string(j)] < 0){
+                    throw Exception(missingParamsError);
+                }
+            }
+        }
+
+    }else{
+        throw Exception("ERROR!!! No trait model was specified!!!");
+    }
+    runOnlyJointModel_ = ApplicationTools::getBooleanParameter("_runOnlyJointModel", ChromEvol.getParams(), runOnlyJointModel_, "", true, 0);
+
+    
 
 }
 /************************************************************************/

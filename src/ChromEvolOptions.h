@@ -110,8 +110,11 @@ public:
     static string traitFilePath_;
     static string traitStateModel_;
     static vector<string> fixedTraitParams_;
-    static vector<double> traitParams_;
+    static std::map<string, double> traitParams_;
+    static bool runOnlyJointModel_;
+    
     static bool useMLReconstruction_;
+    static int numberOfTraitStates_;
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);
     static std::shared_ptr<PhyloNode> getMRCA(PhyloTree* tree, std::vector<shared_ptr<PhyloNode>> nodes);
@@ -130,7 +133,7 @@ private:
     static void setFixedParameters(BppApplication& ChromEvol);
     static void setFixedParametersTrait(BppApplication& ChromEvol);
     static void updateModelParameter(uint model, int type, vector<double> paramValues);
-    static string getParameterNameWithoutNamespace(const std::string& name);
+    //static string getParameterNameWithoutNamespace(const std::string& name);
 
 };
 

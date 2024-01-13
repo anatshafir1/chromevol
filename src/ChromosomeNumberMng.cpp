@@ -336,10 +336,8 @@ ChromosomeNumberOptimizer* ChromosomeNumberMng::optimizeLikelihoodMultiStartPoin
 VectorSiteContainer* ChromosomeNumberMng::getTraitData() const{
     Fasta fasta;
     Alphabet* alpha;
-    if (ChromEvolOptions::traitStateModel_ != "Binary"){
-        throw Exception("ChromosomeNumberMng::getTraitData(): The implementation of the joint model is currently only for binary traits\n");
-    }
-    alpha = new BinaryAlphabet();
+
+    alpha = new IntegerAlphabet(ChromEvolOptions::numberOfTraitStates_-1);
     VectorSequenceContainer* vsc_seq = fasta.readSequences(ChromEvolOptions::traitFilePath_, alpha);
     VectorSiteContainer* vsc = new VectorSiteContainer(alpha);
     vector <string> sequenceNames = vsc_seq->getSequenceNames();
@@ -355,41 +353,59 @@ VectorSiteContainer* ChromosomeNumberMng::getTraitData() const{
 }
 /******************************************************************************************************/
 void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
-    ChromosomeNumberOptimizer* optIndependent =  optimizeLikelihoodMultiStartPoints();
-    auto optimizedChromosomeLik = optIndependent->getVectorOfLikelihoods()[0];
-    std::map<uint, std::pair<int, std::map<int, vector<double>>>> mapOfParams;
-    uint numOfModels;
-    if (ChromEvolOptions::traitStateModel_ == "Binary"){
-        numOfModels = 2;
+    ChromosomeNumberOptimizer* optIndependent;
+    SingleProcessPhyloLikelihood* optimizedChromosomeLik;
+    if (ChromEvolOptions::runOnlyJointModel_){
+        optIndependent =  0;
+
     }else{
-        throw Exception("ERROR!!! ChromosomeNumberMng::runJointTraitChromosomeAnalysis(): The current version supports only binary traits!\n");
+        optIndependent =  optimizeLikelihoodMultiStartPoints();
+        optimizedChromosomeLik = optIndependent->getVectorOfLikelihoods()[0];
+
     }
-    ChromEvolOptions::getInitialValuesForComplexParamsForJointTraitModel(mapOfParams, numOfModels);
-    VectorSiteContainer* traitVsc = getTraitData();
-    VectorSiteContainer* chromsomeVsc = createJointTraitChromosomeVscData(traitVsc);
+    
     double parsimonyBound = 0;
     if (ChromEvolOptions::maxParsimonyBound_){
         getMaxParsimonyUpperBound(&parsimonyBound);
     }
+    bool weightedFreqs = LikelihoodUtils::getIfWeightedRootFreq();
+
+    VectorSiteContainer* traitVsc = getTraitData();
+    VectorSiteContainer* chromsomeVsc = createJointTraitChromosomeVscData(traitVsc);
+
     std::map<uint, uint> maxBaseNumTransition = chrRange_;
     if (ChromEvolOptions::baseNum_[1] != IgnoreParam){
-        maxBaseNumTransition[2] = chrRange_.at(1);
-
+        for (uint i = 2; i <= static_cast<uint>(ChromEvolOptions::numberOfTraitStates_); i++){
+            maxBaseNumTransition[i] = chrRange_.at(1);
+        }
     }
-    
-    bool weightedFreqs = LikelihoodUtils::getIfWeightedRootFreq();
     ChromosomeTraitOptimizer* opt = new ChromosomeTraitOptimizer(tree_,alphabet_, chromsomeVsc, traitVsc, maxBaseNumTransition,ChromEvolOptions::traitStateModel_, ChromEvolOptions::NumOfSimulations_,weightedFreqs, false,
                 parsimonyBound,
                 ChromEvolOptions::fixedTraitParams_);
     opt->initOptimizer(ChromEvolOptions::OptPointsNum_, ChromEvolOptions::OptIterNum_, ChromEvolOptions::baseNumOptimizationMethod_, ChromEvolOptions::tolerance_);
-    opt->initMultipleLikelihoodPoints(ChromEvolOptions::traitParams_, mapOfParams, tree_, maxBaseNumTransition, 0, ChromEvolOptions::useMLReconstruction_);
+    std::map<string, double> traitParams;
+    std::map<uint, std::pair<int, std::map<int, vector<double>>>> mapOfParams;
+    uint numOfModels = static_cast<uint>(ChromEvolOptions::numberOfTraitStates_);
+    if (!(ChromEvolOptions::runOnlyJointModel_)){
+        opt->setChromosomeIndependentLikelihood(optimizedChromosomeLik);
+        opt->initTraitLikelihoods(ChromEvolOptions::traitParams_);
+        opt->optimizeIndependentLikelihood();
+        traitParams = opt->getTraitMLParamsIndependentLik();
+        mapOfParams = opt->getChromosomeMLParamsIndependent(numOfModels);
+
+    }else{
+        traitParams = ChromEvolOptions::traitParams_;
+         
+        ChromEvolOptions::getInitialValuesForComplexParamsForJointTraitModel(mapOfParams, numOfModels);
+
+    }
+
+    opt->initMultipleLikelihoodPoints(traitParams, mapOfParams, tree_, maxBaseNumTransition, 0, ChromEvolOptions::useMLReconstruction_);
+    //opt->initMultipleLikelihoodPoints(ChromEvolOptions::traitParams_, mapOfParams, tree_, maxBaseNumTransition, 0, ChromEvolOptions::useMLReconstruction_);
     time_t t1;
     time(&t1);
     time_t t2;
     opt->optimizeJointLikelihood();
-    opt->setChromosomeIndependentLikelihood(optimizedChromosomeLik);
-    opt->initTraitLikelihoods(ChromEvolOptions::traitParams_[0], ChromEvolOptions::traitParams_[1]);
-    opt->optimizeIndependentLikelihood();
     time(&t2);
     std::cout <<"**** **** Total running time of the optimization procedure is: "<< (t2-t1) <<endl;
     nullHypothesisRejected_ = printOutputFileJointLikelihood(ChromEvolOptions::resultsPathDir_ + "//" + "chromEvol.res", opt);
@@ -431,11 +447,11 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
 void ChromosomeNumberMng::setIndependentTraitNodeNames(std::map<uint, std::vector<size_t>> &ancestorsTrait, std::map<uint, string>** mapTraitIndependentAncestorNames, const Alphabet* alpha) const{
     vector<std::shared_ptr<PhyloNode>> nodes = tree_->getAllNodes();
     *mapTraitIndependentAncestorNames = new std::map<uint, std::string>();
-    const BinaryAlphabet* binAlpha = dynamic_cast<const BinaryAlphabet*>(alpha);
+    const IntegerAlphabet* binAlpha = dynamic_cast<const IntegerAlphabet*>(alpha);
     for (size_t i = 0; i < nodes.size(); i++){
         uint nodeId = tree_->getNodeIndex(nodes[i]);
         auto state = ancestorsTrait[nodeId][0];
-        const string stateChar = binAlpha->intToChar(state);
+        const string stateChar = binAlpha->intToChar((int)(state));
         if (tree_->isLeaf(nodes[i])){
             //(**mapTraitIndependentAncestorNames)[nodeId] = nodes[i]->getName() +"-"+ std::to_string(state);
             
@@ -452,32 +468,40 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setTrai
     ValueRef <Eigen::RowVectorXd> rootFreqs = likProcess->getLikelihoodCalculationSingleProcess()->getRootFreqs();
     auto paramNames = likProcess->getSubstitutionModelParameters().getParameterNames();
     const Alphabet* alphabet = likProcess->getLikelihoodCalculationSingleProcess()->getData()->getAlphabet();
-    const BinaryAlphabet* alpha = dynamic_cast<const BinaryAlphabet*>(alphabet);
-    //TODO: get the parameters from the optimized lik, before feeding to the fucntion
-    double mu;
-    double pi0;
-
-    for (size_t i = 0; i < paramNames.size(); i++){
-        size_t foundPos_mu = paramNames[i].find("Binary.mu");
-        if (foundPos_mu != std::string::npos) {
-            mu = likProcess->getParameter(paramNames[i]).getValue();
-        }else{
-            size_t foundPos_pi = paramNames[i].find("Binary.pi0");
-            if (foundPos_pi != std::string::npos){
-                pi0 = likProcess->getParameter(paramNames[i]).getValue();
-            }
-        }
-
-    }
+    const IntegerAlphabet* alpha = dynamic_cast<const IntegerAlphabet*>(alphabet);
+    auto params = likProcess->getParameters();
     auto rootFreqsValues =  rootFreqs->getTargetValue();
     Vdouble rootFreqsBpp;
     copyEigenToBpp(rootFreqsValues, rootFreqsBpp);
+    shared_ptr<IntegerFrequencySet> freqset = make_shared<FullIntegerFrequencySet>(alpha, rootFreqsBpp);
+    std::shared_ptr<CharacterSubstitutionModel> traitModel = LikelihoodUtils::setTraitModel(alpha, freqset);
+    traitModel->setFrequencySet(*freqset);
+
+    auto it = ChromEvolOptions::traitParams_.begin();
+    string paramName;
+    while (it != ChromEvolOptions::traitParams_.end()){
+        string prefix = "pi";
+        paramName = "";
+        if ((it->first).compare(0, prefix.length(), prefix) != 0){
+            for (size_t i = 0; i < params.size(); i++){
+                auto fullParamName = params[i].getName();
+                if (fullParamName.find((it->first)) != std::string::npos){
+                    paramName = fullParamName;
+                    break;
+                }
+            }
+            if (paramName == ""){
+                throw Exception("ERROR!!! ChromosomeNumberMng::setTraitLikModel(): No matched parameter was found!");
+            }
+            auto paramValue = likProcess->getParameter(paramName).getValue();
+            traitModel->setParameterValue(it->first, paramValue);
+
+        }
+        it ++;
+    }
     std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
     std::shared_ptr<ParametrizablePhyloTree> parTree = std::shared_ptr<ParametrizablePhyloTree>(tree->clone());
-    std::shared_ptr<TwoParameterBinarySubstitutionModel> traitModel = std::make_shared<TwoParameterBinarySubstitutionModel>(alpha,mu,pi0);
-    std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(traitModel->getStateMap(), false)), rootFreqsBpp);
-    //std::shared_ptr<FrequencySet> rootFrequencies = static_pointer_cast<FrequencySet>(rootFreqsFixed);
-    std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
+    std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(freqset->clone());
     std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
     std::vector<uint> nodeIds;
     auto nodes = tree_->getAllNodes();
@@ -488,13 +512,12 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setTrai
             nodeIds.push_back(tree_->getNodeIndex(nodes[i]));
         }
     }
-    subProSim->addModel(std::shared_ptr<TwoParameterBinarySubstitutionModel>(traitModel->clone()), nodeIds);
+    subProSim->addModel(std::shared_ptr<CharacterSubstitutionModel>(traitModel->clone()), nodeIds);
 
     SubstitutionProcess* nsubPro= subProSim->clone();
     Context* context = new Context();
     std::shared_ptr<LikelihoodCalculationSingleProcess> lik;
     lik = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *likProcess->getData()->clone(), *nsubPro, rootFreqs);
-
     return lik;
 
 
@@ -503,7 +526,6 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setTrai
 void ChromosomeNumberMng::removeDummyNodes(std::map<uint, std::vector<size_t>>* ancestors, std::map<uint, std::vector<size_t>>* tempAncestors, const PhyloTree* tree, uint rootId) const{
     uint trueRootId = tree_->getRootIndex();
     (*ancestors)[trueRootId] = (*ancestors)[rootId];
-    uint maxNodeId = static_cast<uint>(ancestors->size()-1);
     auto startElem = ancestors->find(trueRootId);
     startElem ++;
     ancestors->erase(startElem, ancestors->end());
@@ -551,7 +573,7 @@ void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOpti
     if ((traitOpt) && (nullHypothesisRejected_)){
         auto stmTree = traitOpt->getJointLikelihood()->getStochasticMappingTree();
         parTree = new ParametrizablePhyloTree(*stmTree);
-        const BinaryAlphabet alpha = BinaryAlphabet();
+        const IntegerAlphabet alpha = IntegerAlphabet(ChromEvolOptions::numberOfTraitStates_-1);
         createMapOfNodesAndTrait(stmTree, &mapOfTraitStates, &alpha);
         rootId = stmTree->getRootIndex();
 
@@ -1188,7 +1210,7 @@ void ChromosomeNumberMng::getMarginalAncestralReconstruction(ChromosomeNumberOpt
             delete asrTrait;
         }else{
             // if joint model fits better
-            const BinaryAlphabet alpha = BinaryAlphabet();
+            const IntegerAlphabet alpha = IntegerAlphabet(ChromEvolOptions::numberOfTraitStates_-1);
             auto stmTree = traitOpt->getJointLikelihood()->getStochasticMappingTree();
             createMapOfNodesAndTrait(stmTree, &mapOfNodesAndTraitStates, &alpha);
 
@@ -1649,22 +1671,34 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
     outFile << "Running parameters" << std::endl;
     outFile << "#################################################" << std::endl;
     writeRunningParameters(outFile);
-    writeRunningParameters(outFile);
-    outFile << "#################################################" << std::endl;
-    outFile << "Best model Trait and Chromosome number independent likelihood (null hypothesis)" <<std::endl;
-    outFile << "#################################################" << std::endl;
-    ChromosomeTraitOptimizer::NullLikelihood nullLik = opt->getNullLikelihood();
+    if (!(ChromEvolOptions::runOnlyJointModel_)){
+        outFile << "#################################################" << std::endl;
+        outFile << "Best model Trait and Chromosome number independent likelihood (null hypothesis)" <<std::endl;
+        outFile << "#################################################" << std::endl;
+        ChromosomeTraitOptimizer::NullLikelihood nullLik = opt->getNullLikelihood();
+        
+        auto chromosomeParamsNames = nullLik.first->getSubstitutionModelParameters().getParameterNames();
+        auto traitParamsNames = nullLik.second->getSubstitutionModelParameters().getParameterNames();
+        outFile << "Optimized parameters are:" << std::endl;
+        for (size_t i = 0; i < chromosomeParamsNames.size(); i++){
+            outFile << chromosomeParamsNames[i] << " value is " << nullLik.first->getParameter(chromosomeParamsNames[i]).getValue() << std::endl;
+        }
+        for (size_t i = 0; i < traitParamsNames.size(); i++){
+            outFile << traitParamsNames[i] << " value is " << nullLik.second->getParameter(traitParamsNames[i]).getValue() << std::endl;
+        }
+        auto characterFreqs = (nullLik.second->getLikelihoodCalculationSingleProcess()->getRootFreqs())->getTargetValue();
+        Vdouble rootFreqsBpp;
+        copyEigenToBpp(characterFreqs, rootFreqsBpp);
+        outFile << "Trait Frequencies:\n";
+        for (size_t i = 0; i < rootFreqsBpp.size(); i++){
+            outFile << "F[" + std::to_string(i) << "] = " << rootFreqsBpp[i] << "\n";
+
+        }
+        outFile << "-log-likelihood value (null hypothesis): " << opt->getLikelihoodNull() << std::endl;
+
+    }
     const JointTraitChromosomeLikelihood* jointLik = opt->getJointLikelihood();
-    auto chromosomeParamsNames = nullLik.first->getSubstitutionModelParameters().getParameterNames();
-    auto traitParamsNames = nullLik.second->getSubstitutionModelParameters().getParameterNames();
-    outFile << "Optimized parameters are:" << std::endl;
-    for (size_t i = 0; i < chromosomeParamsNames.size(); i++){
-        outFile << chromosomeParamsNames[i] << " value is " << nullLik.first->getParameter(chromosomeParamsNames[i]).getValue() << std::endl;
-    }
-    for (size_t i = 0; i < traitParamsNames.size(); i++){
-        outFile << traitParamsNames[i] << " value is " << nullLik.second->getParameter(traitParamsNames[i]).getValue() << std::endl;
-    }
-    outFile << "-log-likelihood value (null hypothesis): " << opt->getLikelihoodNull() << std::endl;
+
     outFile << "#################################################" << std::endl;
     outFile << "Best model Trait and Chromosome number joint likelihood (alternative hypothesis)" <<std::endl;
     outFile << "#################################################" << std::endl;
@@ -1676,7 +1710,10 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
         outFile << parameterNames[i] << " value is " << jointLik->getParameter(parameterNames[i]).getValue() << std::endl;
     }
     outFile << "-log-likelihood value (alternative hypothesis): " << jointLik->getValue() << std::endl;
-    bool nullRejected = opt->testClassicLRT(outFile);
+    bool nullRejected = true;
+    if (!(ChromEvolOptions::runOnlyJointModel_)){
+        nullRejected = opt->testClassicLRT(outFile);
+    }
     outFile.close();
     return nullRejected;
 

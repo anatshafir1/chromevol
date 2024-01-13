@@ -59,6 +59,7 @@
 //from bpp-phyl
 
 #include <Bpp/Phyl/Tree/PhyloTree.h>
+#include "Bpp/Phyl/Likelihood/DataFlow/DataFlowNumeric.h"
 #include <Bpp/Phyl/Io/Newick.h>
 #include <Bpp/Phyl/Model/RateDistribution/GammaDiscreteRateDistribution.h>
 #include "UndirectedGraph.h"
@@ -186,8 +187,14 @@ namespace bpp
                     fixedTraitParams_(fixedTraitParams)
             {
                 LikelihoodUtils::updateSharedParameters(sharedParams_, 1, 2);
+                for (uint i = 3; i <= static_cast<uint>(ChromEvolOptions::numberOfTraitStates_); i++){
+                    LikelihoodUtils::updateSharedParameters(sharedParams_, 1, i);
+                }
                 fixedParams_[1] = ChromEvolOptions::fixedParams_[1];
-                fixedParams_[2] = fixedParams_[1]; 
+                for (uint i = 2; i <= static_cast<uint>(ChromEvolOptions::numberOfTraitStates_); i++){
+                    fixedParams_[i] = fixedParams_[1];
+
+                }
             }
 
             ChromosomeTraitOptimizer(const ChromosomeTraitOptimizer& opt):
@@ -277,22 +284,14 @@ namespace bpp
             const JointTraitChromosomeLikelihood* getJointLikelihood() const{
                 return vectorOfJointLikelohoods_[0];
             }
-            void initMultipleLikelihoodPoints(std::vector<double> &traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> &modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool ml);
-            void initJointLikelihood(std::vector<double> traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool random, double factor, bool ml);
+            void initMultipleLikelihoodPoints(std::map<string, double> &traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> &modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool ml);
+            vector<double> getFrequenciesFromMapOfParams(std::map<string, double> &traitModelParams, bool random= false);
+            void initJointLikelihood(std::map<string, double> traitModelParams, std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, std::map<uint, uint> baseNumberUpperBound, std::vector<double>* rootFreqsTrait, bool random, double factor, bool ml);
             static std::map <uint, std::vector<uint>> getNodesForEachModel(std::shared_ptr<PhyloTree> expectedMapping, StochasticMapping* stm);
             void optimizeJointLikelihood();
             void optimizeIndependentLikelihood();
             
-            std::shared_ptr<PhyloTree> createExpectedMappingHistory(size_t mappingsNum, StochasticMapping* stm){
-                stm->generateStochasticMapping();
-                std::vector<std::shared_ptr<PhyloTree>> mappings;
-                for (size_t i = 0; i < mappingsNum; i++){
-                    auto mappingTree = stm->createMappingHistoryTree(i);
-                    mappings.push_back(mappingTree);
-                }
-                auto expected_mapping = stm->generateExpectedMapping(mappings);
-                return expected_mapping;
-            }
+
             double calculateCriticalLRTClassic(size_t degreesOfFreedom){
                 std::map<size_t, double> LRT_map;
                 LRT_map[1] = 3.84;
@@ -316,6 +315,9 @@ namespace bpp
             double getLikelihoodNull() const{
                 return (optimizedChromosomeLikelihood_->getValue() + vectorOfLikelihoodsTrait_[0]->getValue());
             }
+
+            std::map<string, double> getTraitMLParamsIndependentLik();
+            std::map<uint, std::pair<int, std::map<int, vector<double>>>> getChromosomeMLParamsIndependent(uint numOfRequiredModels);
             double getLikelihoodAltrnative() const {
                 return vectorOfJointLikelohoods_[0]->getValue();
             }
@@ -326,7 +328,8 @@ namespace bpp
                 auto alternativeLik = getLikelihoodAltrnative();
                 return 2*(nullLik-alternativeLik);
             }
-            void initTraitLikelihoods(double mu, double pi0);
+            void setParametersToNewTraitModel(std::map<string, double> &traitModelParams, std::shared_ptr<CharacterSubstitutionModel> traitModel, shared_ptr<IntegerFrequencySet> freqs, bool random);
+            void initTraitLikelihoods(std::map<string, double> &traitParams);
             bool testClassicLRT(ofstream& outFile){
                 size_t degreesOfFreedom = getNumberOfParametersJointLikelihood()-getNumberOfParametersNull();
                 double LRT_c = calculateCriticalLRTClassic(degreesOfFreedom);
@@ -350,8 +353,7 @@ namespace bpp
             const std::map<int, std::vector<pair<uint, int>>> getSharedParams() {return sharedParams_;}
 
             protected:
-            void setRandomTraitModel(double* mu, double* pi0);
-            void initTraitLikelihood(double mu, double pi0, bool random);
+            void initTraitLikelihood(std::map<string, double> &traitParams, bool random);
 
 
             void clearVectorOfLikelihoods(vector<SingleProcessPhyloLikelihood*> &vectorOLikelihoods, size_t new_size){
