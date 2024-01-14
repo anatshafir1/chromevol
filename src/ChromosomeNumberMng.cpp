@@ -389,7 +389,12 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
     if (!(ChromEvolOptions::runOnlyJointModel_)){
         opt->setChromosomeIndependentLikelihood(optimizedChromosomeLik);
         opt->initTraitLikelihoods(ChromEvolOptions::traitParams_);
+        time_t t_T1;
+        time(&t_T1);
+        time_t t_T2;
         opt->optimizeIndependentLikelihood();
+        time(&t_T2);
+        std::cout <<"**** **** Total running time of independent trait optimization procedure is: "<< (t_T2-t_T1) <<endl;  
         traitParams = opt->getTraitMLParamsIndependentLik();
         mapOfParams = opt->getChromosomeMLParamsIndependent(numOfModels);
 
@@ -399,16 +404,20 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
         ChromEvolOptions::getInitialValuesForComplexParamsForJointTraitModel(mapOfParams, numOfModels);
 
     }
+    if (!ChromEvolOptions::runOnlyIndependentModelWithTrait_){
+        opt->initMultipleLikelihoodPoints(traitParams, mapOfParams, tree_, maxBaseNumTransition, 0, ChromEvolOptions::useMLReconstruction_);
+        //opt->initMultipleLikelihoodPoints(ChromEvolOptions::traitParams_, mapOfParams, tree_, maxBaseNumTransition, 0, ChromEvolOptions::useMLReconstruction_);
+        time_t t1;
+        time(&t1);
+        time_t t2;
+        opt->optimizeJointLikelihood();
+        time(&t2);
+        std::cout <<"**** **** Total running time of the joint chromosome-trait optimization procedure is: "<< (t2-t1) <<endl;  
 
-    opt->initMultipleLikelihoodPoints(traitParams, mapOfParams, tree_, maxBaseNumTransition, 0, ChromEvolOptions::useMLReconstruction_);
-    //opt->initMultipleLikelihoodPoints(ChromEvolOptions::traitParams_, mapOfParams, tree_, maxBaseNumTransition, 0, ChromEvolOptions::useMLReconstruction_);
-    time_t t1;
-    time(&t1);
-    time_t t2;
-    opt->optimizeJointLikelihood();
-    time(&t2);
-    std::cout <<"**** **** Total running time of the optimization procedure is: "<< (t2-t1) <<endl;
+    }
     nullHypothesisRejected_ = printOutputFileJointLikelihood(ChromEvolOptions::resultsPathDir_ + "//" + "chromEvol.res", opt);
+
+
     int inferredRootState;
     if (nullHypothesisRejected_){
         getJointMLAncestralReconstruction(optIndependent, &inferredRootState, chromsomeVsc, opt);
@@ -1695,6 +1704,11 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
 
         }
         outFile << "-log-likelihood value (null hypothesis): " << opt->getLikelihoodNull() << std::endl;
+
+    }
+    if (ChromEvolOptions::runOnlyIndependentModelWithTrait_){
+        outFile.close();
+        return false;
 
     }
     const JointTraitChromosomeLikelihood* jointLik = opt->getJointLikelihood();

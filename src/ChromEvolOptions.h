@@ -112,6 +112,7 @@ public:
     static vector<string> fixedTraitParams_;
     static std::map<string, double> traitParams_;
     static bool runOnlyJointModel_;
+    static bool runOnlyIndependentModelWithTrait_;
     
     static bool useMLReconstruction_;
     static int numberOfTraitStates_;

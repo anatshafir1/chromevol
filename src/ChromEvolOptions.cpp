@@ -73,6 +73,7 @@ std::map<string, double> ChromEvolOptions::traitParams_;
 bool ChromEvolOptions::useMLReconstruction_;
 int ChromEvolOptions::numberOfTraitStates_;
 bool ChromEvolOptions::runOnlyJointModel_;
+bool ChromEvolOptions::runOnlyIndependentModelWithTrait_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -139,6 +140,7 @@ void ChromEvolOptions::initDefaultParameters(){
     useMLReconstruction_ = false;
     numberOfTraitStates_ = 0;
     runOnlyJointModel_ = false;
+    runOnlyIndependentModelWithTrait_ = false;
     
     
 
@@ -331,6 +333,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
         throw Exception("ERROR!!! No trait model was specified!!!");
     }
     runOnlyJointModel_ = ApplicationTools::getBooleanParameter("_runOnlyJointModel", ChromEvol.getParams(), runOnlyJointModel_, "", true, 0);
+    runOnlyIndependentModelWithTrait_ = ApplicationTools::getBooleanParameter("_runOnlyIndependentModelWithTrait", ChromEvol.getParams(), runOnlyIndependentModelWithTrait_, "", true, 0);
 
     
 
