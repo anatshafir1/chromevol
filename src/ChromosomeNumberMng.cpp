@@ -1627,8 +1627,12 @@ void ChromosomeNumberMng::computeExpectations(ChromosomeNumberOptimizer* chrOpti
     }
     std::cout << "Finished with the calculation of joint likelihoods of father and son..."<< std::endl;
     std::cout << "Starting running simulations ... " << std::endl;
+    if (chrOptimizer){
+        delete chrOptimizer;
 
-    delete chrOptimizer;
+    }
+
+    
     //initializing the expectation instance
     ComputeChromosomeTransitionsExp* expCalculator = new ComputeChromosomeTransitionsExp(multiModelProcess, tree, alphabet_, jointProbabilitiesFatherSon, ChromEvolOptions::jumpTypeMethod_);
     expCalculator->runSimulations(numOfSimulations);
