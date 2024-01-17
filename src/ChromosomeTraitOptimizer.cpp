@@ -385,6 +385,8 @@ std::map<uint, std::pair<int, std::map<int, vector<double>>>> ChromosomeTraitOpt
 
     }
   }
+
+  //////////////////////////////////////
   for (uint i = 1; i <= numOfModels; i++){
     auto &paramsPerModel = modelsToNames[i];
     chromEvolParams[i];
@@ -395,7 +397,7 @@ std::map<uint, std::pair<int, std::map<int, vector<double>>>> ChromosomeTraitOpt
         if(fullName.find(shortName) != std::string::npos){
           int type = typeGeneralName[shortName];
           if (type == static_cast<int>(ChromosomeSubstitutionModel::BASENUM)){
-            chromEvolParams[i].first = static_cast<int>(allParams.getParameter(fullName).getValue());
+            chromEvolParams[i].first = static_cast<int>(allParams.getParameter(fullName).getValue());  
           }else{
             if (chromEvolParams[i].second.find(type) != chromEvolParams[i].second.end()){
               chromEvolParams[i].second[type].push_back(allParams.getParameter(fullName).getValue());
@@ -412,7 +414,20 @@ std::map<uint, std::pair<int, std::map<int, vector<double>>>> ChromosomeTraitOpt
         it ++;
       }
     }
+    for (int j = 0; j < ChromosomeSubstitutionModel::NUM_OF_CHR_PARAMS; j++){
+      uint numOfParams = LikelihoodUtils::getNumberOfParametersPerParamType(j, ChromEvolOptions::rateChangeType_);
+      if (numOfParams == 0){
+        if (j == static_cast<int>(ChromosomeSubstitutionModel::BASENUM)){
+          chromEvolParams[i].first = IgnoreParam;
+
+        }else{
+          chromEvolParams[i].second[j];
+        }
+      }
+
+    }
   }
+
   uint numOfRetainedModels = numOfRequiredModels-numOfModels;
   for (uint i = 1; i <= numOfRetainedModels; i++){
     chromEvolParams[i + numOfModels] = chromEvolParams[numOfModels]; 
