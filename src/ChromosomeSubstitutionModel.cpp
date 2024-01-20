@@ -209,7 +209,7 @@ double RevSigmoidDependencyFunction::getRate(std::vector<Parameter*> params, siz
   auto p3 = params[2]->getValue();
   // f(x) = p1* (e^-p2(x-p3)/(1+(e^-p2(x-p3))))
   auto x = static_cast<double>(state);
-  return p1*(std::exp(-p2*(x-p3))/(1+(std::exp(-p2*(x-p3)))));
+  return p1/(1+(std::exp(p2-(p3*x))));// (std::exp(-p2*(x-p3))/(1+(std::exp(-p2*(x-p3)))));
 
 }
 /**************************************************************************************/
@@ -220,10 +220,10 @@ void RevSigmoidDependencyFunction::getAbsoluteBounds(size_t index, double* lower
     *upperBound = upperBoundOfRateParam;
   }else if (index == 1){ // for the exponent parameter
     *lowerBound = lowerBoundOfRateParam;
-    *upperBound = revSigmoidExpRateParam;
+    *upperBound = (double)(domainMax_-domainMin_+1);
   }else if (index == 2){  // the shift parameter
     *lowerBound = lowerBoundOfRateParam;
-    *upperBound = (double)(domainMax_-domainMin_+1);
+    *upperBound = revSigmoidExpRateParam;
 
   }else{
     throw Exception("RevSigmoidDependencyFunction::getAbsoluteBounds(): index out of bounds!!");
