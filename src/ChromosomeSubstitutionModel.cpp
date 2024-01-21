@@ -222,8 +222,8 @@ void RevSigmoidDependencyFunction::getAbsoluteBounds(size_t index, double* lower
     *lowerBound = lowerBoundOfRateParam;
     *upperBound = (double)(domainMax_-domainMin_+1);
   }else if (index == 2){  // the shift parameter
-    *lowerBound = lowerBoundOfRateParam;
-    *upperBound = revSigmoidExpRateParam;
+    *lowerBound = -revSigmoidExpRateParam;
+    *upperBound = lowerBoundOfRateParam;
 
   }else{
     throw Exception("RevSigmoidDependencyFunction::getAbsoluteBounds(): index out of bounds!!");
