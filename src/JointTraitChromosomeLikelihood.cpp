@@ -272,10 +272,12 @@ void JointTraitChromosomeLikelihood::optimize(double tol, uint numOfIterations, 
     std::map<string, std::pair<int, uint>> paramNameAndType; // parameter name, its type and number of model
 
     LikelihoodUtils::updateMapsOfParamTypesAndNames(typeWithParamNames, &paramNameAndType, chromosomeParamNames, 0);
+    double prevLikelihood;
     for (size_t i = 0; i< numOfIterations; i++){
-        std::cout << "Iteration #" << i << std::endl;
+        std::cout << "***   ***  Outer Iteration #" << i << " ***  ***" <<  std::endl;
         traitOptimization_ =false;
         //std::cout << "Cycle " << i << std::endl;
+        prevLikelihood = getValue();
         std::cout << "Joint likelihood value (before trait) " << getValue() << std::endl;
         std::cout << "trait likelihood value (before trait) " << getAbstractPhyloLikelihood(nPhylo_[0])->getValue() << std::endl;
         std::cout << "Chromosome likelihood value (before trait) " << tempLik_->getValue() << std::endl;
@@ -297,6 +299,10 @@ void JointTraitChromosomeLikelihood::optimize(double tol, uint numOfIterations, 
         std::cout << "trait likelihood value (after chromosome)" << getAbstractPhyloLikelihood(nPhylo_[0])->getValue() << std::endl;
         std::cout << "Chromosome likelihood value (after chromosome)" << tempLik_->getValue() << std::endl;
         std::cout << "** End of Iteration **" << std::endl;
+        if (std::abs(prevLikelihood-getValue()) < tol){
+            break;
+
+        }
 
     }
     

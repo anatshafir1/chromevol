@@ -477,8 +477,12 @@ void ChromosomeTraitOptimizer::optimizeJointLikelihood()
     if (i < numOfIterations_.size()-1){
       clearVectorOfLikelihoods(vectorOfJointLikelohoods_, numOfPoints_[i+1]);
     }
+    std::cout << "*** *** *** ***" << std::endl;
+    std::cout << "End of cycle " << i << std::endl;
+    std::cout << "Likelihoods at the end of the cycle are:" << std::endl;
     for (size_t k = 0; k < vectorOfJointLikelohoods_.size(); k++){
-      std::cout << "Likelihoods at the end of the cycle are: " << vectorOfJointLikelohoods_[k]->getValue() << std::endl;
-    }
+      std::cout << "\t " << vectorOfJointLikelohoods_[k]->getValue() << std::endl;
+    } 
+    std::cout << "*** *** *** ***" << std::endl;
   }
 }
