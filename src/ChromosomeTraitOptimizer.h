@@ -293,24 +293,9 @@ namespace bpp
             
 
             double calculateCriticalLRTClassic(size_t degreesOfFreedom){
-                std::map<size_t, double> LRT_map;
-                LRT_map[1] = 3.84;
-                LRT_map[2] = 5.99;
-                LRT_map[3] = 7.81;
-                LRT_map[4] = 9.49;
-                LRT_map[5] = 11.07;
-                LRT_map[6] = 12.59;
-                LRT_map[7] = 14.07;
-                LRT_map[8] = 15.51;
-                LRT_map[9] = 16.92;
-                LRT_map[10] = 18.31;
-                LRT_map[11] = 19.68;
-                LRT_map[12] = 21.03;
-                LRT_map[13] = 22.36;
-                LRT_map[14] = 23.68;
-                LRT_map[15] = 25.00;
-                LRT_map[16] = 26.30;
-                return LRT_map[degreesOfFreedom];
+                // for some reason here I should write 0.95 instead of 0.05
+                return RandomTools::qChisq(0.95, degreesOfFreedom);
+
             }
             double getLikelihoodNull() const{
                 return (optimizedChromosomeLikelihood_->getValue() + vectorOfLikelihoodsTrait_[0]->getValue());

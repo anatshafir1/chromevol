@@ -157,9 +157,9 @@ namespace bpp{
             void getMarginalAncestralReconstruction(ChromosomeNumberOptimizer* chrOptimizer, const string &filePath, ChromosomeTraitOptimizer* traitOpt = 0);
             // map<int, map<size_t, VVdouble>> getMarginalAncestralReconstruction(DRNonHomogeneousTreeLikelihood* lik) const;
             void computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, VectorSiteContainer* chromsomeVsc, ChromosomeTraitOptimizer* traitOpt = 0);
-            void simulateData();
-            void simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator);
-            void printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath);
+            void simulateData(string &characterPath);
+            void simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator, Alphabet* alpha);
+            void printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath, Alphabet* alpha);
             void printTreeWithStates(PhyloTree tree, std::map<uint, std::vector<size_t>> &ancestors, const string &filePath, std::map<uint, string>* prevNames = 0) const;
             void convertNodesNames(PhyloTree &tree, uint nodeId, std::map<uint, std::vector<size_t>> &ancestors, bool alphabetStates = true, std::map<uint, string>* prevNames = 0) const;
             void writeOutputToFile(ChromosomeNumberOptimizer* chrOptimizer, int &inferrredRootState) const;
@@ -193,7 +193,7 @@ namespace bpp{
             void getMaxParsimonyUpperBound(double* parsimonyScore) const;
             // functions to print the tree with ancestral reconstruction
             void printSimulatedDataAndAncestors(SiteSimulationResult* simResult, string &ancestorsPath) const;
-            void printSimulatedEvoPath(const string outPath, SiteSimulationResult* simResult, bool &success, size_t maxStateIndex) const;
+            void printSimulatedEvoPath(const string outPath, SiteSimulationResult* simResult, bool &success, size_t maxStateIndex = 0) const;
             static string printTree(const PhyloTree& tree);
             static string nodeToParenthesis(const uint nodeId, const PhyloTree& tree);
             std::map<int, vector <double>> getVectorToSetModelParams(SingleProcessPhyloLikelihood* lik, size_t modelIndex = 1) const;

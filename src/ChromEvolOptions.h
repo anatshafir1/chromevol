@@ -113,9 +113,11 @@ public:
     static std::map<string, double> traitParams_;
     static bool runOnlyJointModel_;
     static bool runOnlyIndependentModelWithTrait_;
-    
+    static int minBaseNumberBound_;
     static bool useMLReconstruction_;
     static int numberOfTraitStates_;
+    static bool simulateTrait_;
+
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);
     static std::shared_ptr<PhyloNode> getMRCA(PhyloTree* tree, std::vector<shared_ptr<PhyloNode>> nodes);

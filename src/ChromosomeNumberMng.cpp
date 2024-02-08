@@ -893,10 +893,10 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setHete
 
 // }
 /***********************************************************************************/
-void ChromosomeNumberMng::simulateData(){
+void ChromosomeNumberMng::simulateData(string &chracterFilePath){
     RandomTools::setSeed(static_cast<long>(ChromEvolOptions::seed_));
     bool dataFileExists = false;
-    if (FILE *file = fopen((ChromEvolOptions::characterFilePath_).c_str(), "r")) {
+    if (FILE *file = fopen(chracterFilePath.c_str(), "r")) {
         fclose(file);
         dataFileExists = true;
 
@@ -904,7 +904,7 @@ void ChromosomeNumberMng::simulateData(){
     bool simulateToDirs = false;
     bool dataFileIsDirectory = false;
     struct stat s;
-    if ( lstat((ChromEvolOptions::characterFilePath_).c_str(), &s) == 0 ) {
+    if ( lstat(chracterFilePath.c_str(), &s) == 0 ) {
         if (S_ISDIR(s.st_mode)) {
             dataFileIsDirectory = true;
         }
@@ -913,48 +913,76 @@ void ChromosomeNumberMng::simulateData(){
         simulateToDirs = true;
             
     }
-    if ((ChromEvolOptions::minChrNum_ <= 0) || (ChromEvolOptions::maxChrNum_ < 0)){
-        throw Exception("ERROR!!! ChromosomeNumberMng::initializeSimulator(): minimum and maximum chromsome number should be positive!");
-    }
-    if (ChromEvolOptions::maxChrNum_ <= ChromEvolOptions::minChrNum_){
-        throw Exception("ERROR!!! ChromosomeNumberMng::initializeSimulator(): maximum chromsome number should be larger than minimum chromosome number!");
-    }
-    alphabet_ = new ChromosomeAlphabet(ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_);
-    std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+    SimpleSubstitutionProcessSiteSimulator* simulator;
+    Alphabet* alpha;
+    std::shared_ptr<FrequencySet> rootFrequencies;
+    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
     std::shared_ptr<ParametrizablePhyloTree> parTree =  std::make_shared<ParametrizablePhyloTree>(*tree_);
-    std::map<uint, std::pair<int, std::map<int, vector<double>>>> complexParamsValues;
-    ChromEvolOptions::getInitialValuesForComplexParams(complexParamsValues);
-    std::map<uint, uint> maxBaseNumTransition = (ChromEvolOptions::simulateData_) ? ChromEvolOptions::maxBaseNumTransition_ : chrRange_;
-    //1. ChromEvolOptions::mapModelNodesIds_: already calculated
+    if (!(ChromEvolOptions::simulateTrait_)){
+        if ((ChromEvolOptions::minChrNum_ <= 0) || (ChromEvolOptions::maxChrNum_ < 0)){
+            throw Exception("ERROR!!! ChromosomeNumberMng::initializeSimulator(): minimum and maximum chromsome number should be positive!");
+        }
+        if (ChromEvolOptions::maxChrNum_ <= ChromEvolOptions::minChrNum_){
+            throw Exception("ERROR!!! ChromosomeNumberMng::initializeSimulator(): maximum chromsome number should be larger than minimum chromosome number!");
+        }
+        alphabet_ = new ChromosomeAlphabet(ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_);
+        std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+        
+        std::map<uint, std::pair<int, std::map<int, vector<double>>>> complexParamsValues;
+        ChromEvolOptions::getInitialValuesForComplexParams(complexParamsValues);
+        std::map<uint, uint> maxBaseNumTransition = (ChromEvolOptions::simulateData_) ? ChromEvolOptions::maxBaseNumTransition_ : chrRange_;
+        //1. ChromEvolOptions::mapModelNodesIds_: already calculated
     
-    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[1].second, complexParamsValues[1].first, maxBaseNumTransition[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, true);
-    if ((chrModel->getBaseNumber() != IgnoreParam) && (ChromEvolOptions::correctBaseNumber_)){
-        chrModel->correctBaseNumForSimulation(ChromEvolOptions::maxChrInferred_);
+        std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[1].second, complexParamsValues[1].first, maxBaseNumTransition[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, true);
+        if ((chrModel->getBaseNumber() != IgnoreParam) && (ChromEvolOptions::correctBaseNumber_)){
+            chrModel->correctBaseNumForSimulation(ChromEvolOptions::maxChrInferred_);
 
-    }
+        }
     
-    if (ChromEvolOptions::fixedFrequenciesFilePath_ == "none"){
-        throw Exception("ChromosomeNumberMng::initializeSimulator(): ERROR! The file of fixed root frequencies is missing!!!");  
+        if (ChromEvolOptions::fixedFrequenciesFilePath_ == "none"){
+            throw Exception("ChromosomeNumberMng::initializeSimulator(): ERROR! The file of fixed root frequencies is missing!!!");  
 
-    }
-    vector <double> rootFreqs = LikelihoodUtils::setFixedRootFrequencies(ChromEvolOptions::fixedFrequenciesFilePath_, chrModel);
-    FrequencySet* rootFreqsFixed = new FixedFrequencySet(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqs);
-    std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
-    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
+        }
+        vector <double> rootFreqs = LikelihoodUtils::setFixedRootFrequencies(ChromEvolOptions::fixedFrequenciesFilePath_, chrModel);
+        FrequencySet* rootFreqsFixed = new FixedFrequencySet(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqs);
+        rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
+        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
 
-    // adding models
-    for (uint i = 1; i <= (uint)(ChromEvolOptions::numOfModels_); i++){
-        if (i > 1){
-            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[i].second, complexParamsValues[i].first, maxBaseNumTransition[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, true);
-            if (chrModel->getBaseNumber() != IgnoreParam){
-                chrModel->correctBaseNumForSimulation(ChromEvolOptions::maxChrInferred_);
+        // adding models
+        for (uint i = 1; i <= (uint)(ChromEvolOptions::numOfModels_); i++){
+            if (i > 1){
+                chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[i].second, complexParamsValues[i].first, maxBaseNumTransition[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, true);
+                if (chrModel->getBaseNumber() != IgnoreParam){
+                    chrModel->correctBaseNumForSimulation(ChromEvolOptions::maxChrInferred_);
 
-            }
+                }
             
-        }   
-        subProSim->addModel(chrModel, ChromEvolOptions::mapModelNodesIds_[i]);
+            }   
+            subProSim->addModel(chrModel, ChromEvolOptions::mapModelNodesIds_[i]);
+        }
+        simulator = new SimpleSubstitutionProcessSiteSimulator(*subProSim);
+        alpha = alphabet_->clone();
+        
+
+    }else{ // simulate trait
+        const IntegerAlphabet* traitAlpha = new IntegerAlphabet(ChromEvolOptions::numberOfTraitStates_-1);;
+        std::shared_ptr<DiscreteDistribution> rdistTrait = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+        vector<double> freqVals;
+        for (size_t i = 0; i < static_cast<size_t>(ChromEvolOptions::numberOfTraitStates_); i++){
+            freqVals.push_back(ChromEvolOptions::traitParams_["pi"+ std::to_string(i)]); 
+        }
+        rootFrequencies = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);        
+        //shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
+        
+        std::shared_ptr<CharacterSubstitutionModel> characterModel = LikelihoodUtils::setTraitModel(traitAlpha, std::dynamic_pointer_cast<IntegerFrequencySet>(rootFrequencies));
+        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdistTrait, parTree, rootFrequencies);
+        subProSim->addModel(characterModel, ChromEvolOptions::mapModelNodesIds_[1]);
+        simulator = new SimpleSubstitutionProcessSiteSimulator(*subProSim);
+        alpha = traitAlpha->clone();
+
     }
-    SimpleSubstitutionProcessSiteSimulator* simulator = new SimpleSubstitutionProcessSiteSimulator(*subProSim);
+
+    
     size_t counter = 0;
     for (size_t i = 0; i < ChromEvolOptions::numOfSimulatedData_; i++){
         if (simulateToDirs){
@@ -971,7 +999,8 @@ void ChromosomeNumberMng::simulateData(){
 
         }
             
-        simulateData(simulateToDirs, i, counter, simulator);
+        simulateData(simulateToDirs, i, counter, simulator, alpha);
+        
         if ((double)counter > (double)(ChromEvolOptions::fracAllowedFailedSimulations_)*(double)(ChromEvolOptions::numOfSimulatedData_)){
             throw Exception("ChromosomeNumberMng::runChromEvol():Too many failed simulations!");
             return;
@@ -984,6 +1013,7 @@ void ChromosomeNumberMng::simulateData(){
         }
 
     }
+    delete alpha;
     delete simulator;
            
     return;
@@ -992,19 +1022,25 @@ void ChromosomeNumberMng::simulateData(){
 
 /***********************************************************************************/
 void ChromosomeNumberMng::runChromEvol(){
+    lowerLimitBaseNumber = ChromEvolOptions::minBaseNumberBound_;
     LikelihoodUtils::setNodeIdsForAllModels(tree_, ChromEvolOptions::mapModelNodesIds_, ChromEvolOptions::nodeIdsFilePath_, ChromEvolOptions::initialModelNodes_);
-    if (ChromEvolOptions::simulateData_){
+    if ((ChromEvolOptions::simulateData_) &&(!ChromEvolOptions::simulateTrait_)){
         time_t t1;
         time(&t1);
         time_t t2;
         //simulate data using a tree and a set of model parameters  
-        simulateData();
+        simulateData(ChromEvolOptions::characterFilePath_);
         time(&t2);
         std::cout <<"**** **** Total running time of the simulation procedure is: "<< (t2-t1) <<endl;
         return;
 
     }
-    if (ChromEvolOptions::traitFilePath_ != "none"){
+    if (ChromEvolOptions::simulateTrait_){
+        simulateData(ChromEvolOptions::traitFilePath_);
+        return;
+
+    }
+    else if (ChromEvolOptions::traitFilePath_ != "none"){
         runJointTraitChromosomeAnalysis();
         return;
     }
@@ -1260,6 +1296,11 @@ void ChromosomeNumberMng::printSimulatedEvoPath(const string outPath, SiteSimula
     ofstream outFile;
     success = true;
     outFile.open(outPath);
+    int minState = 0;
+    if (!(ChromEvolOptions::simulateTrait_)){
+        minState = alphabet_->getMin();
+    }
+
     size_t totalNumTransitions = 0;
     vector<shared_ptr<PhyloNode> > nodes = tree_->getAllNodes();
     size_t nbNodes = nodes.size();
@@ -1268,10 +1309,10 @@ void ChromosomeNumberMng::printSimulatedEvoPath(const string outPath, SiteSimula
         if (tree_->getRootIndex() == nodeId){
             outFile << "N-" + std::to_string(nodeId) << endl;
             size_t rootState = simResult->getRootAncestralState();
-            if (rootState == maxStateIndex){
+            if ((maxStateIndex) && (rootState == maxStateIndex)){
                 success = false;
             }
-            outFile <<"\tThe root state is: "<< ((int)(rootState + alphabet_->getMin())) <<endl;
+            outFile <<"\tThe root state is: "<< ((int)(rootState + minState)) <<endl;
 
 
         }else{
@@ -1291,9 +1332,9 @@ void ChromosomeNumberMng::printSimulatedEvoPath(const string outPath, SiteSimula
             outFile << "Father is: " << "N-" << fatherIndex << std::endl;
             size_t fatherState;
             if (fatherIndex == tree_->getRootIndex()){
-                fatherState = simResult->getRootAncestralState() + alphabet_->getMin();    
+                fatherState = simResult->getRootAncestralState() + minState;    
             }else{
-                fatherState = simResult->getAncestralState(fatherIndex) + alphabet_->getMin(); 
+                fatherState = simResult->getAncestralState(fatherIndex) + minState; 
             }
             for (size_t i = 0; i < states.size(); i++){
                 double time;
@@ -1302,11 +1343,15 @@ void ChromosomeNumberMng::printSimulatedEvoPath(const string outPath, SiteSimula
                 }else{
                     time =  times[i]-times[i-1];
                 }
-                outFile << "from state: "<< fatherState  <<"\tt = "<<time << " to state = "<< ((int)(states[i]) + alphabet_->getMin()) << endl;
-                if (((size_t)(fatherState-alphabet_->getMin()) == maxStateIndex) || (states[i] == maxStateIndex)){
-                    success = false;
+                outFile << "from state: "<< fatherState  <<"\tt = "<<time << " to state = "<< ((int)(states[i]) + minState) << endl;
+                if (maxStateIndex){
+                    if (((size_t)(fatherState - minState) == maxStateIndex) || (states[i] == maxStateIndex)){
+                        success = false;
+                    }
+
                 }
-                fatherState = ((int)(states[i]) + alphabet_->getMin());
+
+                fatherState = ((int)(states[i]) + minState);
             }
             outFile <<"# Number of transitions per branch: "<< times.size() <<endl;   
             
@@ -1336,7 +1381,7 @@ void ChromosomeNumberMng::printTreeWithStates(PhyloTree tree, std::map<uint, std
 /**************************************************************************************/
 void ChromosomeNumberMng::convertNodesNames(PhyloTree &tree, uint nodeId, std::map<uint, std::vector<size_t>> &ancestors, bool alphabetStates, std::map<uint, string>* prevNames) const{
     size_t state = ancestors[nodeId][0];
-    if (alphabetStates){
+    if ((alphabetStates) && (!(ChromEvolOptions::simulateTrait_))){
         state += alphabet_->getMin();
     }
     
@@ -1448,7 +1493,7 @@ string ChromosomeNumberMng::nodeToParenthesis(const uint nodeId, const PhyloTree
 
 
 /*********************************************************************************/
-void ChromosomeNumberMng::simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator){
+void ChromosomeNumberMng::simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator, Alphabet* alpha){
     SiteSimulationResult* simResult = simulator->dSimulateSite();
     vector <size_t> leavesStates = simResult->getFinalStates();
     vector<string> leavesNames = simResult->getLeaveNames();
@@ -1456,20 +1501,37 @@ void ChromosomeNumberMng::simulateData(bool into_dirs, size_t simNum, size_t &co
     string evolutionPath;
     string ancestorsPath;
     if (into_dirs){
-        countsPath = ChromEvolOptions::resultsPathDir_ +"//"+ std::to_string(simNum) + "//"+ "counts.fasta";
+        if (ChromEvolOptions::simulateTrait_){
+            countsPath = ChromEvolOptions::resultsPathDir_ +"//"+ std::to_string(simNum) + "//"+ "trait_sim.fasta";
+
+        }else{
+            countsPath = ChromEvolOptions::resultsPathDir_ +"//"+ std::to_string(simNum) + "//"+ "counts.fasta";
+
+        }
         ancestorsPath = ChromEvolOptions::resultsPathDir_ +"//"+ std::to_string(simNum) +"//"+"simulatedDataAncestors.tree";
         evolutionPath = ChromEvolOptions::resultsPathDir_ +"//"+ std::to_string(simNum) +"//"+ "simulatedEvolutionPaths.txt";
     }else{
-        countsPath = ChromEvolOptions::characterFilePath_;
+        if (ChromEvolOptions::simulateTrait_){
+            countsPath = ChromEvolOptions::traitFilePath_;
+        }else{
+            countsPath = ChromEvolOptions::characterFilePath_;
+        }
         ancestorsPath = ChromEvolOptions::resultsPathDir_  +"//"+"simulatedDataAncestors.tree";
         evolutionPath = ChromEvolOptions::resultsPathDir_ +"//"+"simulatedEvolutionPaths.txt";
     }
-    printSimulatedData(leavesStates, leavesNames, 0, countsPath);
+    printSimulatedData(leavesStates, leavesNames, 0, countsPath, alpha);
     printSimulatedDataAndAncestors(simResult, ancestorsPath);
     if (ChromEvolOptions::resultsPathDir_ != "none"){
         bool success;
-        size_t maxStateIndex = (size_t)(ChromEvolOptions::maxChrNum_-alphabet_->getMin());
-        printSimulatedEvoPath(evolutionPath, simResult, success, maxStateIndex);
+        if (ChromEvolOptions::simulateTrait_){
+            printSimulatedEvoPath(evolutionPath, simResult, success);
+            
+        }else{
+            size_t maxStateIndex = (size_t)(ChromEvolOptions::maxChrNum_-alphabet_->getMin());
+            printSimulatedEvoPath(evolutionPath, simResult, success, maxStateIndex);
+
+        }
+
         
         if (!success){
             count_failed ++;
@@ -1480,22 +1542,29 @@ void ChromosomeNumberMng::simulateData(bool into_dirs, size_t simNum, size_t &co
 
 }
 /*******************************************************************************/
-void ChromosomeNumberMng::printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath){
+void ChromosomeNumberMng::printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath, Alphabet* alpha){
     cout << "Simulated data #" << iter << endl;
+    int minState = 0;
+    if (!(ChromEvolOptions::simulateTrait_)){
+        minState = dynamic_cast<ChromosomeAlphabet*>(alpha)->getMin();
+    }
     for (size_t i = 0; i < leavesNames.size(); i++){
-        cout << leavesNames[i] << " "<< leavesStates[i] + alphabet_->getMin() <<endl;
+        cout << leavesNames[i] << " "<< leavesStates[i] + minState << endl;
     }
     cout << "******************************"<<endl;
+
     
     if (ChromEvolOptions::resultsPathDir_ != "none"){
         //create vector site container object and save fasta file.
-        VectorSiteContainer* simulatedData = new VectorSiteContainer(alphabet_);
+        VectorSiteContainer* simulatedData = new VectorSiteContainer(alpha);
         for (size_t i = 0; i < leavesNames.size(); i++){
-            int state = (int)leavesStates[i] + alphabet_->getMin();
-            BasicSequence seq = BasicSequence(leavesNames[i], alphabet_->intToChar(state), static_cast <const Alphabet*>(alphabet_));
+            int state = (int)leavesStates[i] + minState;
+            BasicSequence seq = BasicSequence(leavesNames[i], alpha->intToChar(state), alpha);
             simulatedData->addSequence(seq);
         }
-        vsc_ = simulatedData;
+        if (!(ChromEvolOptions::simulateTrait_)){
+            vsc_ = simulatedData;
+        }
         
         Fasta fasta;
         fasta.writeSequences(countsPath, *simulatedData);

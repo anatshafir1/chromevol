@@ -113,7 +113,7 @@ void BaseNumberOptimizer::setBaseNumberBounds(std::shared_ptr<LikelihoodCalculat
 void BaseNumberOptimizer::getBaseNumCandidates(vector <unsigned int> &baseNumCandidates, std::map<uint, uint> &baseNumberUpperBounds) const{
     if ((baseNumOptimizationMethod_ != "Brent") && (optimizeBaseNumber_)){
         uint maxBaseNumCandidate = getMaxBaseNumAmongModels(baseNumberUpperBounds);
-        fillVectorOfBaseNumCandidates(baseNumCandidates, lowerBoundBaseNumber, maxBaseNumCandidate);
+        fillVectorOfBaseNumCandidates(baseNumCandidates, lowerLimitBaseNumber, maxBaseNumCandidate);
 
     }
 
@@ -169,7 +169,7 @@ void BaseNumberOptimizer::getAllPossibleChrRanges(std::vector <unsigned int> &ba
                 continue;
             }
             unsigned int chrRange = (unsigned int)(std::abs(chrNum1 - chrNum2));
-            if (chrRange < lowerBoundBaseNumber){
+            if (chrRange < lowerLimitBaseNumber){
                 continue;
             }
 
@@ -187,8 +187,8 @@ void BaseNumberOptimizer::getAllPossibleChrRanges(std::vector <unsigned int> &ba
 
         }
     }
-    if (minRange > lowerBoundBaseNumber){
-        for (unsigned int i = lowerBoundBaseNumber; i < minRange; i++){
+    if (minRange > lowerLimitBaseNumber){
+        for (unsigned int i = lowerLimitBaseNumber; i < minRange; i++){
             baseNumCandidates.push_back(i);
         }
 

@@ -16,6 +16,7 @@ using namespace bpp;
 #include <Bpp/Numeric/Random/RandomTools.h>
 
 using namespace std;
+int lowerLimitBaseNumber = 0;
 /*****************************************************************************/
 // Functions *** *** *** **** *** *** *** *** **** *** *** *** *** **** ***
 /*****************************************************************************/
@@ -457,8 +458,8 @@ ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
         if (baseNumber == IgnoreParam){
           continue;
         }
-        lowerBound = lowerBoundBaseNumber;
-        upperBound = std::max((int)chrRange, lowerBoundBaseNumber+1);
+        lowerBound = lowerLimitBaseNumber;
+        upperBound = std::max((int)chrRange, lowerLimitBaseNumber+1);
         newBaseNumber = static_cast<int>(lowerBound + RandomTools::giveIntRandomNumberBetweenZeroAndEntry((int)(upperBound-lowerBound)));
         continue;
 
@@ -544,7 +545,7 @@ void ChromosomeSubstitutionModel::addCompositeParameter(std::vector<Parameter*> 
 /******************************************************************************/
 void ChromosomeSubstitutionModel::updateParameters(vector<double> &gain, vector<double> &loss, vector<double> &dupl, vector<double> &demi, vector<double> &baseNumR){
   if (baseNum_ != IgnoreParam){
-    std::shared_ptr<IntervalConstraint> interval_baseNum = make_shared<IntervalConstraint>(lowerBoundBaseNumber, (int)maxChrRange_, true, true);
+    std::shared_ptr<IntervalConstraint> interval_baseNum = make_shared<IntervalConstraint>(lowerLimitBaseNumber, (int)maxChrRange_, true, true);
     addParameter_(new Parameter("Chromosome.baseNum", baseNum_, interval_baseNum));
     
   }

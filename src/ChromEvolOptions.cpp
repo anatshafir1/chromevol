@@ -74,6 +74,8 @@ bool ChromEvolOptions::useMLReconstruction_;
 int ChromEvolOptions::numberOfTraitStates_;
 bool ChromEvolOptions::runOnlyJointModel_;
 bool ChromEvolOptions::runOnlyIndependentModelWithTrait_;
+int ChromEvolOptions::minBaseNumberBound_;
+bool ChromEvolOptions::simulateTrait_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -141,6 +143,8 @@ void ChromEvolOptions::initDefaultParameters(){
     numberOfTraitStates_ = 0;
     runOnlyJointModel_ = false;
     runOnlyIndependentModelWithTrait_ = false;
+    minBaseNumberBound_ = 6;
+    simulateTrait_ = false;
     
     
 
@@ -209,6 +213,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     minChrNum_ = ApplicationTools::getIntParameter("_minChrNum", ChromEvol.getParams(), minChrNum_, "", true, 0);
     numOfModels_ = ApplicationTools::getIntParameter("_numOfModels", ChromEvol.getParams(), numOfModels_, "", true, 0);
     seed_ = ApplicationTools::getIntParameter("_seed", ChromEvol.getParams(), seed_, "", true, 0);
+    minBaseNumberBound_ = ApplicationTools::getIntParameter("_minBaseNumberBound", ChromEvol.getParams(), minBaseNumberBound_, "", true, 0);
     simulateData_ = ApplicationTools::getBooleanParameter("_simulateData", ChromEvol.getParams(), simulateData_, "", true, 0);
     if (simulateData_){
         characterFilePath_ = ApplicationTools::getAFilePath("_dataFile", ChromEvol.getParams(), false, false, "", true, "none", 1);
@@ -219,7 +224,10 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     branchMul_ = ApplicationTools::getDoubleParameter("_branchMul", ChromEvol.getParams(), branchMul_, "", true, 0);
     maxIterations_ = (unsigned int)ApplicationTools::getIntParameter("_maxOptimizationItarations", ChromEvol.getParams(), maxIterations_, "", true, 0);
     tolerance_ = ApplicationTools::getDoubleParameter("_tolParamOptimization", ChromEvol.getParams(), tolerance_, "", true, 0);
-    setModelParameters(ChromEvol);
+    simulateTrait_ = ApplicationTools::getBooleanParameter("_simulateTrait", ChromEvol.getParams(), simulateTrait_, "", true, 0);
+    if (!simulateTrait_){
+        setModelParameters(ChromEvol);
+    }
     maxParsimonyBound_ = ApplicationTools::getBooleanParameter("_maxParsimonyBound", ChromEvol.getParams(), maxParsimonyBound_, "", true, 0);
     parallelization_ = ApplicationTools::getBooleanParameter("_parallelization", ChromEvol.getParams(), parallelization_, "", true, 0);
     standardOptimization_ = ApplicationTools::getBooleanParameter("_standardOptimization", ChromEvol.getParams(), standardOptimization_, "", true, 0);
@@ -244,7 +252,11 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     std::string duplFunc = ApplicationTools::getStringParameter("_duplFunc", ChromEvol.getParams(), "None", "", true, 0);
     std::string demiDuplFunc = ApplicationTools::getStringParameter("_demiDuplFunc", ChromEvol.getParams(), "None", "", true, 0);
     std::string baseNumRFunc = ApplicationTools::getStringParameter("_baseNumRFunc", ChromEvol.getParams(), "None", "", true, 0);
-    setFunctions(gainFunc, lossFunc, duplFunc, demiDuplFunc, baseNumRFunc);
+    
+    if (!simulateTrait_){
+        setFunctions(gainFunc, lossFunc, duplFunc, demiDuplFunc, baseNumRFunc);
+    }
+    
     //optimizeBaseNumber_ = ApplicationTools::getBooleanParameter("_optimizeBaseNumber", ChromEvol.getParams(), optimizeBaseNumber_, "", true, 0);
     baseNumOptimizationMethod_ = ApplicationTools::getStringParameter("_baseNumOptimizationMethod", ChromEvol.getParams(), baseNumOptimizationMethod_, "", true, 0);
     NumOfSimulations_ = ApplicationTools::getIntParameter("_NumOfSimulations", ChromEvol.getParams(), NumOfSimulations_, "", true, 0);
@@ -334,6 +346,8 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     }
     runOnlyJointModel_ = ApplicationTools::getBooleanParameter("_runOnlyJointModel", ChromEvol.getParams(), runOnlyJointModel_, "", true, 0);
     runOnlyIndependentModelWithTrait_ = ApplicationTools::getBooleanParameter("_runOnlyIndependentModelWithTrait", ChromEvol.getParams(), runOnlyIndependentModelWithTrait_, "", true, 0);
+    
+    
 
     
 

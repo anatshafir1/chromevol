@@ -16,7 +16,6 @@
 
 #define lowerBoundOfRateParam 0.0
 #define lowerBoundOfExpParam -3.0
-#define lowerBoundBaseNumber 3
 #define upperBoundOfRateParam 100.0
 #define upperBoundLinearRateParam 5.0
 #define upperBoundExpParam 4.6
@@ -25,6 +24,7 @@
 #define IgnoreParam -999
 #define DemiEqualDupl -2
 #define EPSILON 2.22045e-016
+extern int lowerLimitBaseNumber;
 using namespace std;
 namespace bpp
 {
