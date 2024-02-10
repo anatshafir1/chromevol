@@ -975,6 +975,30 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
         //shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
         
         std::shared_ptr<CharacterSubstitutionModel> characterModel = LikelihoodUtils::setTraitModel(traitAlpha, std::dynamic_pointer_cast<IntegerFrequencySet>(rootFrequencies));
+        string prefix = "pi";
+        auto params = characterModel->getParameters();
+        auto it = ChromEvolOptions::traitParams_.begin();
+        string paramName;
+        while (it != ChromEvolOptions::traitParams_.end()){
+            paramName = "";
+            if ((it->first).compare(0, prefix.length(), prefix) != 0){
+                for (size_t i = 0; i < params.size(); i++){
+                    auto fullParamName = params[i].getName();
+                    if (fullParamName.find((it->first)) != std::string::npos){
+                        paramName = fullParamName;
+                        break;
+                    }
+                }
+                if (paramName == ""){
+                    throw Exception("ERROR!!! ChromosomeNumberMng::setTraitLikModel(): No matched parameter was found!");
+                }
+                auto paramValue = it->second;
+                characterModel->setParameterValue(it->first, paramValue);
+
+            }
+            it ++;
+        }
+
         subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdistTrait, parTree, rootFrequencies);
         subProSim->addModel(characterModel, ChromEvolOptions::mapModelNodesIds_[1]);
         simulator = new SimpleSubstitutionProcessSiteSimulator(*subProSim);
