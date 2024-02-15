@@ -29,7 +29,7 @@ IF(BUILD_STATIC)
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
   set_target_properties (${PROJECT_NAME}-static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-  target_link_libraries (${PROJECT_NAME}-static ${BPP_LIBS_STATIC} Eigen3::Eigen)
+  target_link_libraries (${PROJECT_NAME}-static ${BPP_LIBS_STATIC} Eigen3::Eigen stdc++fs)
 ENDIF()
 
 # Build the shared lib
@@ -44,7 +44,7 @@ set_target_properties (${PROJECT_NAME}-shared
   VERSION ${${PROJECT_NAME}_VERSION}
   SOVERSION ${${PROJECT_NAME}_VERSION_MAJOR}
   )
-target_link_libraries (${PROJECT_NAME}-shared ${BPP_LIBS_SHARED} Eigen3::Eigen)
+target_link_libraries (${PROJECT_NAME}-shared ${BPP_LIBS_SHARED} Eigen3::Eigen stdc++fs)
 
 # Install libs and headers
 IF(BUILD_STATIC)

@@ -893,6 +893,17 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setHete
 
 // }
 /***********************************************************************************/
+void ChromosomeNumberMng::delete_directory(const std::experimental::filesystem::path& path) {
+    for (const auto& entry : std::experimental::filesystem::directory_iterator(path)) {
+        if (std::experimental::filesystem::is_directory(entry.path())) {
+            delete_directory(entry.path());
+        } else {
+            std::experimental::filesystem::remove(entry.path());
+        }
+    }
+    std::experimental::filesystem::remove(path);
+}
+/***********************************************************************************/
 void ChromosomeNumberMng::simulateData(string &chracterFilePath){
     RandomTools::setSeed(static_cast<long>(ChromEvolOptions::seed_));
     bool dataFileExists = false;
@@ -1006,11 +1017,13 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
 
     }
 
-    
+    bool requiredNumReached = false;
     size_t counter = 0;
+    size_t prev_counter = 0;
     for (size_t i = 0; i < ChromEvolOptions::numOfSimulatedData_; i++){
+        string simDirPath;
         if (simulateToDirs){
-            string simDirPath = ChromEvolOptions::resultsPathDir_ +"//"+ std::to_string(i);
+            simDirPath = ChromEvolOptions::resultsPathDir_ +"//"+ std::to_string(i);
             if (FILE *file = fopen(simDirPath.c_str(), "r")) {
                 fclose(file);
 
@@ -1022,15 +1035,27 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
             }
 
         }
+        prev_counter = counter;
             
         simulateData(simulateToDirs, i, counter, simulator, alpha);
+        if (prev_counter < counter){
+            // unsuccessful simulation -> need to delete it
+            std::cout << i << std::endl;
+            if (simulateToDirs){
+                delete_directory(simDirPath);
+
+            }
+            
+
+        }
         
-        if ((double)counter > (double)(ChromEvolOptions::fracAllowedFailedSimulations_)*(double)(ChromEvolOptions::numOfSimulatedData_)){
+        if ((double)counter > (double)(ChromEvolOptions::fracAllowedFailedSimulations_)*(double)(ChromEvolOptions::numOfRequiredSimulatedData_)){
             throw Exception("ChromosomeNumberMng::runChromEvol():Too many failed simulations!");
             return;
         }else{
             if ((i+1)-counter == ChromEvolOptions::numOfRequiredSimulatedData_){
                 std::cout << "Found " << ChromEvolOptions::numOfRequiredSimulatedData_ << " successful simulations" << std::endl;
+                requiredNumReached = true;
                 break;
 
             }
@@ -1039,8 +1064,35 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
     }
     delete alpha;
     delete simulator;
+    rename_simulations_directories(ChromEvolOptions::resultsPathDir_);
            
     return;
+
+}
+
+bool ChromosomeNumberMng::compare_directory_names(const std::experimental::filesystem::path& a, const std::experimental::filesystem::path& b) {
+    return std::stoi(a.filename()) < std::stoi(b.filename());
+}
+
+void ChromosomeNumberMng::rename_simulations_directories(const std::experimental::filesystem::path& dir){
+    // Get a list of subdirectories
+    std::vector<std::experimental::filesystem::path> subdirs;
+    for (const auto& entry : std::experimental::filesystem::directory_iterator(dir)) {
+        if (std::experimental::filesystem::is_directory(entry)) {
+            subdirs.push_back(entry.path());
+        }
+    }
+
+    // Sort the subdirectories
+    std::sort(subdirs.begin(), subdirs.end(), compare_directory_names);
+
+    // Rename the subdirectories sequentially
+    int new_index = 0;
+    for (const auto& subdir : subdirs) {
+        std::experimental::filesystem::path new_dir = dir / std::to_string(new_index);
+        std::experimental::filesystem::rename(subdir, new_dir);
+        new_index++;
+    }
 
 }
 

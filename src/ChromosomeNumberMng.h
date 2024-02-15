@@ -83,6 +83,7 @@
 #include "ChromosomeTraitOptimizer.h"
 
 
+
 //standard libraries
 #include <string>
 #include <vector>
@@ -90,6 +91,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <regex>
+#include <experimental/filesystem>
 
 using namespace std;
 
@@ -172,6 +174,9 @@ namespace bpp{
             std::shared_ptr<LikelihoodCalculationSingleProcess> setTraitLikModel(SingleProcessPhyloLikelihood* lik, ParametrizablePhyloTree* parTree) const;
             void updateMarginalAncestralProbabilitiesAndStates(MarginalAncestralReconstruction *asr, std::map<uint, VVdouble> &posteriorProbs, std::map<uint, vector<size_t>> &mapOfAncestors, const PhyloTree* tree, vector<shared_ptr<PhyloNode>> &nodes);
             void printMarginalAncestralProbabilities(const string &filePath, const PhyloTree* tree, std::map<uint, VVdouble> &posteriorProbs, std::map<uint, vector<size_t>> &mapOfAncestors, const Alphabet* alpha);
+            void delete_directory(const std::experimental::filesystem::path& path);
+            static bool compare_directory_names(const std::experimental::filesystem::path& a, const std::experimental::filesystem::path& b);
+            void rename_simulations_directories(const std::experimental::filesystem::path& dir);
 
             
 

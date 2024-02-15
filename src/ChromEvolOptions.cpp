@@ -135,7 +135,7 @@ void ChromEvolOptions::initDefaultParameters(){
     useMaxBaseTransitonNumForOpt_ = false;
     modelSelectionCriterion_ = "AICc";
     numOfSimulatedData_ = 1;
-    fracAllowedFailedSimulations_ = 0.01;
+    fracAllowedFailedSimulations_ = 0.1;
     correctBaseNumber_ = true;
     numOfRequiredSimulatedData_ = numOfSimulatedData_;
     traitStateModel_ = "singleRate";
