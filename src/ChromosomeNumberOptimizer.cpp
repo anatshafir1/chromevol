@@ -969,7 +969,7 @@ void ChromosomeNumberOptimizer::optimizeInParallel(std::map<uint, std::pair<int,
         // for each candidate calculate the AICc, and delete those which have a worse AICc than the best so far
         uint prevShiftOfBest = static_cast<uint>(lik->getSubstitutionProcess().getModelNumberForNode(minDetaAICcNode));
         std::map<uint, vector<int>> fixedParameters = fixedParams_;
-        if (initialAICc - bestAICcScore > ChromEvolOptions::deltaAICcThreshold_){
+        if ((initialAICc - bestAICcScore > ChromEvolOptions::deltaAICcThreshold_) || (ChromEvolOptions::heteroBootstrappingMode_)){
             std::cout << "***" << std::endl;
             vectorOfLikelohoods_.pop_back();
             deleteLikObject(prevLik);

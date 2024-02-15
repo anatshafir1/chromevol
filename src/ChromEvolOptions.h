@@ -117,6 +117,7 @@ public:
     static bool useMLReconstruction_;
     static int numberOfTraitStates_;
     static bool simulateTrait_;
+    static bool heteroBootstrappingMode_;
 
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);

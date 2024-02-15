@@ -1898,36 +1898,40 @@ void ChromosomeNumberMng::writeOutputToFile(ChromosomeNumberOptimizer* chrOptimi
     outFile << "Running parameters" << std::endl;
     outFile << "#################################################" << std::endl;
     writeRunningParameters(outFile);
-    outFile << "#################################################" << std::endl;
-    outFile << "Best chosen model" <<std::endl;
-    outFile << "#################################################" << std::endl;
-
-
-    auto numOfModels = bestLik->getSubstitutionProcess().getNumberOfModels();
-    outFile << "Number of models in the best model = " << numOfModels << std::endl;
-    // not all the assignements of the nodes induce clades, therefore the min clade size will represent the 
-    // number of species under a specific model (better ask Itay)
-    uint minSizeOfClade = findMinCladeSize(mapModelNodesIds);
-    outFile << "Min clade size in the best model = " << minSizeOfClade << std::endl;
-    outFile << "Root node is: " << "N" << tree_->getRootIndex() << std::endl;
-    outFile << "Ancestral chromosome number at the root: " << inferredRootState <<std::endl;
-    auto modelAndRepresentitives = LikelihoodUtils::findMRCAForEachModelNodes(tree_, mapModelNodesIds);
-    outFile << "Shifting nodes are: " << std::endl;
-    for (uint i = 1; i <= numOfModels; i++){
-        for (size_t j = 0; j < modelAndRepresentitives[i].size(); j++){
-            if (modelAndRepresentitives[i][j] == tree_->getRootIndex()){
-                outFile << "# Model $" << i << " = " << "N" << modelAndRepresentitives[i][j] << " (the root)" << std::endl;
-            }else{
-                outFile << "# Model $" << i << " = " << "N" << modelAndRepresentitives[i][j] << std::endl;
-            }        
-        }
+    if (!(ChromEvolOptions::heteroBootstrappingMode_)){
+        outFile << "#################################################" << std::endl;
+        outFile << "Best chosen model" <<std::endl;
+        outFile << "#################################################" << std::endl;
+        auto numOfModels = bestLik->getSubstitutionProcess().getNumberOfModels();
+        outFile << "Number of models in the best model = " << numOfModels << std::endl;
+        // not all the assignements of the nodes induce clades, therefore the min clade size will represent the 
+        // number of species under a specific model (better ask Itay)
+        uint minSizeOfClade = findMinCladeSize(mapModelNodesIds);
+        outFile << "Min clade size in the best model = " << minSizeOfClade << std::endl;
+        outFile << "Root node is: " << "N" << tree_->getRootIndex() << std::endl;
+        outFile << "Ancestral chromosome number at the root: " << inferredRootState <<std::endl;
+        auto modelAndRepresentitives = LikelihoodUtils::findMRCAForEachModelNodes(tree_, mapModelNodesIds);
+        outFile << "Shifting nodes are: " << std::endl;
+        for (uint i = 1; i <= numOfModels; i++){
+            for (size_t j = 0; j < modelAndRepresentitives[i].size(); j++){
+                if (modelAndRepresentitives[i][j] == tree_->getRootIndex()){
+                    outFile << "# Model $" << i << " = " << "N" << modelAndRepresentitives[i][j] << " (the root)" << std::endl;
+                }else{
+                    outFile << "# Model $" << i << " = " << "N" << modelAndRepresentitives[i][j] << std::endl;
+                }        
+            }
         
-    }
-    writeTreeWithCorrespondingModels(*tree_, mapModelNodesIds);
+        }
+        writeTreeWithCorrespondingModels(*tree_, mapModelNodesIds);
 
-    chrOptimizer->printRootFrequencies(bestLik, outFile);
-    printLikParameters(chrOptimizer, bestLik, outFile);
-    outFile << ChromEvolOptions::modelSelectionCriterion_ <<" of the best model = "<< AICc << std::endl;
+        chrOptimizer->printRootFrequencies(bestLik, outFile);
+        printLikParameters(chrOptimizer, bestLik, outFile);
+        outFile << ChromEvolOptions::modelSelectionCriterion_ <<" of the best model = "<< AICc << std::endl;
+
+
+
+    }
+
     auto previousModelsPartitions = chrOptimizer->getPreviousModelsPartitions();
     auto previousModelsAICcAndLik = chrOptimizer->getPreviousModelsAICcValues();
     auto previousModelsParameters = chrOptimizer->getPreviousModelsParameters();

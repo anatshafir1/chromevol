@@ -76,6 +76,7 @@ bool ChromEvolOptions::runOnlyJointModel_;
 bool ChromEvolOptions::runOnlyIndependentModelWithTrait_;
 int ChromEvolOptions::minBaseNumberBound_;
 bool ChromEvolOptions::simulateTrait_;
+bool ChromEvolOptions::heteroBootstrappingMode_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -145,6 +146,7 @@ void ChromEvolOptions::initDefaultParameters(){
     runOnlyIndependentModelWithTrait_ = false;
     minBaseNumberBound_ = 6;
     simulateTrait_ = false;
+    heteroBootstrappingMode_ = false;
     
     
 
@@ -228,6 +230,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     if (!simulateTrait_){
         setModelParameters(ChromEvol);
     }
+    heteroBootstrappingMode_ = ApplicationTools::getBooleanParameter("_heteroBootstrappingMode", ChromEvol.getParams(), heteroBootstrappingMode_, "", true, 0);
     maxParsimonyBound_ = ApplicationTools::getBooleanParameter("_maxParsimonyBound", ChromEvol.getParams(), maxParsimonyBound_, "", true, 0);
     parallelization_ = ApplicationTools::getBooleanParameter("_parallelization", ChromEvol.getParams(), parallelization_, "", true, 0);
     standardOptimization_ = ApplicationTools::getBooleanParameter("_standardOptimization", ChromEvol.getParams(), standardOptimization_, "", true, 0);
