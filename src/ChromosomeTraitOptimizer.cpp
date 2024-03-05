@@ -70,8 +70,12 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::map<string, double> trai
     
   subProT->addModel(std::shared_ptr<CharacterSubstitutionModel>(model->clone()), modelNodesTrait);
   nsubProT = std::shared_ptr<NonHomogeneousSubstitutionProcess>(subProT->clone());
+  string prefix  = traitModel->getNamespace();
+  //LikelihoodUtils::aliasTraitParams(std::shared_ptr<NonHomogeneousSubstitutionProcess> process, int &numOfTraitConstraints, string &prefix, std::unordered_map<string, string> &sharedTraitParams);
+  LikelihoodUtils::aliasTraitParams(nsubProT, ChromEvolOptions::numOfTraitConstraints_, prefix, ChromEvolOptions::sharedTraitParams_);
 
-  
+
+
   Context* context = new Context();
   likT = std::make_shared<LikelihoodCalculationSingleProcess>(contextT, *vscTrait_->clone(), *nsubProT);
   auto phyloT = std::make_shared<SingleProcessPhyloLikelihood>(contextT, likT);
@@ -319,8 +323,9 @@ void ChromosomeTraitOptimizer::initTraitLikelihood(std::map<string, double> &tra
   std::shared_ptr<NonHomogeneousSubstitutionProcess> subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
   std::vector<uint> modelNodesTrait;
   getTraitNodes(modelNodesTrait);
-      
+  string prefix  = characterModel->getNamespace();
   subProT->addModel(std::shared_ptr<CharacterSubstitutionModel>(characterModel->clone()), modelNodesTrait);
+  LikelihoodUtils::aliasTraitParams(subProT, ChromEvolOptions::numOfTraitConstraints_, prefix, ChromEvolOptions::sharedTraitParams_);
   Context* context = new Context();
   auto likT = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *vscTrait_->clone(), *(subProT->clone()));
   auto phyloT = new SingleProcessPhyloLikelihood(*context, likT);

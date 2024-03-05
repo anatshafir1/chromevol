@@ -89,6 +89,7 @@ namespace bpp{
         //template <typename T>
         //typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value),vector<string>>::type
         static std::shared_ptr<CharacterSubstitutionModel> setTraitModel(const IntegerAlphabet* traitAlpha, shared_ptr<IntegerFrequencySet> freqset);
+        static void aliasTraitParams(std::shared_ptr<NonHomogeneousSubstitutionProcess> process, int &numOfTraitConstraints, std::string &prefix, std::unordered_map<std::string, std::string> &sharedTraitParams);
 
         static void setNodeIdsForAllModels(PhyloTree* phyltree, std::map<uint, std::vector<uint>> &mapModelNodesIds, string &path, std::vector<uint> &initialModelNodes);
         static void getNodeIdsPerModelFromLine(string &content, PhyloTree* tree, std::map<uint, std::pair<uint, std::vector<uint>>> &modelAndNodeIds, std::map<uint,uint> &mapOriginalToAssignedModel, std::vector<uint> &initialModelNodes);

@@ -489,12 +489,17 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setTrai
     auto it = ChromEvolOptions::traitParams_.begin();
     string paramName;
     while (it != ChromEvolOptions::traitParams_.end()){
+        string paramShortName = it->first;
+        if ((ChromEvolOptions::numOfTraitConstraints_) && (ChromEvolOptions::sharedTraitParams_.find(it->first) != ChromEvolOptions::sharedTraitParams_.end())){
+            paramShortName = ChromEvolOptions::sharedTraitParams_[it->first];
+
+        }
         string prefix = "pi";
         paramName = "";
-        if ((it->first).compare(0, prefix.length(), prefix) != 0){
+        if ((paramShortName).compare(0, prefix.length(), prefix) != 0){
             for (size_t i = 0; i < params.size(); i++){
                 auto fullParamName = params[i].getName();
-                if (fullParamName.find((it->first)) != std::string::npos){
+                if (fullParamName.find((paramShortName)) != std::string::npos){
                     paramName = fullParamName;
                     break;
                 }
@@ -521,8 +526,11 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setTrai
             nodeIds.push_back(tree_->getNodeIndex(nodes[i]));
         }
     }
+    string prefix = traitModel->getNamespace();
     subProSim->addModel(std::shared_ptr<CharacterSubstitutionModel>(traitModel->clone()), nodeIds);
 
+    
+    LikelihoodUtils::aliasTraitParams(subProSim, ChromEvolOptions::numOfTraitConstraints_, prefix, ChromEvolOptions::sharedTraitParams_);
     SubstitutionProcess* nsubPro= subProSim->clone();
     Context* context = new Context();
     std::shared_ptr<LikelihoodCalculationSingleProcess> lik;

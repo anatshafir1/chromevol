@@ -9,6 +9,9 @@
 #include "ChromosomeNumberOptimizer.h"
 #include "JointTraitChromosomeLikelihood.h"
 #include <Bpp/Numeric/Random/RandomTools.h>
+#include <iostream>
+#include <fstream>
+#include <regex>
 
 using namespace bpp;
 using namespace std;
@@ -451,6 +454,74 @@ using namespace std;
 
 /******************************************************/
 int main(){
+  string simulations_path = "/home/anat/Docs/Sida/simulations";
+  size_t num_of_simulations = 100;
+  double totalNumOfTransitions = 0;
+  std::map<string, double> state_changes;
+  state_changes["gain"] = 0;
+  state_changes["loss"] = 0;
+  state_changes["dupl"] = 0;
+  std::regex states_pattern("from state: (\\d+)[^\\d]+t = [\\d.]+[^\\d]+to state = (\\d+)");
+  for (size_t i = 0; i < num_of_simulations; i++){
+    string evolPath = simulations_path + "/" + std::to_string(i) + '/' + "simulatedEvolutionPaths.txt";
+    std::ifstream file(evolPath); // Open the file
+
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << evolPath << std::endl;
+        return 1;
+    }
+
+    // Read the entire file into a string
+    std::string content((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
+    file.close(); 
+    std::regex pattern("Total number of transitions is: (\\d+)");
+    std::smatch matches;
+    if (std::regex_search(content, matches, pattern)) {
+        // Print the matched sentence
+        int numOfTransitions = std::stoi(matches[1]);
+        totalNumOfTransitions += numOfTransitions;
+    } else {
+        std::cerr << "Sentence not found in the text." << std::endl;
+        return 1;
+    }
+
+    // Search for matches in the text
+    std::smatch matches_states_test;
+    if (!(std::regex_search(content, matches_states_test, states_pattern))) {
+      std::cerr << "Sentence not found in the text." << std::endl;
+    }
+    std::smatch matches_states;
+    std::string::const_iterator searchStart(content.cbegin());
+    while (std::regex_search(searchStart, content.cend(), matches_states, states_pattern)) {
+        // Extract the numbers
+        int fromState = std::stoi(matches_states[1]);
+        int toState = std::stoi(matches_states[2]);
+        if (toState == fromState + 1){
+          state_changes["gain"] += 1;
+        }else if (toState == fromState * 2){
+          state_changes["dupl"] += 1;
+        }else if (toState == fromState-1){
+          state_changes["loss"] += 1;
+        }else{
+          searchStart = matches_states.suffix().first;
+          continue;
+          
+        }
+        // Update the searchStart iterator to search for the next match
+        searchStart = matches_states.suffix().first;
+    }
+  }
+  totalNumOfTransitions /= num_of_simulations;
+  std::cout << "Average number of transitions " << totalNumOfTransitions << std::endl;
+  auto it = state_changes.begin();
+  while ( it != state_changes.end()){
+    state_changes[it->first] /= (double)num_of_simulations;
+    std::cout << it->first << " : " << it->second << std::endl;
+    it ++;
+  }
+
+  return 0;
+}
   //fix seed for debugging purposes
   // double seedUb = 10000000;
   // RandomTools::setSeed(static_cast<long int>(seedUb));
@@ -462,14 +533,9 @@ int main(){
   // testMulti1(traitModelParams, pTree);
   
   // test chi square
-  double chi = RandomTools::qChisq(0.95, 20);;
-  std::cout << "chi square" << std::endl;
-  std::cout << chi << std::endl;
-
-
- 
-
-
+  // double chi = RandomTools::qChisq(0.95, 20);;
+  // std::cout << "chi square" << std::endl;
+  // std::cout << chi << std::endl;
   // const BinaryAlphabet* alphabet = new BinaryAlphabet();
   // double mu = 1.;
   // double pi0 = 0.25;
@@ -687,5 +753,3 @@ int main(){
 
   
   //JointPhyloLikelihood(Context& context, std::shared_ptr<PhyloLikelihoodContainer> pC, bool expectedHistory, bool weightedFrequencies, size_t numOfMappings,
-  return 0;
-}

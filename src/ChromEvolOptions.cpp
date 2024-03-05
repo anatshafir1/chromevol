@@ -77,6 +77,8 @@ bool ChromEvolOptions::runOnlyIndependentModelWithTrait_;
 int ChromEvolOptions::minBaseNumberBound_;
 bool ChromEvolOptions::simulateTrait_;
 bool ChromEvolOptions::heteroBootstrappingMode_;
+std::unordered_map<std::string, string> ChromEvolOptions::sharedTraitParams_;
+int ChromEvolOptions::numOfTraitConstraints_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -147,6 +149,7 @@ void ChromEvolOptions::initDefaultParameters(){
     minBaseNumberBound_ = 6;
     simulateTrait_ = false;
     heteroBootstrappingMode_ = false;
+    numOfTraitConstraints_ = 0;
     
     
 
@@ -347,13 +350,33 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     }else{
         throw Exception("ERROR!!! No trait model was specified!!!");
     }
+    numOfTraitConstraints_ = ApplicationTools::getIntParameter("_numOfTraitConstraints", ChromEvol.getParams(), numOfTraitConstraints_, "", true, 0);
+
     runOnlyJointModel_ = ApplicationTools::getBooleanParameter("_runOnlyJointModel", ChromEvol.getParams(), runOnlyJointModel_, "", true, 0);
     runOnlyIndependentModelWithTrait_ = ApplicationTools::getBooleanParameter("_runOnlyIndependentModelWithTrait", ChromEvol.getParams(), runOnlyIndependentModelWithTrait_, "", true, 0);
-    
-    
+    if (numOfTraitConstraints_){
+        
+        for (size_t i = 0; i < numOfTraitConstraints_; i++){
+            string constraint = ApplicationTools::getStringParameter("_TC" + std::to_string(i), ChromEvol.getParams(), "", "", true, 0);
+            std::vector<std::string> rates;
 
-    
+            // Create a stringstream from the input string
+            std::stringstream ss(constraint);
 
+            std::string rate;
+            // Use getline with '=' as delimiter to extract rates
+            size_t j = 0;
+            while (std::getline(ss, rate, '=')) {
+                rates.push_back(rate);
+                if (j != 0){
+                    sharedTraitParams_[rates[j]] = rates[0];
+
+                } 
+                j++;
+            }
+        }
+    }
+    
 }
 /************************************************************************/
 void ChromEvolOptions::setModelParameters(BppApplication& ChromEvol){

@@ -710,7 +710,21 @@ void LikelihoodUtils::aliasParametersInSubstitutionProcess(std::map<uint, std::m
         paramNumIt ++;
     }
 }
+/************************************************************************************/
+void LikelihoodUtils::aliasTraitParams(std::shared_ptr<NonHomogeneousSubstitutionProcess> process, int &numOfTraitConstraints, std::string &prefix, std::unordered_map<std::string, std::string> &sharedTraitParams){
+    if (numOfTraitConstraints){
+    auto itShared = sharedTraitParams.begin();
+    while (itShared != sharedTraitParams.end()){
+      auto parameter1 = prefix + sharedTraitParams[itShared->first]+ "_1";
+      auto parameter2 = prefix + itShared->first+"_1";
+      process->aliasParameters(parameter1, parameter2);
+      itShared ++;
 
+    }
+
+  }
+
+}
 
 /***********************************************************************************/
 SubstitutionProcess* LikelihoodUtils::setChromosomeSubstitutionModel(const PhyloTree* tree, const VectorSiteContainer* vsc, const ChromosomeAlphabet* alphabet, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, uint numOfModels, std::map<int, vector<std::pair<uint,int>>>* updatedSharedParams, bool weightedRootFreqs, vector<std::shared_ptr<ChromosomeSubstitutionModel>>* models, std::shared_ptr<ParametrizablePhyloTree> parTree){

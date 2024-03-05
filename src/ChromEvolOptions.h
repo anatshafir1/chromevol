@@ -24,7 +24,7 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
-
+#include <unordered_map>
 // the params file should contain vectors of parameters. For example,
 //_gain = 2,1
 //_gainFunc = LINEAR
@@ -118,6 +118,8 @@ public:
     static int numberOfTraitStates_;
     static bool simulateTrait_;
     static bool heteroBootstrappingMode_;
+    static std::unordered_map<std::string, string> sharedTraitParams_;
+    static int numOfTraitConstraints_;
 
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);
