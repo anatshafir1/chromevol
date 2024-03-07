@@ -120,6 +120,7 @@ public:
     static bool heteroBootstrappingMode_;
     static std::unordered_map<std::string, string> sharedTraitParams_;
     static int numOfTraitConstraints_;
+    static bool computeExpectations_;
 
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);

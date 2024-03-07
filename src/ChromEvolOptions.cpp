@@ -79,6 +79,7 @@ bool ChromEvolOptions::simulateTrait_;
 bool ChromEvolOptions::heteroBootstrappingMode_;
 std::unordered_map<std::string, string> ChromEvolOptions::sharedTraitParams_;
 int ChromEvolOptions::numOfTraitConstraints_;
+bool ChromEvolOptions::computeExpectations_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -150,6 +151,7 @@ void ChromEvolOptions::initDefaultParameters(){
     simulateTrait_ = false;
     heteroBootstrappingMode_ = false;
     numOfTraitConstraints_ = 0;
+    computeExpectations_ = true;
     
     
 
@@ -233,6 +235,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     if (!simulateTrait_){
         setModelParameters(ChromEvol);
     }
+    computeExpectations_ = ApplicationTools::getBooleanParameter("_computeExpectations", ChromEvol.getParams(), computeExpectations_, "", true, 0);
     heteroBootstrappingMode_ = ApplicationTools::getBooleanParameter("_heteroBootstrappingMode", ChromEvol.getParams(), heteroBootstrappingMode_, "", true, 0);
     maxParsimonyBound_ = ApplicationTools::getBooleanParameter("_maxParsimonyBound", ChromEvol.getParams(), maxParsimonyBound_, "", true, 0);
     parallelization_ = ApplicationTools::getBooleanParameter("_parallelization", ChromEvol.getParams(), parallelization_, "", true, 0);

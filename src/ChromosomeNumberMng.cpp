@@ -1025,7 +1025,6 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
 
     }
 
-    bool requiredNumReached = false;
     size_t counter = 0;
     size_t prev_counter = 0;
     for (size_t i = 0; i < ChromEvolOptions::numOfSimulatedData_; i++){
@@ -1063,7 +1062,6 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
         }else{
             if ((i+1)-counter == ChromEvolOptions::numOfRequiredSimulatedData_){
                 std::cout << "Found " << ChromEvolOptions::numOfRequiredSimulatedData_ << " successful simulations" << std::endl;
-                requiredNumReached = true;
                 break;
 
             }
@@ -1684,7 +1682,15 @@ void ChromosomeNumberMng::printSimulatedDataAndAncestors(SiteSimulationResult* s
 /*****************************************************************************************************/
 
 void ChromosomeNumberMng::computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, VectorSiteContainer* chromsomeVsc, ChromosomeTraitOptimizer* traitOpt){
-    if (numOfSimulations == 0){
+    if (!ChromEvolOptions::computeExpectations_){
+        if (chrOptimizer){
+            delete chrOptimizer;
+
+        }
+        if (traitOpt){
+            delete traitOpt;
+        }
+
         return;
     }
     std::map<int, vector<pair<uint, int>>> sharedParams;
