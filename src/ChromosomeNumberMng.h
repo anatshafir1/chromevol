@@ -203,7 +203,7 @@ namespace bpp{
             static string nodeToParenthesis(const uint nodeId, const PhyloTree& tree);
             std::map<int, vector <double>> getVectorToSetModelParams(SingleProcessPhyloLikelihood* lik, size_t modelIndex = 1) const;
             double getOriginalTreeLength(string &path) const;
-            
+            double calculateFreqs(std::unordered_map<string, double> &thetas, size_t &idx) const;
 
 
 

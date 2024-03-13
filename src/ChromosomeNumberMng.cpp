@@ -1883,8 +1883,21 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
     vector<string> parameterNames;
     LikelihoodUtils::fixSuffixForJointLikParamNames(jointLikParams, parameterNames);
     outFile << "Optimized parameters are: " << std::endl;
+    std::unordered_map<string, double> thetas;
+    std::regex rgx("theta\\d+");
+    std::smatch match;
     for (size_t i = 0; i < jointLikParams.size(); i++){
         outFile << parameterNames[i] << " value is " << jointLik->getParameter(parameterNames[i]).getValue() << std::endl;
+        if (std::regex_search(parameterNames[i], match, rgx)) {
+            std::string shortParamName = match.str();
+            thetas[shortParamName] = jointLik->getParameter(parameterNames[i]).getValue();
+        } 
+    }
+    outFile << "Trait Frequencies:\n";
+    for (size_t i = 0; i < ChromEvolOptions::numberOfTraitStates_; i++){
+        double freq_i = calculateFreqs(thetas, i);
+        outFile << "F[" + std::to_string(i) << "] = " << freq_i << "\n";
+        // calculateFreqs(std::unordered_map<string, double> &thetas, size_t i);
     }
     outFile << "-log-likelihood value (alternative hypothesis): " << jointLik->getValue() << std::endl;
     bool nullRejected = true;
@@ -1894,6 +1907,28 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
     outFile.close();
     return nullRejected;
 
+
+}
+/******************************************************************************/
+double ChromosomeNumberMng::calculateFreqs(std::unordered_map<string, double> &thetas, size_t &idx) const{
+    double res;
+    if (idx == 0){
+        res = thetas["theta1"];
+    }else{
+        if (idx < ChromEvolOptions::numberOfTraitStates_-1){
+            res = thetas["theta"+std::to_string(idx+1)];
+            for (size_t i = 1; i <= idx; i++){
+                res *= (1-thetas["theta"+std::to_string(i)]);
+            }
+        }
+        else{
+            res = 1;
+            for (size_t i = 1; i <= idx; i++){
+                res *= (1-thetas["theta"+std::to_string(i)]);
+            }
+        }
+    }
+    return res;
 
 }
 /******************************************************************************/
