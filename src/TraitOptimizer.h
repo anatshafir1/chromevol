@@ -128,6 +128,7 @@ class TraitOptimizer
         delete optimizer;
 
     }
+    vector<string> getTraitFixedParamFullNames(vector<string> &parameterNames, vector<string> &fixedTraitParams, bool fixedRootFreqs);
 
 
 

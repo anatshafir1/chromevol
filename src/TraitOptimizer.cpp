@@ -50,3 +50,27 @@ using namespace std;
     }
 
 /***************************************************************************************************************************************/
+vector<string> TraitOptimizer::getTraitFixedParamFullNames(vector<string> &parameterNames, vector<string> &fixedTraitParams, bool fixedRootFreqs){
+    vector<string> fixedParamFullNames;
+    for (auto &fixedParam : fixedTraitParams){            
+        for (auto &paramName : parameterNames){
+            size_t found = paramName.find(fixedParam);
+            if (found != std::string::npos){
+                fixedParamFullNames.push_back(paramName);
+            }
+        }
+    }
+    if (fixedRootFreqs){
+        std::regex rgx("theta\\d+");
+        std::smatch match;
+        for (auto &paramName : parameterNames){
+            if (std::regex_search(paramName, match, rgx)){
+                fixedParamFullNames.push_back(paramName);
+            }
+
+        }
+
+    }
+    return fixedParamFullNames;
+
+}

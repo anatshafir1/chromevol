@@ -80,6 +80,7 @@ bool ChromEvolOptions::heteroBootstrappingMode_;
 std::unordered_map<std::string, string> ChromEvolOptions::sharedTraitParams_;
 int ChromEvolOptions::numOfTraitConstraints_;
 bool ChromEvolOptions::computeExpectations_;
+bool ChromEvolOptions::fixedTraitRootFreqs_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -152,6 +153,7 @@ void ChromEvolOptions::initDefaultParameters(){
     heteroBootstrappingMode_ = false;
     numOfTraitConstraints_ = 0;
     computeExpectations_ = true;
+    fixedTraitRootFreqs_ = false;
     
     
 
@@ -303,6 +305,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     if (numberOfTraitStates_ == 0){
         return;
     }
+    fixedTraitRootFreqs_ = ApplicationTools::getBooleanParameter("_fixedTraitRootFreqs", ChromEvol.getParams(), fixedTraitRootFreqs_, "", true, 0);
     for (size_t i = 0; i < static_cast<size_t>(numberOfTraitStates_); i++){
         //if (equalTraitFreqs_){
         traitParams_["pi"+ std::to_string(i)] = ApplicationTools::getDoubleParameter("_pi"+ std::to_string(i), ChromEvol.getParams(), 1/numberOfTraitStates_, "", true, 0);
@@ -354,6 +357,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
         throw Exception("ERROR!!! No trait model was specified!!!");
     }
     numOfTraitConstraints_ = ApplicationTools::getIntParameter("_numOfTraitConstraints", ChromEvol.getParams(), numOfTraitConstraints_, "", true, 0);
+    setFixedParametersTrait(ChromEvol);
 
     runOnlyJointModel_ = ApplicationTools::getBooleanParameter("_runOnlyJointModel", ChromEvol.getParams(), runOnlyJointModel_, "", true, 0);
     runOnlyIndependentModelWithTrait_ = ApplicationTools::getBooleanParameter("_runOnlyIndependentModelWithTrait", ChromEvol.getParams(), runOnlyIndependentModelWithTrait_, "", true, 0);

@@ -258,7 +258,7 @@ void JointTraitChromosomeLikelihood::printLikParameters(unsigned int optimized, 
 
 
 
-void JointTraitChromosomeLikelihood::optimize(double tol, uint numOfIterations, uint numberOfIterationsPerOneOptimization, std::map<uint, uint>& baseNumberBounds, const string &baseNumberOptimizationMethod){
+void JointTraitChromosomeLikelihood::optimize(double tol, uint numOfIterations, uint numberOfIterationsPerOneOptimization, std::map<uint, uint>& baseNumberBounds, const string &baseNumberOptimizationMethod, bool fixedTraitRootFreq, vector<string> &fixedTraitParams){
 
     // initializing the likelihood values
     
@@ -266,6 +266,7 @@ void JointTraitChromosomeLikelihood::optimize(double tol, uint numOfIterations, 
     std::map<uint, std::vector<std::string>> paramsPerModel;
     LikelihoodUtils::separateBetweenModels(this, traitModel_, paramsPerModel);
     std::vector<string> traitParamNames = paramsPerModel[1];
+    auto fixed_params_names = getTraitFixedParamFullNames(traitParamNames, fixedTraitParams, fixedTraitRootFreq);
     std::vector<string> chromosomeParamNames = paramsPerModel[2];
     // setting maps of parameter type and the corresponding parameters, and vice versa
     std::map<int, std::map<uint, std::vector<string>>> typeWithParamNames;//parameter type, num of model, related parameters
@@ -284,7 +285,7 @@ void JointTraitChromosomeLikelihood::optimize(double tol, uint numOfIterations, 
         std::cout << "*** Optimizing trait parameters ... " << std::endl;
 
         traitOptimization_ =true;
-        optimizeTraitModel<JointPhyloLikelihood>(static_cast<JointPhyloLikelihood*>(this), tol, numberOfIterationsPerOneOptimization, traitParamNames, fixedParamsTrait_);
+        optimizeTraitModel<JointPhyloLikelihood>(static_cast<JointPhyloLikelihood*>(this), tol, numberOfIterationsPerOneOptimization, traitParamNames, fixed_params_names);
         
 
         //optimizeChromosomeModel(f, tol, numberOfIterationsPerOneOptimization, optimizer, chromosomeParamNames, typeWithParamNames, paramNameAndType);

@@ -57,7 +57,13 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::map<string, double> trai
   std::shared_ptr<DiscreteDistribution> rdistTrait = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));  
   Context contextT = Context();
   const IntegerAlphabet* traitAlpha = dynamic_cast<const IntegerAlphabet*>(vscTrait_->getAlphabet());
-  vector<double> freqVals = getFrequenciesFromMapOfParams(traitModelParams, random); 
+  vector<double> freqVals;
+  if (fixedTraitRootFreq_){
+    freqVals = getFrequenciesFromMapOfParams(traitModelParams, false); 
+  }else{
+    freqVals = getFrequenciesFromMapOfParams(traitModelParams, random); 
+
+  }
   shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
   std::shared_ptr<CharacterSubstitutionModel> model = LikelihoodUtils::setTraitModel(traitAlpha, freqs);
   
@@ -232,7 +238,12 @@ size_t ChromosomeTraitOptimizer::getNumberOfParametersJointLikelihood(){
   std::vector<string> chromosomeParamNames = paramsPerModel[2];
   size_t numOfAllParams = traitParamNames.size() + chromosomeParamNames.size();
   size_t fixedChromosomeParams = LikelihoodUtils::getNumberOfFixedParams(vectorOfJointLikelohoods_[0]->getPhylo2(), fixedParams_);
-  size_t numOfActualParams = numOfAllParams-fixedTraitParams_.size()-fixedChromosomeParams;
+  size_t fixedRootFreqParams = 0;
+  if (fixedTraitRootFreq_){
+    fixedRootFreqParams += ChromEvolOptions::numberOfTraitStates_-1;
+
+  }
+  size_t numOfActualParams = numOfAllParams - fixedTraitParams_.size() - fixedRootFreqParams - fixedChromosomeParams;
   return numOfActualParams;
 }
 /*********************************************************************************************/
@@ -246,7 +257,12 @@ size_t ChromosomeTraitOptimizer::getNumberOfParametersNull(){
   fillTraitParameters(traitPrefix, parameterNames, traitParamNames);
   size_t totalNumOfTraitParams = traitParamNames.size();
   size_t totalNumberOfChromosomeParameters = optimizedChromosomeLikelihood_->getSubstitutionModelParameters().size();
-  size_t numOfActualParams = totalNumOfTraitParams + totalNumberOfChromosomeParameters - fixedChromosomeParams - fixedTraitParams_.size();
+  size_t fixedRootFreqParams = 0;
+  if (fixedTraitRootFreq_){
+    fixedRootFreqParams += ChromEvolOptions::numberOfTraitStates_-1;
+
+  }
+  size_t numOfActualParams = totalNumOfTraitParams + totalNumberOfChromosomeParameters - fixedChromosomeParams - fixedTraitParams_.size() - fixedRootFreqParams;
   return numOfActualParams;
 }
 /*********************************************************************************************/
@@ -260,6 +276,7 @@ void ChromosomeTraitOptimizer::optimizeIndependentLikelihood(){
   std::cout << "******************************************************" << std::endl;
   auto params = vectorOfLikelihoodsTrait_[0]->getSubstitutionModelParameters();
   std::vector<string> parameterNames = params.getParameterNames();
+  auto fixed_params_names = getTraitFixedParamFullNames(parameterNames, fixedTraitParams_, fixedTraitRootFreq_);
 
   for (size_t i = 0; i < numOfIterations_.size(); i++){
     if (i > 0){
@@ -272,7 +289,7 @@ void ChromosomeTraitOptimizer::optimizeIndependentLikelihood(){
       std::cout << "Optimizing point #" << j << "..." << std::endl;
       if (numOfIterations_[i] > 0){
         // (T* lik, double tol, uint numOfIterations, std::vector<string> &traitParamNames, std::vector<string> &fixedParamsTrait)
-        optimizeTraitModel<SingleProcessPhyloLikelihood>(vectorOfLikelihoodsTrait_[j], tolerance_, numOfIterations_[i], parameterNames, fixedTraitParams_);
+        optimizeTraitModel<SingleProcessPhyloLikelihood>(vectorOfLikelihoodsTrait_[j], tolerance_, numOfIterations_[i], parameterNames, fixed_params_names);
         //vectorOfJointLikelohoods_[j]->optimize(tolerance_, 1, numOfIterationInBetween_, baseNumberUpperBound_, baseNumOptimizationMethod_);
       }
 
@@ -314,7 +331,15 @@ void ChromosomeTraitOptimizer::initTraitLikelihood(std::map<string, double> &tra
   const IntegerAlphabet* traitAlpha = dynamic_cast<const IntegerAlphabet*>(vscTrait_->getAlphabet());
   std::shared_ptr<DiscreteDistribution> rdistTrait = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
 
-  vector<double> freqVals = getFrequenciesFromMapOfParams(traitParams, random); 
+  vector<double> freqVals;
+  if (fixedTraitRootFreq_){
+    freqVals = getFrequenciesFromMapOfParams(traitParams, false); 
+
+  }else{
+    freqVals = getFrequenciesFromMapOfParams(traitParams, random); 
+
+  }
+  
   shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
   std::shared_ptr<CharacterSubstitutionModel> characterModel = LikelihoodUtils::setTraitModel(traitAlpha, freqs);
   
@@ -448,10 +473,10 @@ void ChromosomeTraitOptimizer::setParametersToNewTraitModel(std::map<string, dou
     auto paramName = it->first;
     string prefix = "pi";
     if (paramName.compare(0, prefix.length(), prefix) != 0){
-      if (random){
+      if ((random) && (std::find(fixedTraitParams_.begin(), fixedTraitParams_.end(), paramName) == fixedTraitParams_.end())){
         auto value = RandomTools::giveRandomNumberBetweenTwoPoints(1e-3, 100);
         traitModel->setParameterValue(paramName, value);
-      }else{
+      }else{ // if not random or the parameter is fixed
         traitModel->setParameterValue(paramName, traitModelParams[paramName]);
       }
     }
@@ -474,7 +499,7 @@ void ChromosomeTraitOptimizer::optimizeJointLikelihood()
       //If the number of optimization iterations is larger than zero, optimize the number of times as specified
       std::cout << "Optimizing point #" << j << "..." << std::endl;
       if (numOfIterations_[i] > 0){
-        vectorOfJointLikelohoods_[j]->optimize(tolerance_, numOfIterations_[i], numOfIterationInBetween_, baseNumberUpperBound_, baseNumOptimizationMethod_);
+        vectorOfJointLikelohoods_[j]->optimize(tolerance_, numOfIterations_[i], numOfIterationInBetween_, baseNumberUpperBound_, baseNumOptimizationMethod_, fixedTraitRootFreq_, fixedTraitParams_);
       }
 
     }

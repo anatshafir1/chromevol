@@ -144,7 +144,7 @@ public:
   //void optimizeTraitModel(double tol, uint numOfIterations, std::vector<string> &traitParamNames, std::vector<string> &fixedParamsTrait);
   //void optimizeChromosomeModel(DerivableSecondOrder* f, double tol, uint numOfIterations, BrentOneDimension* optimizer, std::vector<string> &chromosomeParamNames, std::map<int, std::map<uint, std::vector<string>>> &typeWithParamNames, std::map<string, std::pair<int, uint>> &paramNameAndType);
   void optimizeChromosomeModel(double tol, uint numOfIterations, std::vector<string> &chromosomeParamNames, std::map<int, std::map<uint, std::vector<string>>> &typeWithParamNames, std::map<string, std::pair<int, uint>> &paramNameAndType, std::map<uint, uint> &baseNumberBounds, const string &baseNumOptimizationMethod);
-  void optimize(double tol, uint numOfIterations, uint numberOfIterationsPerOneOptimization, std::map<uint, uint> &baseNumberBounds, const string &baseNumOptimizationMethod);
+  void optimize(double tol, uint numOfIterations, uint numberOfIterationsPerOneOptimization, std::map<uint, uint> &baseNumberBounds, const string &baseNumOptimizationMethod, bool fixedRootFreqs, vector<string> &fixedTraitParams);
   void setSharedParams(std::map<int, std::vector<std::pair<uint, int>>> &sharedParamsChromosome){
     sharedParamsChromosome_ = sharedParamsChromosome;
   }

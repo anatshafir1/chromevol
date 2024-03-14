@@ -379,7 +379,7 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
             maxBaseNumTransition[i] = chrRange_.at(1);
         }
     }
-    ChromosomeTraitOptimizer* opt = new ChromosomeTraitOptimizer(tree_,alphabet_, chromsomeVsc, traitVsc, maxBaseNumTransition,ChromEvolOptions::traitStateModel_, ChromEvolOptions::NumOfSimulations_,weightedFreqs, false,
+    ChromosomeTraitOptimizer* opt = new ChromosomeTraitOptimizer(tree_,alphabet_, chromsomeVsc, traitVsc, maxBaseNumTransition,ChromEvolOptions::traitStateModel_, ChromEvolOptions::NumOfSimulations_,weightedFreqs, ChromEvolOptions::fixedTraitRootFreqs_,
                 parsimonyBound,
                 ChromEvolOptions::fixedTraitParams_);
     opt->initOptimizer(ChromEvolOptions::OptPointsNum_, ChromEvolOptions::OptIterNum_, ChromEvolOptions::baseNumOptimizationMethod_, ChromEvolOptions::tolerance_);
