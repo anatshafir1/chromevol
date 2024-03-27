@@ -149,51 +149,52 @@ void StochasticMappingUtils::printMappingStretchedBranches(const string &stretch
 }
 /**************************************************************************************/
 void StochasticMappingUtils::fixFailedMappings(PhyloTree* tree, StochasticMapping* stm, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched, size_t numOfFixingMappingIterations){
-    auto failedNodesWithMappings = stm->getFailedNodes();
-    std::cout << "*** Stochastic mapping: failed nodes before heuristics ***"<< std:: endl;
-    auto it = failedNodesWithMappings.begin();
-    while (it != failedNodesWithMappings.end()){
-        if (tree->isLeaf(it->first)){
-            std::cout << (tree->getNode(it->first))->getName() <<": ";
-        }else{
-            std::cout << "N" << it->first << ": ";
-        }
-        for (size_t m = 0; m < failedNodesWithMappings[it->first].size(); m++){
-            if (m == failedNodesWithMappings[it->first].size()-1){
-                std::cout << failedNodesWithMappings[it->first][m] << std::endl;
+    throw Exception("StochasticMappingUtils::fixFailedMappings(): Need to re-implement due to changes in the tryToReplaceMapping() function signature!");
+    // auto failedNodesWithMappings = stm->getFailedNodes();
+    // std::cout << "*** Stochastic mapping: failed nodes before heuristics ***"<< std:: endl;
+    // auto it = failedNodesWithMappings.begin();
+    // while (it != failedNodesWithMappings.end()){
+    //     if (tree->isLeaf(it->first)){
+    //         std::cout << (tree->getNode(it->first))->getName() <<": ";
+    //     }else{
+    //         std::cout << "N" << it->first << ": ";
+    //     }
+    //     for (size_t m = 0; m < failedNodesWithMappings[it->first].size(); m++){
+    //         if (m == failedNodesWithMappings[it->first].size()-1){
+    //             std::cout << failedNodesWithMappings[it->first][m] << std::endl;
 
-            }else{
-                std::cout << failedNodesWithMappings[it->first][m] <<", ";
-            }
+    //         }else{
+    //             std::cout << failedNodesWithMappings[it->first][m] <<", ";
+    //         }
             
-        }
-        it++;
-    }
-    std::cout << "******End of unrepresented nodes*********" << std::endl;
-    vector <uint> failedNodes = getVectorOfMapKeys(failedNodesWithMappings);
-    for (size_t i = 0; i < failedNodes.size(); i++){
-        auto mappings = failedNodesWithMappings[failedNodes[i]];
-        for (size_t j = 0; j < mappings.size(); j++){
-            auto branchPtr = tree->getIncomingEdges(tree->getNode(failedNodes[i]))[0];
-            double original_branch_length = branchPtr->getLength();
-            auto branchLength = original_branch_length;
-            for (size_t k = 0; k < MAX_ITER_HEURISTICS; k++){
-                auto rateToLeave = stm->getRateToLeaveState(failedNodes[i], mappings[j]);
-                if (branchLength * rateToLeave >= 1){
-                    branchLength *= BRANCH_MULTIPLIER_FACTOR;
-                }else{
-                    branchLength *= 1/(rateToLeave*branchLength);
-                }
+    //     }
+    //     it++;
+    // }
+    // std::cout << "******End of unrepresented nodes*********" << std::endl;
+    // vector <uint> failedNodes = getVectorOfMapKeys(failedNodesWithMappings);
+    // for (size_t i = 0; i < failedNodes.size(); i++){
+    //     auto mappings = failedNodesWithMappings[failedNodes[i]];
+    //     for (size_t j = 0; j < mappings.size(); j++){
+    //         auto branchPtr = tree->getIncomingEdges(tree->getNode(failedNodes[i]))[0];
+    //         double original_branch_length = branchPtr->getLength();
+    //         auto branchLength = original_branch_length;
+    //         for (size_t k = 0; k < MAX_ITER_HEURISTICS; k++){
+    //             auto rateToLeave = stm->getRateToLeaveState(failedNodes[i], mappings[j]);
+    //             if (branchLength * rateToLeave >= 1){
+    //                 branchLength *= BRANCH_MULTIPLIER_FACTOR;
+    //             }else{
+    //                 branchLength *= 1/(rateToLeave*branchLength);
+    //             }
 
-                bool success = stm->tryToReplaceMapping(branchLength, failedNodes[i], mappings[j], numOfFixingMappingIterations);
-                if (success){
-                    stm->removeFailedNodes(failedNodes[i], mappings[j]);
-                    originalBrLenVsStretched[failedNodes[i]][mappings[j]] = std::pair<double, double>(original_branch_length, branchLength);
-                    break;
-                }
-            }           
-        }
-    }
+    //             bool success = stm->tryToReplaceMapping(branchLength, failedNodes[i], mappings[j], numOfFixingMappingIterations);
+    //             if (success){
+    //                 stm->removeFailedNodes(failedNodes[i], mappings[j]);
+    //                 originalBrLenVsStretched[failedNodes[i]][mappings[j]] = std::pair<double, double>(original_branch_length, branchLength);
+    //                 break;
+    //             }
+    //         }           
+    //     }
+    // }
 }
 /**************************************************************************************/
 void StochasticMappingUtils::printRootToLeaf(PhyloTree* tree, ChromosomeAlphabet* alphabet, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafOccurrences, std::map<uint, std::map<size_t, bool>> &presentMapping, size_t numOfMappings, const NonHomogeneousSubstitutionProcess* NonHomoProcess, const string &resultsDir){
