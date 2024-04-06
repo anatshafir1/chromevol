@@ -54,12 +54,12 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::map<string, double> trai
   //bool traitWeightedFrequencies = true;
   std::shared_ptr<BranchModel> traitModel;
   std::vector<uint> modelNodesTrait;
-  std::shared_ptr<DiscreteDistribution> rdistTrait = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));  
+  std::shared_ptr<DiscreteDistribution> rdistTrait = make_shared<GammaDiscreteRateDistribution>(1, 1.0);
   Context contextT = Context();
   const IntegerAlphabet* traitAlpha = dynamic_cast<const IntegerAlphabet*>(vscTrait_->getAlphabet());
   vector<double> freqVals;
   if (fixedTraitRootFreq_){
-    freqVals = getFrequenciesFromMapOfParams(traitModelParams, false); 
+    freqVals = getFrequenciesFromMapOfParams(traitModelParams, false);
   }else{
     freqVals = getFrequenciesFromMapOfParams(traitModelParams, random); 
 
@@ -96,7 +96,6 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::map<string, double> trai
   }
   auto treeChr = stm->createExpectedMappingHistory(numberOfStochasticMappings_);
   // creating the chromosome number model
-  auto rdistC = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
   std::map<uint, vector<uint>> mapModelNodesIds = getNodesForEachModel(treeChr, stm);
   delete stm;
   std::shared_ptr<ParametrizablePhyloTree> parTreeChr;
@@ -156,8 +155,8 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::map<string, double> trai
   // Now setting the joint likelihood object
     // Likelihoods
   SubstitutionProcess* sP1c=nsubProT->clone();
-  SubstitutionProcess* sP2c=subProcess->clone(); // no need to clone again- it was already cloned.
-  delete subProcess;
+  SubstitutionProcess* sP2c= subProcess;//subProcess->clone(); // no need to clone again- it was already cloned.
+  //delete subProcess;
   auto pc(std::make_shared<PhyloLikelihoodContainer>(*context, *modelColl));
 
 

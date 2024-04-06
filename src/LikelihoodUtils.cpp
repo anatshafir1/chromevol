@@ -680,6 +680,34 @@ void LikelihoodUtils::setParamsNameInForMultiProcess(std::map<uint, std::map<int
     }
 
 }
+/**********************************************************************************************/
+void LikelihoodUtils::aliasParametersInSubstitutionProcess(std::map<uint, std::map<int, vector<string>>> &mapOfParamsNamesPerModelType, std::map<int, vector<std::pair<uint, int>>>* updatedSharedParams, NonHomogeneousSubstitutionProcess* process){
+    std::map<uint, std::map<int, vector<string>>> mapOfUpdatedParamNames;
+    auto paramNumIt = updatedSharedParams->begin();
+    while (paramNumIt != updatedSharedParams->end()){
+        auto paramNum = paramNumIt->first;
+        auto pairsOfModelsAndTypes = (*updatedSharedParams)[paramNum]; // vector<pair<uint, int>>
+        if (pairsOfModelsAndTypes.size() < 2){
+            paramNumIt ++;
+            continue;
+        }
+        uint firstModel = pairsOfModelsAndTypes[0].first;// vector<pair<uint, int>>[0]-> pair<uint, int>.first->uint
+        int type = pairsOfModelsAndTypes[0].second;
+        
+        auto parametersOfFirstModel = mapOfParamsNamesPerModelType[firstModel][type];
+        mapOfUpdatedParamNames[firstModel][type] = parametersOfFirstModel;
+        for (size_t i = 1; i < pairsOfModelsAndTypes.size(); i++){ 
+            uint modelToAlias = pairsOfModelsAndTypes[i].first;
+            int typeToAlias = pairsOfModelsAndTypes[i].second;
+            auto paramsToAlias = mapOfParamsNamesPerModelType[modelToAlias][typeToAlias]; 
+            for (size_t j = 0; j < paramsToAlias.size(); j++){
+                process->aliasParameters(parametersOfFirstModel[j],paramsToAlias[j]);
+
+            }           
+        }
+        paramNumIt ++;
+    }
+}
 
 
 /**********************************************************************************************/
@@ -758,10 +786,12 @@ SubstitutionProcess* LikelihoodUtils::setChromosomeSubstitutionModel(const Phylo
             models->push_back(chrModel);
         }
     }
-    LikelihoodUtils::aliasParametersInSubstitutionProcess(mapOfParamsNamesPerModelType, updatedSharedParams, subProSim);
+    //LikelihoodUtils::aliasParametersInSubstitutionProcess(mapOfParamsNamesPerModelType, updatedSharedParams, subProSim);
 
 
     SubstitutionProcess* nsubPro= subProSim->clone();
+    auto nonhomoProcess = dynamic_cast<NonHomogeneousSubstitutionProcess*>(nsubPro);
+    LikelihoodUtils::aliasParametersInSubstitutionProcess(mapOfParamsNamesPerModelType, updatedSharedParams, nonhomoProcess);
     return nsubPro;
 
 }
