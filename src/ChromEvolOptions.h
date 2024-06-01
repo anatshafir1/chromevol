@@ -122,6 +122,9 @@ public:
     static int numOfTraitConstraints_;
     static bool computeExpectations_;
     static bool fixedTraitRootFreqs_;
+    static int fixedRootTraitState_;
+    static bool weightedTraitRootFreqs_;
+    static string traitDataForSimulation_;
 
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);

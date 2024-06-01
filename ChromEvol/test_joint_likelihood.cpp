@@ -9,9 +9,11 @@
 #include "ChromosomeNumberOptimizer.h"
 #include "JointTraitChromosomeLikelihood.h"
 #include <Bpp/Numeric/Random/RandomTools.h>
+#include <Bpp/Numeric/Function/BrentOneDimension.h>
 #include <iostream>
 #include <fstream>
 #include <regex>
+#include <cmath>
 
 using namespace bpp;
 using namespace std;
@@ -89,16 +91,16 @@ using namespace std;
 // }
 
 
-// void getTraitNodes(std::shared_ptr<PhyloTree> tree, vector<uint> &modelNodes){
-//   auto nodes = tree->getAllNodes();
-//   for (size_t i = 0; i < nodes.size(); i++){
-//     auto nodeId = tree->getNodeIndex(nodes[i]);
-//     if (nodeId == tree->getRootIndex()){
-//       continue;
-//     }
-//     modelNodes.push_back(nodeId);
-//   }
-// }
+void getTraitNodes(std::shared_ptr<PhyloTree> tree, vector<uint> &modelNodes){
+  auto nodes = tree->getAllNodes();
+  for (size_t i = 0; i < nodes.size(); i++){
+    auto nodeId = tree->getNodeIndex(nodes[i]);
+    if (nodeId == tree->getRootIndex()){
+      continue;
+    }
+    modelNodes.push_back(nodeId);
+  }
+}
 // std::shared_ptr<TwoParameterBinarySubstitutionModel> initBinaryTraitModel(double pi0, double mu, std::shared_ptr<PhyloTree> phyloTree){
 //   std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*phyloTree);
 //   const BinaryAlphabet* alphabet = new BinaryAlphabet();
@@ -215,19 +217,19 @@ using namespace std;
 
 // }
 // /****************************************************************************************/
-// void setParametersToNewTraitModel(std::map<string, double> &traitModelParams, std::shared_ptr<CharacterSubstitutionModel> traitModel, shared_ptr<IntegerFrequencySet> freqs){
-//   traitModel->setFrequencySet(*freqs);
-//   auto it = traitModelParams.begin();
-//   while (it != traitModelParams.end()){
-//     auto paramName = it->first;
-//     string prefix = "pi";
-//     if (paramName.compare(0, prefix.length(), prefix) != 0){
-//       traitModel->setParameterValue(paramName, traitModelParams[paramName]);
+void setParametersToNewTraitModel(std::map<string, double> &traitModelParams, std::shared_ptr<CharacterSubstitutionModel> traitModel, shared_ptr<IntegerFrequencySet> freqs){
+  traitModel->setFrequencySet(*freqs);
+  auto it = traitModelParams.begin();
+  while (it != traitModelParams.end()){
+    auto paramName = it->first;
+    string prefix = "pi";
+    if (paramName.compare(0, prefix.length(), prefix) != 0){
+      traitModel->setParameterValue(paramName, traitModelParams[paramName]);
       
-//     }
-//     it ++;
-//   }
-// }
+    }
+    it ++;
+  }
+}
 // /****************************************************************************************/
 // void getBaseNumCandidates(std::vector <unsigned int> &baseNumCandidates, std::shared_ptr<VectorSiteContainer> seqData){
 //     size_t numOfSequences = seqData->getNumberOfSequences();
@@ -276,21 +278,21 @@ using namespace std;
 
 // }
 // /****************************************************************************************/
-// std::shared_ptr<CharacterSubstitutionModel> setTraitModel(const IntegerAlphabet* traitAlpha, shared_ptr<IntegerFrequencySet> freqset, std::string modelName){
-//     if (modelName == "singleRate"){
-//         return std::make_shared<SingleRateModel>(traitAlpha, freqset, false);
-//     }else if (modelName == "symPairRate"){
-//         return std::make_shared<RatePerPairSymModel>(traitAlpha, freqset, false);
-//     }else if (modelName == "pairRateModel"){
-//         return std::make_shared<RatePerPairModel>(traitAlpha, freqset, false);
-//     }else if (modelName == "ratePerEntry"){
-//         return std::make_shared<RatePerEntryModel>(traitAlpha, freqset, false);
-//     }else if (modelName == "ratePerExit"){
-//         return std::make_shared<RatePerExitModel>(traitAlpha, freqset, false);
-//     }else{
-//         throw Exception("ERROR!!! LikelihoodUtils::setTraitModel(): No such trait model exists!!!");
-//     }
-// }
+std::shared_ptr<CharacterSubstitutionModel> setTraitModel(const IntegerAlphabet* traitAlpha, shared_ptr<IntegerFrequencySet> freqset, std::string modelName){
+    if (modelName == "singleRate"){
+        return std::make_shared<SingleRateModel>(traitAlpha, freqset, false);
+    }else if (modelName == "symPairRate"){
+        return std::make_shared<RatePerPairSymModel>(traitAlpha, freqset, false);
+    }else if (modelName == "pairRateModel"){
+        return std::make_shared<RatePerPairModel>(traitAlpha, freqset, false);
+    }else if (modelName == "ratePerEntry"){
+        return std::make_shared<RatePerEntryModel>(traitAlpha, freqset, false);
+    }else if (modelName == "ratePerExit"){
+        return std::make_shared<RatePerExitModel>(traitAlpha, freqset, false);
+    }else{
+        throw Exception("ERROR!!! LikelihoodUtils::setTraitModel(): No such trait model exists!!!");
+    }
+}
 
 // /****************************************************************************************/
 // void testMulti1(std::map<string, double> traitModelParams, std::shared_ptr<PhyloTree> tree){
@@ -450,77 +452,626 @@ using namespace std;
 //   }
 
 // }
+SubstitutionProcess* setChromosomeSubstitutionModel(const PhyloTree* tree, const VectorSiteContainer* vsc, const ChromosomeAlphabet* alphabet, std::map<uint, uint> baseNumberUpperBound, std::map<uint, vector<uint>> &mapModelNodesIds, std::map<uint, pair<int, std::map<int, std::vector<double>>>> &modelParams, uint numOfModels, std::map<int, vector<std::pair<uint,int>>>* updatedSharedParams, bool weightedRootFreqs, vector<std::shared_ptr<ChromosomeSubstitutionModel>>* models, std::shared_ptr<ParametrizablePhyloTree> parTree, vector<int> &rateChangeType){
+    std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+    if (parTree == nullptr){
+        parTree = std::make_shared<ParametrizablePhyloTree>(*tree);
+
+    }
+    //std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*tree);
+    std::map<uint, std::map<int, vector<string>>> mapOfParamsNamesPerModelType;
+    LikelihoodUtils::setParamsNameInForMultiProcess(mapOfParamsNamesPerModelType, modelParams);
+    std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
+    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet, modelParams[1].second, modelParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType);
+    if (weightedRootFreqs){
+        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree);
+
+    }else{
+        vector <double> rootFreqs = LikelihoodUtils::setFixedRootFrequencies(ChromEvolOptions::fixedFrequenciesFilePath_, chrModel);
+        std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqs);
+        std::shared_ptr<FrequencySet> rootFrequencies = static_pointer_cast<FrequencySet>(rootFreqsFixed);
+        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
+    }
+    
+    // adding models
+    for (uint i = 1; i <= numOfModels; i++){
+        if (i > 1){
+            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet, modelParams[i].second, modelParams[i].first, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType);
+        }   
+        subProSim->addModel(chrModel, mapModelNodesIds[i]);
+        if (models){
+            models->push_back(chrModel);
+        }
+    }
+    //LikelihoodUtils::aliasParametersInSubstitutionProcess(mapOfParamsNamesPerModelType, updatedSharedParams, subProSim);
+
+
+    SubstitutionProcess* nsubPro= subProSim->clone();
+    auto nonhomoProcess = dynamic_cast<NonHomogeneousSubstitutionProcess*>(nsubPro);
+    LikelihoodUtils::aliasParametersInSubstitutionProcess(mapOfParamsNamesPerModelType, updatedSharedParams, nonhomoProcess);
+    return nsubPro;
+
+}
+std::map <uint, std::vector<uint>> getNodesForEachModel(std::shared_ptr<PhyloTree> expectedMapping, StochasticMapping* stm){
+  std::map <uint, std::vector<uint>> nodeModels;
+  auto nodes = expectedMapping->getAllNodes();
+  for (size_t i = 0; i < nodes.size(); i ++){
+    uint nodeId = expectedMapping->getNodeIndex(nodes[i]);
+    int nodeState = stm->getNodeState(nodes[i]);
+    if (!(expectedMapping->isLeaf(nodeId))){
+      auto sons = expectedMapping->getSons(nodeId);
+      for (size_t j = 0; j < sons.size(); j++){
+        // add +1 so that it will work for the general function that constructs the heterogeneous model
+        nodeModels[static_cast<uint>(nodeState)+1].push_back(sons[j]);
+      }
+    }
+  }
+  return nodeModels;
+}
+
+
+/**************************************************************************************************************************************/
+uint getMaxBaseNumAmongModels(std::map<uint, uint> baseNumberUpperBound) {
+    auto it = baseNumberUpperBound.begin();
+    uint maxBaseNumBound = 0;
+    while(it != baseNumberUpperBound.end()){
+        if (baseNumberUpperBound[it->first] > maxBaseNumBound){
+            maxBaseNumBound = baseNumberUpperBound[it->first];
+        }
+        it ++;
+    }
+    return maxBaseNumBound;
+}
+/******************************************************************************************/
+void printLikelihoodParameters(SingleProcessPhyloLikelihood* lik, unsigned int optimized, vector<string> paramsNames){
+
+ 
+    for (int i = 0; i < (int)(paramsNames.size()); i++){
+        if (paramsNames[i].find("Chromosome.baseNum_") != std::string::npos){
+            std::cout << paramsNames[i] << " = " << (int)(lik->getParameter(paramsNames[i]).getValue()) << std::endl;
+        }else{
+            std::cout << paramsNames[i] << " = " << lik->getParameter(paramsNames[i]).getValue() << std::endl;
+
+        }    
+    }
+    std::cout <<  "***" << std::endl;
+
+}
+/******************************************************************************************/
+void optimizeTraitModel(SingleProcessPhyloLikelihood* lik, double tol, uint numOfIterations, std::vector<string> &traitParamNames, std::vector<string> &fixedParamsTrait){
+    DerivableSecondOrder* f = lik;
+    BrentOneDimension* optimizer = new BrentOneDimension(f);
+    optimizer->setVerbose(1);
+    optimizer->setProfiler(0);
+    optimizer->setMessageHandler(0);
+    optimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO);
+    optimizer->setMaximumNumberOfEvaluations(100);
+    // setting bracketing for Brent optimization
+    optimizer->setBracketing(BrentOneDimension::BRACKET_INWARD);
+    ParameterList params;
+    double currentLikelihood = lik->getValue();
+    double prevLikelihood;
+    std::cout << "Optimizing trait model ...." << std::endl;
+    for (size_t i = 0; i < numOfIterations; i++){
+        std::cout << "Iteration #" << i << std::endl;
+        for (size_t j = 0; j < traitParamNames.size(); j++){
+            prevLikelihood = currentLikelihood;
+            params = lik->getParameters();
+            const string nameOfParam = traitParamNames[j];
+            std::cout << "Previous value of " << nameOfParam  << " is: "+ std::to_string(params.getParameter(nameOfParam).getValue()) << std::endl;
+            if (std::count(fixedParamsTrait.begin(), fixedParamsTrait.end(), nameOfParam)){
+                continue;
+            }
+            Parameter param = params.getParameter(nameOfParam);
+            std::cout << "Parameter name is: " << nameOfParam << std::endl;
+            std::shared_ptr<IntervalConstraint> bounds = std::dynamic_pointer_cast<IntervalConstraint>(lik->getParameter(nameOfParam).getConstraint());
+              
+            if ((i == 1) & (numOfIterations > 2)){
+                optimizer->getStopCondition()->setTolerance(tol* 2);
+            }else{
+                optimizer->getStopCondition()->setTolerance(tol);
+            }
+            optimizer->setInitialInterval(bounds->getLowerBound()+0.00001, bounds->getUpperBound()-0.00001); 
+        
+            optimizer->init(params.createSubList(param.getName()));
+            currentLikelihood = optimizer->optimize();
+            std::cout << "parameter value after optimization "+ std::to_string(lik->getParameter(param.getName()).getValue()) << std::endl;
+            std::cout << "***" << std::endl;
+
+        }
+        printLikelihoodParameters(lik, 1, traitParamNames);
+        if (std::abs(prevLikelihood-currentLikelihood) < tol){
+            break;
+        }
+    }
+    delete optimizer;
+
+}
+
+// /***************************************************************************************/
+void getAllPossibleChrRanges(std::vector <unsigned int> &baseNumCandidates, std::shared_ptr<VectorSiteContainer> seqData) {
+    // size_t numOfSequences = seqData->getNumberOfSequences();
+    // unsigned int minRange = 0;
+    // vector <string> sequenceNames = seqData->getSequenceNames();
+    // for (size_t i = 0; i < numOfSequences; i++){
+    //     if (i == numOfSequences-1){
+    //         continue;
+    //     }
+    //     BasicSequence seq1 = seqData->getSequence(sequenceNames[i]);
+    //     int chrNum1 = seq1.getValue(0);
+    //     if (chrNum1 == -1){
+    //         continue;
+    //     }
+    //     for (size_t j = i + 1; j < numOfSequences; j++){
+    //         BasicSequence seq2 = seqData->getSequence(sequenceNames[j]);
+    //         int chrNum2 = seq2.getValue(0);
+    //         if (chrNum2 == -1){
+    //             continue;
+    //         }
+    //         unsigned int chrRange = (unsigned int)(std::abs(chrNum1 - chrNum2));
+    //         if (chrRange < 3){
+    //             continue;
+    //         }
+
+    //         if (!std::count(baseNumCandidates.begin(), baseNumCandidates.end(), chrRange)){
+    //             if (minRange == 0){
+    //                 minRange = chrRange;
+    //             }else{
+    //                 if (chrRange < minRange){
+    //                     minRange = chrRange;
+    //                 }
+    //             }
+    //             baseNumCandidates.push_back(chrRange);
+                
+
+    //         }
+
+    //     }
+    // }
+    // if (minRange > 3){
+    //     for (unsigned int i = 3; i < minRange; i++){
+    //         baseNumCandidates.push_back(i);
+    //     }
+
+    // }
+    baseNumCandidates.push_back(3);
+    baseNumCandidates.push_back(15);
+    baseNumCandidates.push_back(9);
+    baseNumCandidates.push_back(12);
+    baseNumCandidates.push_back(6);
+
+}
+/******************************************************/
+void getBaseNumCandidates(vector <unsigned int> &baseNumCandidates, std::map<uint, uint> &baseNumberUpperBounds, std::shared_ptr<VectorSiteContainer> seqData){
+    //uint maxBaseNumCandidate = getMaxBaseNumAmongModels(baseNumberUpperBounds);
+    getAllPossibleChrRanges(baseNumCandidates, seqData);
+
+}
+/******************************************************/
+void testDefault(){
+  double seedUb = 10000000;
+  Newick reader;
+  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("(((S1:0.1,S2:0.1):0.3,S3:0.4):0.2,(S4:0.3,S5:0.3):0.3);", false, "", false, false));
+  RandomTools::setSeed(static_cast<long int>(seedUb));
+
+  std::map<string, double> traitModelParams;
+  traitModelParams["global_rate"] =  2;
+  std::string modelName = "singleRate";
+  std::shared_ptr<NonHomogeneousSubstitutionProcess> subProT;
+  std::shared_ptr<NonHomogeneousSubstitutionProcess> nsubProT;
+  std::shared_ptr<LikelihoodCalculationSingleProcess> likT;
+
+  Context contextT = Context();
+  const IntegerAlphabet* traitAlpha = new IntegerAlphabet(1);
+  vector<double> freqVals;
+  freqVals.push_back(0.3);
+  freqVals.push_back(0.7);
+  
+
+
+  std::shared_ptr<VectorSiteContainer> vscTrait = std::make_shared<VectorSiteContainer>(traitAlpha);
+	vscTrait->addSequence(BasicSequence("S1", "1", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S2", "1", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S3", "0", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S4", "0", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S5", "1", traitAlpha));
+
+
+  std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*pTree);
+
+  //bool traitWeightedFrequencies = true;
+  std::shared_ptr<BranchModel> traitModel;
+  std::vector<uint> modelNodesTrait;
+  std::shared_ptr<DiscreteDistribution> rdistTrait = make_shared<GammaDiscreteRateDistribution>(1, 1.0);
+
+  shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
+  std::shared_ptr<CharacterSubstitutionModel> model = setTraitModel(traitAlpha, freqs, modelName);
+  
+  //ratePerPairModel.setParameterValue("rate_1_0", rateVals(1, 0));
+  setParametersToNewTraitModel(traitModelParams, model, freqs);
+  auto& Q = model->getGenerator();
+  MatrixTools::printForR(Q,"Q",std::cout);
+
+  traitModel = static_pointer_cast<BranchModel>(model);
+  subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
+  getTraitNodes(pTree, modelNodesTrait);
+    
+  subProT->addModel(std::shared_ptr<CharacterSubstitutionModel>(model->clone()), modelNodesTrait);
+  nsubProT = std::shared_ptr<NonHomogeneousSubstitutionProcess>(subProT->clone());
+  string prefix  = traitModel->getNamespace();
+  std::unordered_map<std::string, std::string> sharedTraitParams;
+  int numOfConstraints = 0;
+  //LikelihoodUtils::aliasTraitParams(std::shared_ptr<NonHomogeneousSubstitutionProcess> process, int &numOfTraitConstraints, string &prefix, std::unordered_map<string, string> &sharedTraitParams);
+  LikelihoodUtils::aliasTraitParams(nsubProT, numOfConstraints, prefix, sharedTraitParams);
+  auto traitData = vscTrait->clone();
+
+  likT = std::make_shared<LikelihoodCalculationSingleProcess>(contextT, *traitData, *nsubProT, false);
+  SingleProcessPhyloLikelihood* phyloT = new SingleProcessPhyloLikelihood(contextT, likT);
+  std::cout << "likelihood is: " << phyloT->getValue() << std::endl;// calculate now because it will be needed for stochastic mapping
+  
+  auto params = phyloT->getSubstitutionModelParameters();
+  std::cout <<"Parameters are:" << std::endl;
+  for (size_t i = 0; i < params.size(); i++){
+    std::cout <<"\t" << params[i].getName() << ": " << params[i].getValue() << std::endl;
+
+  }
+  // std::vector<string> parameterNames = params.getParameterNames();
+  // vector<string> fixed_params_names;
+  // optimizeTraitModel(phyloT, 0.1, 5, parameterNames, fixed_params_names);
+  // std::cout << "final likelihood is: " << phyloT->getValue() << std::endl;
+  delete traitAlpha;
+  delete phyloT;
+
+
+}
+/******************************************************/
+void testTraitWeighted(){
+  double seedUb = 10000000;
+  Newick reader;
+  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("(((S1:0.1,S2:0.1):0.3,S3:0.4):0.2,(S4:0.3,S5:0.3):0.3);", false, "", false, false));
+  RandomTools::setSeed(static_cast<long int>(seedUb));
+
+  std::map<string, double> traitModelParams;
+  traitModelParams["global_rate"] = 2.0;
+  std::string modelName = "singleRate";
+  std::shared_ptr<NonHomogeneousSubstitutionProcess> subProT;
+  std::shared_ptr<NonHomogeneousSubstitutionProcess> nsubProT;
+  std::shared_ptr<LikelihoodCalculationSingleProcess> likT;
+
+  Context contextT = Context();
+  const IntegerAlphabet* traitAlpha = new IntegerAlphabet(1);
+  vector<double> freqVals;
+  freqVals.push_back(0.3);
+  freqVals.push_back(0.7);
+  
+
+
+  std::shared_ptr<VectorSiteContainer> vscTrait = std::make_shared<VectorSiteContainer>(traitAlpha);
+	vscTrait->addSequence(BasicSequence("S1", "1", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S2", "1", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S3", "0", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S4", "0", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S5", "1", traitAlpha));
+
+
+  std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*pTree);
+
+  //bool traitWeightedFrequencies = true;
+  std::shared_ptr<BranchModel> traitModel;
+  std::vector<uint> modelNodesTrait;
+  std::shared_ptr<DiscreteDistribution> rdistTrait = make_shared<GammaDiscreteRateDistribution>(1, 1.0);
+
+  shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
+  std::shared_ptr<CharacterSubstitutionModel> model = setTraitModel(traitAlpha, freqs, modelName);
+  
+  //ratePerPairModel.setParameterValue("rate_1_0", rateVals(1, 0));
+  setParametersToNewTraitModel(traitModelParams, model, freqs);
+  auto& Q = model->getGenerator();
+  MatrixTools::printForR(Q,"Q",std::cout);
+
+  traitModel = static_pointer_cast<BranchModel>(model);
+  subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
+  getTraitNodes(pTree, modelNodesTrait);
+    
+  subProT->addModel(std::shared_ptr<CharacterSubstitutionModel>(model->clone()), modelNodesTrait);
+  nsubProT = std::shared_ptr<NonHomogeneousSubstitutionProcess>(subProT->clone());
+  string prefix  = traitModel->getNamespace();
+  std::unordered_map<std::string, std::string> sharedTraitParams;
+  int numOfConstraints = 0;
+  //LikelihoodUtils::aliasTraitParams(std::shared_ptr<NonHomogeneousSubstitutionProcess> process, int &numOfTraitConstraints, string &prefix, std::unordered_map<string, string> &sharedTraitParams);
+  LikelihoodUtils::aliasTraitParams(nsubProT, numOfConstraints, prefix, sharedTraitParams);
+  auto traitData = vscTrait->clone();
+
+  likT = std::make_shared<LikelihoodCalculationSingleProcess>(contextT, *traitData, *nsubProT, true);
+  SingleProcessPhyloLikelihood* phyloT = new SingleProcessPhyloLikelihood(contextT, likT);
+  std::cout << "likelihood is: " << phyloT->getValue() << std::endl;// calculate now because it will be needed for stochastic mapping
+  
+  auto params = phyloT->getSubstitutionModelParameters();
+  std::cout <<"Parameters are:" << std::endl;
+  for (size_t i = 0; i < params.size(); i++){
+    std::cout <<"\t" << params[i].getName() << ": " << params[i].getValue() << std::endl;
+
+  }
+  std::vector<string> parameterNames = params.getParameterNames();
+  vector<string> fixed_params_names;
+  optimizeTraitModel(phyloT, 0.1, 5, parameterNames, fixed_params_names);
+  std::cout << "final likelihood is: " << phyloT->getValue() << std::endl;
+  delete traitAlpha;
+  delete phyloT;
+
+
+}
+void testTraitFixed(){
+  double seedUb = 10000000;
+  Newick reader;
+  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("(((S1:0.1,S2:0.1):0.3,S3:0.4):0.2,(S4:0.3,S5:0.3):0.3);", false, "", false, false));
+  RandomTools::setSeed(static_cast<long int>(seedUb));
+
+  std::map<string, double> traitModelParams;
+  traitModelParams["global_rate"] = 2.0;
+  std::string modelName = "singleRate";
+  std::shared_ptr<NonHomogeneousSubstitutionProcess> subProT;
+  std::shared_ptr<NonHomogeneousSubstitutionProcess> nsubProT;
+  std::shared_ptr<LikelihoodCalculationSingleProcess> likT;
+
+  Context contextT = Context();
+  const IntegerAlphabet* traitAlpha = new IntegerAlphabet(1);
+  vector<double> freqVals;
+  freqVals.push_back(0.3);
+  freqVals.push_back(0.7);
+  
+
+
+  std::shared_ptr<VectorSiteContainer> vscTrait = std::make_shared<VectorSiteContainer>(traitAlpha);
+	vscTrait->addSequence(BasicSequence("S1", "1", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S2", "1", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S3", "0", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S4", "0", traitAlpha));
+	vscTrait->addSequence(BasicSequence("S5", "1", traitAlpha));
+
+
+  std::shared_ptr<ParametrizablePhyloTree> parTree = std::make_shared<ParametrizablePhyloTree>(*pTree);
+
+  //bool traitWeightedFrequencies = true;
+  std::shared_ptr<BranchModel> traitModel;
+  std::vector<uint> modelNodesTrait;
+  std::shared_ptr<DiscreteDistribution> rdistTrait = make_shared<GammaDiscreteRateDistribution>(1, 1.0);
+
+  shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
+  std::shared_ptr<CharacterSubstitutionModel> model = setTraitModel(traitAlpha, freqs, modelName);
+  
+  //ratePerPairModel.setParameterValue("rate_1_0", rateVals(1, 0));
+  setParametersToNewTraitModel(traitModelParams, model, freqs);
+  auto& Q = model->getGenerator();
+  MatrixTools::printForR(Q,"Q",std::cout);
+
+  vector<double> rootFreqVals;
+  rootFreqVals.push_back(1);
+  rootFreqVals.push_back(0);
+  std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(model->getStateMap(), false)), rootFreqVals);
+  std::shared_ptr<FrequencySet> rootFrequenciesFixedRoot = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
+  
+  traitModel = static_pointer_cast<BranchModel>(model);
+  subProT = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree, rootFrequenciesFixedRoot);
+  getTraitNodes(pTree, modelNodesTrait);
+    
+  subProT->addModel(std::shared_ptr<CharacterSubstitutionModel>(model->clone()), modelNodesTrait);
+  nsubProT = std::shared_ptr<NonHomogeneousSubstitutionProcess>(subProT->clone());
+  string prefix  = traitModel->getNamespace();
+  std::unordered_map<std::string, std::string> sharedTraitParams;
+  int numOfConstraints = 0;
+  //LikelihoodUtils::aliasTraitParams(std::shared_ptr<NonHomogeneousSubstitutionProcess> process, int &numOfTraitConstraints, string &prefix, std::unordered_map<string, string> &sharedTraitParams);
+  LikelihoodUtils::aliasTraitParams(nsubProT, numOfConstraints, prefix, sharedTraitParams);
+  auto traitData = vscTrait->clone();
+
+  likT = std::make_shared<LikelihoodCalculationSingleProcess>(contextT, *traitData, *nsubProT, false);
+  SingleProcessPhyloLikelihood* phyloT = new SingleProcessPhyloLikelihood(contextT, likT);
+  std::cout << "Initial likelihood is: " << phyloT->getValue() << std::endl;// calculate now because it will be needed for stochastic mapping
+  
+  auto params = phyloT->getSubstitutionModelParameters();
+  std::cout <<"Parameters are:" << std::endl;
+  for (size_t i = 0; i < params.size(); i++){
+    std::cout <<"\t" << params[i].getName() << ": " << params[i].getValue() << std::endl;
+
+  }
+  std::vector<string> parameterNames = params.getParameterNames();
+  vector<string> fixed_params_names;
+  optimizeTraitModel(phyloT, 0.1, 5, parameterNames, fixed_params_names);
+  std::cout << "final likelihood is: " << phyloT->getValue() << std::endl;
+  delete traitAlpha;
+  delete phyloT;
+}
+/******************************************************/
+void verifyLikWeighted(){
+
+
+  std::map<string, double> traitModelParams;
+  traitModelParams["global_rate"] = 6.6919;
+  std::string modelName = "singleRate";
+
+  const IntegerAlphabet* traitAlpha = new IntegerAlphabet(1);
+  vector<double> freqVals;
+  double freq_0 = 0.438134;
+  freqVals.push_back(freq_0);
+  freqVals.push_back(1-freq_0);
+  
+  shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
+  std::shared_ptr<CharacterSubstitutionModel> model = setTraitModel(traitAlpha, freqs, modelName);
+  setParametersToNewTraitModel(traitModelParams, model, freqs);
+  auto& Q = model->getGenerator();
+  MatrixTools::printForR(Q,"Q",std::cout);
+
+
+  std::map<double, RowMatrix<double>> map_Pijt;
+  vector<double> branchLengths = {0.1, 0.2, 0.3, 0.4};
+  for (auto & branch: branchLengths){
+    map_Pijt[branch] = model->getPij_t(branch);
+  }
+  double L45_0 = map_Pijt[0.3](0, 1)* map_Pijt[0.3](0, 0); // P01*Ls5 * P00Ls4
+  double L45_1 = map_Pijt[0.3](1, 1)* map_Pijt[0.3](1, 0); // P11*Ls5 * P10Ls4
+  double L12_0 = map_Pijt[0.1](0, 1)* map_Pijt[0.1](0, 1); // P01*Ls1 * P01Ls2
+  double L12_1 = map_Pijt[0.1](1, 1)* map_Pijt[0.1](1, 1); // P11*Ls1 * P11Ls2
+
+  double L123_0 = map_Pijt[0.4](0, 0) * ((map_Pijt[0.3](0,0) * L12_0) + (map_Pijt[0.3](0,1) * L12_1)); // (p00(0.3)L12(0) + p01(0.3)L12(1)) * p00(0.4)Ls3(0)
+  double L123_1 = map_Pijt[0.4](1, 0) * ((map_Pijt[0.3](1,0) * L12_0) + (map_Pijt[0.3](1,1) * L12_1)); // (p10(0.3)L12(0) + p11(0.3)L12(1)) * p10(0.4)Ls3(0)
+
+  // (p01(0.2)*L123_1 + p00(0.2)*L123_0) * (p00(0.3)*L45_0 + p01(0.3) * L45_1)
+  double L12345_0 = ((map_Pijt[0.2](0, 1)*L123_1) + (map_Pijt[0.2](0, 0)*L123_0)) * ((map_Pijt[0.3](0, 1) * L45_1) + (map_Pijt[0.3](0, 0) * L45_0));
+  // (p11(0.2)*L123_1 + p10(0.2)*L123_0) * (p11(0.3)*L45_1 + p10(0.3) * L45_0)
+  double L12345_1 = ((map_Pijt[0.2](1, 1)*L123_1) + (map_Pijt[0.2](1, 0)*L123_0)) * ((map_Pijt[0.3](1, 1) * L45_1) + (map_Pijt[0.3](1, 0) * L45_0));
+
+  double f_0 = L12345_0/(L12345_0 + L12345_1);
+  double f_1 = 1 - f_0;
+
+
+  std::cout << "F[0] = " << f_0 << std::endl;
+  std::cout << "F[1] = " << f_1 << std::endl;
+  //double f_0 = 0.3;
+  //double f_1 = 0.7;
+  //double f_0 = 1;
+  //double f_1 = 0;
+
+  auto& Q1 = model->getGenerator();
+  MatrixTools::printForR(Q1,"Q",std::cout);
+
+  double total_lik = (f_0 * L12345_0) + (f_1 * L12345_1);
+  std::cout << "likelihood should be: " << total_lik << std::endl;
+  std::cout << "log likelihood should be: " << std::log(total_lik) << std::endl;
+  delete traitAlpha;
+
+}
 /******************************************************/
 
+void verifyLikFixedFreqs(){
+
+  std::map<string, double> traitModelParams;
+  traitModelParams["global_rate"] = 4.86973;
+  std::string modelName = "singleRate";
+
+  const IntegerAlphabet* traitAlpha = new IntegerAlphabet(1);
+  vector<double> freqVals;
+  double freq_0 = 0.343295;
+  freqVals.push_back(freq_0);
+  freqVals.push_back(1-freq_0);
+  
+  shared_ptr<IntegerFrequencySet> freqs = make_shared<FullIntegerFrequencySet>(traitAlpha, freqVals);
+  std::shared_ptr<CharacterSubstitutionModel> model = setTraitModel(traitAlpha, freqs, modelName);
+  setParametersToNewTraitModel(traitModelParams, model, freqs);
+  auto& Q = model->getGenerator();
+  MatrixTools::printForR(Q,"Q",std::cout);
+
+
+  std::map<double, RowMatrix<double>> map_Pijt;
+  vector<double> branchLengths = {0.1, 0.2, 0.3, 0.4};
+  for (auto & branch: branchLengths){
+    map_Pijt[branch] = model->getPij_t(branch);
+  }
+  double L45_0 = map_Pijt[0.3](0, 1)* map_Pijt[0.3](0, 0); // P01*Ls5 * P00Ls4
+  double L45_1 = map_Pijt[0.3](1, 1)* map_Pijt[0.3](1, 0); // P11*Ls5 * P10Ls4
+  double L12_0 = map_Pijt[0.1](0, 1)* map_Pijt[0.1](0, 1); // P01*Ls1 * P01Ls2
+  double L12_1 = map_Pijt[0.1](1, 1)* map_Pijt[0.1](1, 1); // P11*Ls1 * P11Ls2
+
+  double L123_0 = map_Pijt[0.4](0, 0) * ((map_Pijt[0.3](0,0) * L12_0) + (map_Pijt[0.3](0,1) * L12_1)); // (p00(0.3)L12(0) + p01(0.3)L12(1)) * p00(0.4)Ls3(0)
+  double L123_1 = map_Pijt[0.4](1, 0) * ((map_Pijt[0.3](1,0) * L12_0) + (map_Pijt[0.3](1,1) * L12_1)); // (p10(0.3)L12(0) + p11(0.3)L12(1)) * p10(0.4)Ls3(0)
+
+  // (p01(0.2)*L123_1 + p00(0.2)*L123_0) * (p00(0.3)*L45_0 + p01(0.3) * L45_1)
+  double L12345_0 = ((map_Pijt[0.2](0, 1)*L123_1) + (map_Pijt[0.2](0, 0)*L123_0)) * ((map_Pijt[0.3](0, 1) * L45_1) + (map_Pijt[0.3](0, 0) * L45_0));
+  // (p11(0.2)*L123_1 + p10(0.2)*L123_0) * (p11(0.3)*L45_1 + p10(0.3) * L45_0)
+  double L12345_1 = ((map_Pijt[0.2](1, 1)*L123_1) + (map_Pijt[0.2](1, 0)*L123_0)) * ((map_Pijt[0.3](1, 1) * L45_1) + (map_Pijt[0.3](1, 0) * L45_0));
+
+  double f_0 = 1;
+  double f_1 = 0;
+
+
+  std::cout << "F[0] = " << f_0 << std::endl;
+  std::cout << "F[1] = " << f_1 << std::endl;
+  //double f_0 = 0.3;
+  //double f_1 = 0.7;
+  //double f_0 = 1;
+  //double f_1 = 0;
+
+  auto& Q1 = model->getGenerator();
+  MatrixTools::printForR(Q1,"Q",std::cout);
+
+  double total_lik = (f_0 * L12345_0) + (f_1 * L12345_1);
+  std::cout << "likelihood should be: " << total_lik << std::endl;
+  std::cout << "log likelihood should be: " << std::log(total_lik) << std::endl;
+  delete traitAlpha;
+
+}
 /******************************************************/
 int main(){
-  string simulations_path = "/home/anat/Docs/Sida/simulations";
-  size_t num_of_simulations = 100;
-  double totalNumOfTransitions = 0;
-  std::map<string, double> state_changes;
-  state_changes["gain"] = 0;
-  state_changes["loss"] = 0;
-  state_changes["dupl"] = 0;
-  std::regex states_pattern("from state: (\\d+)[^\\d]+t = [\\d.]+[^\\d]+to state = (\\d+)");
-  for (size_t i = 0; i < num_of_simulations; i++){
-    string evolPath = simulations_path + "/" + std::to_string(i) + '/' + "simulatedEvolutionPaths.txt";
-    std::ifstream file(evolPath); // Open the file
-
-    if (!file.is_open()) {
-        std::cerr << "Error opening file: " << evolPath << std::endl;
-        return 1;
-    }
-
-    // Read the entire file into a string
-    std::string content((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
-    file.close(); 
-    std::regex pattern("Total number of transitions is: (\\d+)");
-    std::smatch matches;
-    if (std::regex_search(content, matches, pattern)) {
-        // Print the matched sentence
-        int numOfTransitions = std::stoi(matches[1]);
-        totalNumOfTransitions += numOfTransitions;
-    } else {
-        std::cerr << "Sentence not found in the text." << std::endl;
-        return 1;
-    }
-
-    // Search for matches in the text
-    std::smatch matches_states_test;
-    if (!(std::regex_search(content, matches_states_test, states_pattern))) {
-      std::cerr << "Sentence not found in the text." << std::endl;
-    }
-    std::smatch matches_states;
-    std::string::const_iterator searchStart(content.cbegin());
-    while (std::regex_search(searchStart, content.cend(), matches_states, states_pattern)) {
-        // Extract the numbers
-        int fromState = std::stoi(matches_states[1]);
-        int toState = std::stoi(matches_states[2]);
-        if (toState == fromState + 1){
-          state_changes["gain"] += 1;
-        }else if (toState == fromState * 2){
-          state_changes["dupl"] += 1;
-        }else if (toState == fromState-1){
-          state_changes["loss"] += 1;
-        }else{
-          searchStart = matches_states.suffix().first;
-          continue;
-          
-        }
-        // Update the searchStart iterator to search for the next match
-        searchStart = matches_states.suffix().first;
-    }
-  }
-  totalNumOfTransitions /= num_of_simulations;
-  std::cout << "Average number of transitions " << totalNumOfTransitions << std::endl;
-  auto it = state_changes.begin();
-  while ( it != state_changes.end()){
-    state_changes[it->first] /= (double)num_of_simulations;
-    std::cout << it->first << " : " << it->second << std::endl;
-    it ++;
-  }
+  //testTraitWeighted();
+  verifyLikFixedFreqs();
 
   return 0;
+  // string simulations_path = "/home/anat/Docs/Sida/simulations";
+  // size_t num_of_simulations = 100;
+  // double totalNumOfTransitions = 0;
+  // std::map<string, double> state_changes;
+  // state_changes["gain"] = 0;
+  // state_changes["loss"] = 0;
+  // state_changes["dupl"] = 0;
+  // std::regex states_pattern("from state: (\\d+)[^\\d]+t = [\\d.]+[^\\d]+to state = (\\d+)");
+  // for (size_t i = 0; i < num_of_simulations; i++){
+  //   string evolPath = simulations_path + "/" + std::to_string(i) + '/' + "simulatedEvolutionPaths.txt";
+  //   std::ifstream file(evolPath); // Open the file
+
+  //   if (!file.is_open()) {
+  //       std::cerr << "Error opening file: " << evolPath << std::endl;
+  //       return 1;
+  //   }
+
+  //   // Read the entire file into a string
+  //   std::string content((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
+  //   file.close(); 
+  //   std::regex pattern("Total number of transitions is: (\\d+)");
+  //   std::smatch matches;
+  //   if (std::regex_search(content, matches, pattern)) {
+  //       // Print the matched sentence
+  //       int numOfTransitions = std::stoi(matches[1]);
+  //       totalNumOfTransitions += numOfTransitions;
+  //   } else {
+  //       std::cerr << "Sentence not found in the text." << std::endl;
+  //       return 1;
+  //   }
+
+  //   // Search for matches in the text
+  //   std::smatch matches_states_test;
+  //   if (!(std::regex_search(content, matches_states_test, states_pattern))) {
+  //     std::cerr << "Sentence not found in the text." << std::endl;
+  //   }
+  //   std::smatch matches_states;
+  //   std::string::const_iterator searchStart(content.cbegin());
+  //   while (std::regex_search(searchStart, content.cend(), matches_states, states_pattern)) {
+  //       // Extract the numbers
+  //       int fromState = std::stoi(matches_states[1]);
+  //       int toState = std::stoi(matches_states[2]);
+  //       if (toState == fromState + 1){
+  //         state_changes["gain"] += 1;
+  //       }else if (toState == fromState * 2){
+  //         state_changes["dupl"] += 1;
+  //       }else if (toState == fromState-1){
+  //         state_changes["loss"] += 1;
+  //       }else{
+  //         searchStart = matches_states.suffix().first;
+  //         continue;
+          
+  //       }
+  //       // Update the searchStart iterator to search for the next match
+  //       searchStart = matches_states.suffix().first;
+  //   }
+  // }
+  // totalNumOfTransitions /= num_of_simulations;
+  // std::cout << "Average number of transitions " << totalNumOfTransitions << std::endl;
+  // auto it = state_changes.begin();
+  // while ( it != state_changes.end()){
+  //   state_changes[it->first] /= (double)num_of_simulations;
+  //   std::cout << it->first << " : " << it->second << std::endl;
+  //   it ++;
+  // }
+
+  // return 0;
 }
   //fix seed for debugging purposes
   // double seedUb = 10000000;

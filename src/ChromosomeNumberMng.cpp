@@ -333,12 +333,12 @@ ChromosomeNumberOptimizer* ChromosomeNumberMng::optimizeLikelihoodMultiStartPoin
        
 }
 /******************************************************************************************************/
-VectorSiteContainer* ChromosomeNumberMng::getTraitData() const{
+VectorSiteContainer* ChromosomeNumberMng::getTraitData(const string &traitPath) const{
     Fasta fasta;
     Alphabet* alpha;
 
     alpha = new IntegerAlphabet(ChromEvolOptions::numberOfTraitStates_-1);
-    VectorSequenceContainer* vsc_seq = fasta.readSequences(ChromEvolOptions::traitFilePath_, alpha);
+    VectorSequenceContainer* vsc_seq = fasta.readSequences(traitPath, alpha);
     VectorSiteContainer* vsc = new VectorSiteContainer(alpha);
     vector <string> sequenceNames = vsc_seq->getSequenceNames();
 
@@ -379,9 +379,9 @@ void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
             maxBaseNumTransition[i] = chrRange_.at(1);
         }
     }
-    ChromosomeTraitOptimizer* opt = new ChromosomeTraitOptimizer(tree_,alphabet_, chromsomeVsc, traitVsc, maxBaseNumTransition,ChromEvolOptions::traitStateModel_, ChromEvolOptions::NumOfSimulations_,weightedFreqs, ChromEvolOptions::fixedTraitRootFreqs_,
+    ChromosomeTraitOptimizer* opt = new ChromosomeTraitOptimizer(tree_,alphabet_, chromsomeVsc, traitVsc, maxBaseNumTransition,ChromEvolOptions::traitStateModel_, ChromEvolOptions::NumOfSimulations_,weightedFreqs, ChromEvolOptions::fixedRootTraitState_,
                 parsimonyBound,
-                ChromEvolOptions::fixedTraitParams_);
+                ChromEvolOptions::fixedTraitParams_, ChromEvolOptions::weightedTraitRootFreqs_, ChromEvolOptions::fixedTraitRootFreqs_);
     opt->initOptimizer(ChromEvolOptions::OptPointsNum_, ChromEvolOptions::OptIterNum_, ChromEvolOptions::baseNumOptimizationMethod_, ChromEvolOptions::tolerance_);
     std::map<string, double> traitParams;
     std::map<uint, std::pair<int, std::map<int, vector<double>>>> mapOfParams;
@@ -473,18 +473,46 @@ void ChromosomeNumberMng::setIndependentTraitNodeNames(std::map<uint, std::vecto
 
 }
 /******************************************************************************************************/
+void ChromosomeNumberMng::getRootFreqsFromTheta(SingleProcessPhyloLikelihood* lik, Vdouble &rootFreqsVec) const{
+    auto paramNames = lik->getSubstitutionModelParameters().getParameterNames();
+    std::unordered_map<string, double> thetas;
+    getTraitThetas(lik, paramNames, thetas);
+    rootFreqsVec.resize(ChromEvolOptions::numberOfTraitStates_);
+    for (size_t i = 0; i < ChromEvolOptions::numberOfTraitStates_; i++){
+        rootFreqsVec[i] = calculateFreqs(thetas, i);
+    }   
+}
+
+/******************************************************************************************************/
 std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setTraitLikModel(SingleProcessPhyloLikelihood* likProcess, ParametrizablePhyloTree* tree) const{
     ValueRef <Eigen::RowVectorXd> rootFreqs = likProcess->getLikelihoodCalculationSingleProcess()->getRootFreqs();
+    rootFreqs->getTargetValue();
     auto paramNames = likProcess->getSubstitutionModelParameters().getParameterNames();
     const Alphabet* alphabet = likProcess->getLikelihoodCalculationSingleProcess()->getData()->getAlphabet();
     const IntegerAlphabet* alpha = dynamic_cast<const IntegerAlphabet*>(alphabet);
     auto params = likProcess->getParameters();
     auto rootFreqsValues =  rootFreqs->getTargetValue();
-    Vdouble rootFreqsBpp;
-    copyEigenToBpp(rootFreqsValues, rootFreqsBpp);
-    shared_ptr<IntegerFrequencySet> freqset = make_shared<FullIntegerFrequencySet>(alpha, rootFreqsBpp);
+    Vdouble freqsVec;
+    Vdouble rootVec;
+    if ((!ChromEvolOptions::weightedTraitRootFreqs_) && (ChromEvolOptions::fixedRootTraitState_ < 0)){
+        copyEigenToBpp(rootFreqsValues, freqsVec);
+    }else{
+        getRootFreqsFromTheta(likProcess, freqsVec);
+    }
+    shared_ptr<IntegerFrequencySet> freqset = make_shared<FullIntegerFrequencySet>(alpha, freqsVec);
     std::shared_ptr<CharacterSubstitutionModel> traitModel = LikelihoodUtils::setTraitModel(alpha, freqset);
     traitModel->setFrequencySet(*freqset);
+    std::shared_ptr<FixedFrequencySet> root_freqSet;
+    if ((ChromEvolOptions::weightedTraitRootFreqs_) || (ChromEvolOptions::fixedRootTraitState_ >= 0)){
+        copyEigenToBpp(rootFreqsValues, rootVec);
+        for (size_t k = 0; k < rootVec.size(); k++){
+            std::cout << "Root frequencies: " << rootVec[k] << std::endl;
+        }
+        root_freqSet = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(traitModel->getStateMap(), false)), rootVec);
+
+    }
+     
+
 
     auto it = ChromEvolOptions::traitParams_.begin();
     string paramName;
@@ -515,8 +543,15 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setTrai
     }
     std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
     std::shared_ptr<ParametrizablePhyloTree> parTree = std::shared_ptr<ParametrizablePhyloTree>(tree->clone());
-    std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(freqset->clone());
+    std::shared_ptr<FrequencySet> rootFrequencies;
+    if ((ChromEvolOptions::weightedTraitRootFreqs_) || (ChromEvolOptions::fixedRootTraitState_ >= 0)){
+        rootFrequencies = std::shared_ptr<FrequencySet>(root_freqSet->clone());
+    }else{
+        rootFrequencies = std::shared_ptr<FrequencySet>(freqset->clone());
+    }
+     
     std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
+    
     std::vector<uint> nodeIds;
     auto nodes = tree_->getAllNodes();
     for (size_t i = 0; i < nodes.size(); i++){
@@ -574,6 +609,7 @@ void ChromosomeNumberMng::getJointMLAncestralReconstruction(ChromosomeNumberOpti
         ancrTrait->init();
         std::map<uint, std::vector<size_t>> ancestorsTrait = ancrTrait->getAllAncestralStates();
         setIndependentTraitNodeNames(ancestorsTrait, &mapOfTraitStates, likTrait->getData()->getAlphabet());
+        delete ancrTrait;
 
     }
     
@@ -1017,9 +1053,50 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
             }
             it ++;
         }
+        std::shared_ptr<FixedFrequencySet> rootFreqsFixed;
+        std::shared_ptr<FrequencySet> rootFrequenciesFixedRoot;
 
-        subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdistTrait, parTree, rootFrequencies);
+        if (ChromEvolOptions::fixedRootTraitState_ >= 0){
+            vector<double> rootTraitFreqs;
+            rootTraitFreqs.resize(ChromEvolOptions::numberOfTraitStates_);
+            for (size_t k = 0; k < ChromEvolOptions::numberOfTraitStates_; k++){
+                if (k == ChromEvolOptions::fixedRootTraitState_){
+                    rootTraitFreqs[k] = 1;
+                }else{
+                    rootTraitFreqs[k] = 0;
+                }
+            }
+            rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(characterModel->getStateMap(), false)), rootTraitFreqs);
+            rootFrequenciesFixedRoot = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
+            subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree, rootFrequenciesFixedRoot);
+
+
+        }else if (ChromEvolOptions::weightedTraitRootFreqs_){
+            std::shared_ptr<NonHomogeneousSubstitutionProcess> processModelSim = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
+            subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree);
+            std::shared_ptr<CharacterSubstitutionModel> traitModel = std::shared_ptr<CharacterSubstitutionModel>(characterModel->clone());
+            processModelSim->addModel(traitModel, ChromEvolOptions::mapModelNodesIds_[1]);
+            VectorSiteContainer* vscTrait = getTraitData(ChromEvolOptions::traitDataForSimulation_);
+            Context context_w;
+            auto likT_w = std::make_shared<LikelihoodCalculationSingleProcess>(context_w, *vscTrait->clone(), *(processModelSim->clone()), true);
+            auto phyloT_w = std::make_shared<SingleProcessPhyloLikelihood>(context_w, likT_w);
+            std:: cout << "log likelihood with weighted frequencies: " << phyloT_w->getValue() << std::endl;
+            auto characterFreqs = (phyloT_w->getLikelihoodCalculationSingleProcess()->getRootFreqs())->getTargetValue();
+            Vdouble rootFreqsBpp;
+            copyEigenToBpp(characterFreqs, rootFreqsBpp);
+            delete vscTrait;
+            rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(characterModel->getStateMap(), false)), rootFreqsBpp);
+            rootFrequenciesFixedRoot = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
+            subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdistTrait->clone()), parTree, rootFrequenciesFixedRoot);
+
+        }else{
+            subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdistTrait, parTree, rootFrequencies);
+        }
+
+        
         subProSim->addModel(characterModel, ChromEvolOptions::mapModelNodesIds_[1]);
+
+
         simulator = new SimpleSubstitutionProcessSiteSimulator(*subProSim);
         alpha = traitAlpha->clone();
 
@@ -1866,6 +1943,8 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
             outFile << "F[" + std::to_string(i) << "] = " << rootFreqsBpp[i] << "\n";
 
         }
+        outFile << "-log likelihood of the trait model (null hypothses): " << nullLik.second->getValue() << std::endl;
+        outFile << "-log likelihood of the chromosome number model (null hypothesis): " << nullLik.first->getValue() << std::endl;
         outFile << "-log-likelihood value (null hypothesis): " << opt->getLikelihoodNull() << std::endl;
 
     }
@@ -1886,18 +1965,30 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
     std::unordered_map<string, double> thetas;
     std::regex rgx("theta\\d+");
     std::smatch match;
+    
     for (size_t i = 0; i < jointLikParams.size(); i++){
         outFile << parameterNames[i] << " value is " << jointLik->getParameter(parameterNames[i]).getValue() << std::endl;
-        if (std::regex_search(parameterNames[i], match, rgx)) {
-            std::string shortParamName = match.str();
-            thetas[shortParamName] = jointLik->getParameter(parameterNames[i]).getValue();
-        } 
     }
     outFile << "Trait Frequencies:\n";
-    for (size_t i = 0; i < ChromEvolOptions::numberOfTraitStates_; i++){
-        double freq_i = calculateFreqs(thetas, i);
-        outFile << "F[" + std::to_string(i) << "] = " << freq_i << "\n";
-        // calculateFreqs(std::unordered_map<string, double> &thetas, size_t i);
+    if ((!ChromEvolOptions::weightedTraitRootFreqs_) && (ChromEvolOptions::fixedRootTraitState_ < 0)){
+        getTraitThetas(jointLik, parameterNames, thetas);
+        for (size_t i = 0; i < ChromEvolOptions::numberOfTraitStates_; i++){
+            double freq_i = calculateFreqs(thetas, i);
+            outFile << "F[" + std::to_string(i) << "] = " << freq_i << "\n";
+            // calculateFreqs(std::unordered_map<string, double> &thetas, size_t i);
+        }
+    }else{
+        auto trait_lik = jointLik->getAbstractPhyloLikelihood(jointLik->getNumbersOfPhyloLikelihoods()[0]);
+        
+        auto rootTraitFrequencies = (dynamic_cast<const SingleProcessPhyloLikelihood*>(trait_lik)->getLikelihoodCalculationSingleProcess()->getRootFreqs())->getTargetValue();
+        Vdouble rootFreqsBppTrait;
+        copyEigenToBpp(rootTraitFrequencies, rootFreqsBppTrait);
+        for (size_t i = 0; i < ChromEvolOptions::numberOfTraitStates_; i++){
+            double freqT_i = rootFreqsBppTrait[i];
+            outFile << "F[" + std::to_string(i) << "] = " << freqT_i << "\n";
+            // calculateFreqs(std::unordered_map<string, double> &thetas, size_t i);
+        }
+        outFile << "Trait likelihood in joint model: " << trait_lik->getValue() << std::endl;
     }
     outFile << "-log-likelihood value (alternative hypothesis): " << jointLik->getValue() << std::endl;
     bool nullRejected = true;

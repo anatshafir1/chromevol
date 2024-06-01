@@ -82,6 +82,8 @@
 #include <string>
 #include <omp.h>
 #include <time.h>
+#include <regex>
+
 using namespace std;
 namespace bpp
 {
@@ -118,10 +120,12 @@ namespace bpp
             string traitModel_;
             size_t numberOfStochasticMappings_;
             bool weightedFreqs_;
-            bool fixedTraitRootFreq_;
+            int fixedRootTraitState_;
             std::vector <unsigned int> baseNumberCandidates_;
             double parsimonyBound_;
             vector<string> fixedTraitParams_;
+            bool weightedTraitRootFreqs_;
+            bool fixedTraitRootFreq_;
 
 
             //             vector <SingleProcessPhyloLikelihood*> vectorOfLikelohoods_;
@@ -155,9 +159,11 @@ namespace bpp
                 string traitModel,
                 size_t numberOfStochasticMappings,
                 bool weightedFreqs,
-                bool fixedTraitRootFreq,
+                int fixedRootTraitState,
                 double parsimonyBound,
-                vector<string> &fixedTraitParams):
+                vector<string> &fixedTraitParams,
+                bool weightedTraitRootFreqs,
+                bool fixedTraitRootFreq):
                 BaseNumberOptimizer(vsc_chr, baseNumberUpperBound),
                     //BaseNumberOptimizer(std::dynamic_pointer_cast<LikelihoodCalculationSingleProcess>(tempLik_->getLikelihoodCalculation()), optimizeBaseNumber, baseNumOptimizationMethod),
                     vectorOfJointLikelohoods_(),
@@ -181,10 +187,12 @@ namespace bpp
                     traitModel_(traitModel),
                     numberOfStochasticMappings_(numberOfStochasticMappings),
                     weightedFreqs_(weightedFreqs),
-                    fixedTraitRootFreq_(fixedTraitRootFreq),
+                    fixedRootTraitState_(fixedRootTraitState),
                     baseNumberCandidates_(),
                     parsimonyBound_(parsimonyBound),
-                    fixedTraitParams_(fixedTraitParams)
+                    fixedTraitParams_(fixedTraitParams),
+                    weightedTraitRootFreqs_(weightedTraitRootFreqs),
+                    fixedTraitRootFreq_(fixedTraitRootFreq)
             {
                 LikelihoodUtils::updateSharedParameters(sharedParams_, 1, 2);
                 for (uint i = 3; i <= static_cast<uint>(ChromEvolOptions::numberOfTraitStates_); i++){
@@ -217,10 +225,12 @@ namespace bpp
                 traitModel_(opt.traitModel_),
                 numberOfStochasticMappings_(opt.numberOfStochasticMappings_),
                 weightedFreqs_(opt.weightedFreqs_),
-                fixedTraitRootFreq_(opt.fixedTraitRootFreq_),
+                fixedRootTraitState_(opt.fixedRootTraitState_),
                 baseNumberCandidates_(opt.baseNumberCandidates_),
                 parsimonyBound_(opt.parsimonyBound_),
-                fixedTraitParams_(opt.fixedTraitParams_)
+                fixedTraitParams_(opt.fixedTraitParams_),
+                weightedTraitRootFreqs_(opt.weightedTraitRootFreqs_),
+                fixedTraitRootFreq_(opt.fixedTraitRootFreq_)
 
 
             {}
@@ -313,6 +323,7 @@ namespace bpp
                 auto alternativeLik = getLikelihoodAltrnative();
                 return 2*(nullLik-alternativeLik);
             }
+            int getThetaIndexIfTheta(const std::string& paramName);
             void setParametersToNewTraitModel(std::map<string, double> &traitModelParams, std::shared_ptr<CharacterSubstitutionModel> traitModel, shared_ptr<IntegerFrequencySet> freqs, bool random);
             void initTraitLikelihoods(std::map<string, double> &traitParams);
             bool testClassicLRT(ofstream& outFile){
@@ -336,6 +347,8 @@ namespace bpp
                 optimizedChromosomeLikelihood_ = optimizedChromosomeLikelihood;
             }
             const std::map<int, std::vector<pair<uint, int>>> getSharedParams() {return sharedParams_;}
+            
+            double calculateFreqs(vector<double> &thetas, size_t &idx) const;
 
             protected:
             void initTraitLikelihood(std::map<string, double> &traitParams, bool random);

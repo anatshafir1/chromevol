@@ -81,6 +81,9 @@ std::unordered_map<std::string, string> ChromEvolOptions::sharedTraitParams_;
 int ChromEvolOptions::numOfTraitConstraints_;
 bool ChromEvolOptions::computeExpectations_;
 bool ChromEvolOptions::fixedTraitRootFreqs_;
+int ChromEvolOptions::fixedRootTraitState_;
+bool ChromEvolOptions::weightedTraitRootFreqs_;
+string ChromEvolOptions::traitDataForSimulation_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -154,6 +157,8 @@ void ChromEvolOptions::initDefaultParameters(){
     numOfTraitConstraints_ = 0;
     computeExpectations_ = true;
     fixedTraitRootFreqs_ = false;
+    fixedRootTraitState_ = -1;
+    weightedTraitRootFreqs_ = false;
     
     
 
@@ -383,6 +388,10 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
             }
         }
     }
+    fixedRootTraitState_ = ApplicationTools::getIntParameter("_fixedRootTraitState", ChromEvol.getParams(), fixedRootTraitState_, "", true, 0);
+    weightedTraitRootFreqs_ = ApplicationTools::getBooleanParameter("_weightedTraitRootFreqs", ChromEvol.getParams(), weightedTraitRootFreqs_, "", true, 0);
+    traitDataForSimulation_ = ApplicationTools::getAFilePath("_traitDataForSimulation", ChromEvol.getParams(), false, true, "", true, "none", 0);
+    
     
 }
 /************************************************************************/

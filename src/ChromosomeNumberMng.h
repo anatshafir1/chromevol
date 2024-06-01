@@ -92,6 +92,7 @@
 #include <sys/stat.h>
 #include <regex>
 #include <experimental/filesystem>
+#include <type_traits>
 
 using namespace std;
 
@@ -135,7 +136,7 @@ namespace bpp{
 
             //Functions for initialization of the model
             void getCharacterData(const string &path);
-            VectorSiteContainer* getTraitData() const;
+            VectorSiteContainer* getTraitData(const string &path=ChromEvolOptions::traitFilePath_) const;
             static void setMaxChrNum(unsigned int maxNumberOfChr);
             static void setMinChrNum(unsigned int minNumberOfChr);
             void getTree(const string &path, double treeLength = 0);
@@ -183,6 +184,23 @@ namespace bpp{
 
 
         protected:
+            
+            template<typename T, typename std::enable_if<
+                (std::is_same<T, SingleProcessPhyloLikelihood>::value) || 
+                (std::is_same<T, JointTraitChromosomeLikelihood>::value)>::type* = nullptr>
+            void getTraitThetas(const T* lik, vector<string> &parameterNames, std::unordered_map<string, double> &thetas) const{
+                std::regex rgx("theta\\d+");
+                auto params = lik->getSubstitutionModelParameters();
+                std::smatch match;
+                for (size_t i = 0; i < params.size(); i++){
+                    if (std::regex_search(parameterNames[i], match, rgx)) {
+                        std::string shortParamName = match.str();
+                        thetas[shortParamName] = lik->getParameter(parameterNames[i]).getValue();
+                    } 
+                }
+            }
+            void getRootFreqsFromTheta(SingleProcessPhyloLikelihood* lik, Vdouble &rootFreqsVec) const;
+
             void writeTraitMappingPath(std::shared_ptr<PhyloTree> stmTree, std::map<uint, std::vector<size_t>> &ancestors, const string &path) const;
             void writeTraitMappingForNode(std::shared_ptr<PhyloTree> stmTree, std::shared_ptr<PhyloNode> node, std::map<uint, std::vector<size_t>> &ancestors, ofstream &stream) const;
             void removeDummyNodes(std::map<uint, std::vector<size_t>>* ancestors, std::map<uint, std::vector<size_t>>* tempAncestors, const PhyloTree* tree, uint rootId) const;
