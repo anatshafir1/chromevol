@@ -116,93 +116,92 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::map<string, double> trai
     mlAncestors = JointPhyloLikelihood::getMLAncestralReconstruction(phyloT.get(), phyloT->getParameters(), 2);
     stm->setMLAncestors(&mlAncestors);
   }
-  auto treeChr = stm->createExpectedMappingHistory(numberOfStochasticMappings_);
-  // creating the chromosome number model
-  std::map<uint, vector<uint>> mapModelNodesIds = getNodesForEachModel(treeChr, stm);
-  delete stm;
-  std::shared_ptr<ParametrizablePhyloTree> parTreeChr;
-  std::vector<std::shared_ptr<ChromosomeSubstitutionModel>> models;
-  SubstitutionProcess* subProcess;
-  if (random){
-    subProcess = LikelihoodUtils::setRandomChromosomeSubstitutionModel(treeChr.get(), vscChr_, alphabetChr_, baseNumberUpperBound_, mapModelNodesIds, modelParams, ChromEvolOptions::numberOfTraitStates_, maxParsimonyFactor, fixedParams_, &sharedParams_, weightedFreqs_, &models, parTreeChr);
+  try{
+    auto treeChr = stm->createExpectedMappingHistory(numberOfStochasticMappings_);
+    // creating the chromosome number model
+    std::map<uint, vector<uint>> mapModelNodesIds = getNodesForEachModel(treeChr, stm);
+    delete stm;
+    std::shared_ptr<ParametrizablePhyloTree> parTreeChr;
+    std::vector<std::shared_ptr<ChromosomeSubstitutionModel>> models;
+    SubstitutionProcess* subProcess;
+    if (random){
+      subProcess = LikelihoodUtils::setRandomChromosomeSubstitutionModel(treeChr.get(), vscChr_, alphabetChr_, baseNumberUpperBound_, mapModelNodesIds, modelParams, ChromEvolOptions::numberOfTraitStates_, maxParsimonyFactor, fixedParams_, &sharedParams_, weightedFreqs_, &models, parTreeChr);
 
-  }else{
-    subProcess = LikelihoodUtils::setChromosomeSubstitutionModel(treeChr.get(), vscChr_, alphabetChr_, baseNumberUpperBound_, mapModelNodesIds, modelParams, ChromEvolOptions::numberOfTraitStates_, &sharedParams_, weightedFreqs_, &models, parTreeChr);
+    }else{
+      subProcess = LikelihoodUtils::setChromosomeSubstitutionModel(treeChr.get(), vscChr_, alphabetChr_, baseNumberUpperBound_, mapModelNodesIds, modelParams, ChromEvolOptions::numberOfTraitStates_, &sharedParams_, weightedFreqs_, &models, parTreeChr);
 
-  }
-  auto parTree2 =  std::make_shared<ParametrizablePhyloTree>(*treeChr);
-  
-
-  auto modelColl=std::make_shared<SubstitutionProcessCollection>();
-  
-  modelColl->addModel(traitModel, 1);
-  for (size_t i = 0; i < models.size(); i++){
-    modelColl->addModel(models[i], i+2);
-
-  }
-
-  // if (!traitWeightedFrequencies){
-  //   modelColl->addFrequencies(rootFrequenciesTrait, 1);
-
-  // }
-
-  
-  //auto root_freq_cloned = rootFreqs2->clone();
-  //auto rootFreqs_chr = std::shared_ptr<FrequencySet>(root_freq_cloned);
-  //modelColl->addFrequencies(rootFreqs_chr, 2);
-  std::shared_ptr<DiscreteDistribution> rdistChr = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
-  
-  modelColl->addDistribution(rdistTrait, 1);
-  modelColl->addDistribution(rdistChr, 2);
-
-  modelColl->addTree(parTree, 1);
-  modelColl->addTree(parTree2, 2);
-  vector<uint> vP1m1 = modelNodesTrait;
-
-  map<size_t, Vuint> mModBr1;
-  mModBr1[1]=vP1m1;
- 
-
-  modelColl->addSubstitutionProcess(1, mModBr1, 1, 1);
-                                   
-  map<size_t, Vuint> mModBr2;
-
-  for (size_t i = 0; i < models.size(); i++){
-    mModBr2[i+2]= mapModelNodesIds[i+1];
-  }
-
-
-  modelColl->addSubstitutionProcess(2, mModBr2, 2, 2);
-
-  // Now setting the joint likelihood object
-    // Likelihoods
-  SubstitutionProcess* sP1c=nsubProT->clone();
-  SubstitutionProcess* sP2c= subProcess;//subProcess->clone(); // no need to clone again- it was already cloned.
-  //delete subProcess;
-  auto pc(std::make_shared<PhyloLikelihoodContainer>(*context, *modelColl));
-
-
-
-  auto lik1_j = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *(vscTrait_->clone()), *sP1c, weightedTraitRootFreqs_);
-
-  pc->addPhyloLikelihood(1, new SingleProcessPhyloLikelihood(*context, lik1_j));
+    }
+    auto parTree2 =  std::make_shared<ParametrizablePhyloTree>(*treeChr);
     
-  auto lik2_j = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *(vscChr_->clone()), *sP2c, weightedFreqs_);
 
-  pc->addPhyloLikelihood(2, new SingleProcessPhyloLikelihood(*context, lik2_j));
-  //   JointTraitChromosomeLikelihood(Context& context, std::shared_ptr<PhyloLikelihoodContainer> pC, bool expectedHistory, bool weightedFrequencies, size_t numOfMappings, std::string traitModel, std::vector<int> &rateChangeType, VectorSiteContainer* chromosomeVsc, std::vector<unsigned int> &baseNumberCandidates, bool inCollection = true);
-  JointTraitChromosomeLikelihood* jl = new JointTraitChromosomeLikelihood(*context, pc, true, true, numberOfStochasticMappings_, traitModel_, ChromEvolOptions::rateChangeType_, vscChr_->clone(), baseNumberCandidates_, ml);
-  jl->setStochasticMappingTree(treeChr);
-  jl->setSharedParams(sharedParams_);
-  jl->setFixedParams(fixedParams_);
-  vectorOfJointLikelohoods_.push_back(jl);
-  std::cout << "Initial likelihood is " << jl->getValue() << std::endl;
-  auto params = jl->getSubstitutionModelParameters();
-  std::cout <<"Parameters are:" << std::endl;
-  for (size_t i = 0; i < params.size(); i++){
-    std::cout <<"\t" << params[i].getName() << ": " << params[i].getValue() << std::endl;
+    auto modelColl=std::make_shared<SubstitutionProcessCollection>();
+    
+    modelColl->addModel(traitModel, 1);
+    for (size_t i = 0; i < models.size(); i++){
+      modelColl->addModel(models[i], i+2);
 
+    }
+
+    std::shared_ptr<DiscreteDistribution> rdistChr = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+    
+    modelColl->addDistribution(rdistTrait, 1);
+    modelColl->addDistribution(rdistChr, 2);
+
+    modelColl->addTree(parTree, 1);
+    modelColl->addTree(parTree2, 2);
+    vector<uint> vP1m1 = modelNodesTrait;
+
+    map<size_t, Vuint> mModBr1;
+    mModBr1[1]=vP1m1;
+  
+
+    modelColl->addSubstitutionProcess(1, mModBr1, 1, 1);
+                                    
+    map<size_t, Vuint> mModBr2;
+
+    for (size_t i = 0; i < models.size(); i++){
+      mModBr2[i+2]= mapModelNodesIds[i+1];
+    }
+
+
+    modelColl->addSubstitutionProcess(2, mModBr2, 2, 2);
+
+    // Now setting the joint likelihood object
+      // Likelihoods
+    SubstitutionProcess* sP1c=nsubProT->clone();
+    SubstitutionProcess* sP2c= subProcess;//subProcess->clone(); // no need to clone again- it was already cloned.
+    //delete subProcess;
+    auto pc(std::make_shared<PhyloLikelihoodContainer>(*context, *modelColl));
+
+
+
+    auto lik1_j = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *(vscTrait_->clone()), *sP1c, weightedTraitRootFreqs_);
+
+    pc->addPhyloLikelihood(1, new SingleProcessPhyloLikelihood(*context, lik1_j));
+      
+    auto lik2_j = std::make_shared<LikelihoodCalculationSingleProcess>(*context, *(vscChr_->clone()), *sP2c, weightedFreqs_);
+
+    pc->addPhyloLikelihood(2, new SingleProcessPhyloLikelihood(*context, lik2_j));
+    //   JointTraitChromosomeLikelihood(Context& context, std::shared_ptr<PhyloLikelihoodContainer> pC, bool expectedHistory, bool weightedFrequencies, size_t numOfMappings, std::string traitModel, std::vector<int> &rateChangeType, VectorSiteContainer* chromosomeVsc, std::vector<unsigned int> &baseNumberCandidates, bool inCollection = true);
+    JointTraitChromosomeLikelihood* jl = new JointTraitChromosomeLikelihood(*context, pc, true, true, numberOfStochasticMappings_, traitModel_, ChromEvolOptions::rateChangeType_, vscChr_->clone(), baseNumberCandidates_, ml);
+    jl->setStochasticMappingTree(treeChr);
+    jl->setSharedParams(sharedParams_);
+    jl->setFixedParams(fixedParams_);
+    vectorOfJointLikelohoods_.push_back(jl);
+    std::cout << "Initial likelihood is " << jl->getValue() << std::endl;
+    auto params = jl->getSubstitutionModelParameters();
+    std::cout <<"Parameters are:" << std::endl;
+    for (size_t i = 0; i < params.size(); i++){
+      std::cout <<"\t" << params[i].getName() << ": " << params[i].getValue() << std::endl;
+
+    }
+    
+  }catch (const std::runtime_error& e) {
+    // Adding context to the exception
+    delete stm;
+    throw std::runtime_error(std::string("Mapping failure: ") + e.what());
   }
+
 
 }
 // std::map<uint, std::pair<int, std::map<int, vector<double>>>> modelParams, const PhyloTree* tree, const VectorSiteContainer* vsc_chr, const VectorSiteContainer* vsc_trait, const ChromosomeAlphabet* alphabet_chr, std::vector<double>* traitModelParams, std::map<uint, uint> baseNumberUpperBound, std::map<uint, pair<int, std::map<int, std::vector<double>>>>* modelParams_chr, std::map<int, vector<std::pair<uint,int>>>* updatedSharedParams_chr, std::vector<double>* rootFreqsChr, std::vector<double>* rootFreqsTrait, bool random
@@ -215,29 +214,39 @@ void ChromosomeTraitOptimizer::initMultipleLikelihoodPoints(std::map<string, dou
     vectorOfJointLikelohoods_.reserve(numOfPoints_[index]);
     // If base number is one of the parameters
     cout <<"##################################" << endl;
-    cout << "*********  cycle 0  **************"<<endl;  
+    cout << "*********  cycle 0  **************"<<endl;
+    int count_num_of_trials; 
+    int max_trials = 10; 
     for (size_t n = 0; n < numOfPoints_[0]; n++){
-        std::cout << "Starting cycle with Point #" << n <<"...."<<endl;
-        if (n == 0){
-          initJointLikelihood(traitModelParams, modelParams, tree, baseNumberUpperBound, rootFreqsTrait, false, 0, ml);
+      count_num_of_trials = 0;
+        
+      std::cout << "Starting cycle with Point #" << n <<"...."<<endl;
+      if (n == 0){
+        initJointLikelihood(traitModelParams, modelParams, tree, baseNumberUpperBound, rootFreqsTrait, false, 0, ml);
+      }else{
+        double factor;
+        if (n > 1){
+          factor = parsimonyBound_ * (1+(0.1*(double)n));
+
         }else{
-          double factor;
-          if (n > 1){
-            factor = parsimonyBound_ * (1+(0.1*(double)n));
+          factor = parsimonyBound_ * static_cast<double>(n);
+        }
 
-          }else{
-            factor = parsimonyBound_ * static_cast<double>(n);
+        while (count_num_of_trials < max_trials) {
+          try {
+            initJointLikelihood(traitModelParams, modelParams, tree, baseNumberUpperBound, rootFreqsTrait, true, factor, ml);
+            count_num_of_trials ++;
+            break; // If successful, exit the loop
+          }catch (const std::runtime_error& e) {
+            count_num_of_trials++;
+            if (count_num_of_trials >= max_trials) {
+              throw std::runtime_error(std::string("Mapping failure after ") + std::to_string(count_num_of_trials) + " attempts: " + e.what());
+            }
           }
-          
-          initJointLikelihood(traitModelParams, modelParams, tree, baseNumberUpperBound, rootFreqsTrait, true, factor, ml);
-    
-        }   
+        }          
+      }   
     }
-
     sort(vectorOfJointLikelohoods_.begin(), vectorOfJointLikelohoods_.end(), compareJointLikValues);
-
-
-
 }
 void ChromosomeTraitOptimizer::fillTraitParameters(const string &traitModel, vector<string> &parameterNames, vector<string> &traitParamNames) const{
   for (size_t i = 0; i < parameterNames.size(); i++){
