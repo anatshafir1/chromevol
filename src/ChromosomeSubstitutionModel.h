@@ -35,7 +35,7 @@ class ChromosomeNumberDependencyFunction{
     int domainMax_;
 
   public:
-    enum FunctionType {CONSTANT, LINEAR, LINEAR_BD, EXP, POLYNOMIAL, LOGNORMAL, REVERSE_SIGMOID, IGNORE};
+    enum FunctionType {CONSTANT, LINEAR, LINEAR_BD, EXP, POLYNOMIAL, LOGNORMAL, REVERSE_SIGMOID, LOGITNORMAL, IGNORE};
     ChromosomeNumberDependencyFunction():domainMin_(0), domainMax_(0){}
     virtual ~ChromosomeNumberDependencyFunction(){}
 
@@ -183,6 +183,27 @@ class RevSigmoidDependencyFunction:
       domainMin_ = minChrNum;
       domainMax_ = maxChrNum;
     }
+
+};
+class LogitnormalDependencyFunction:
+  public virtual ChromosomeNumberDependencyFunction
+{
+  private:
+  //int maxChrNum_;
+  public:
+    LogitnormalDependencyFunction():ChromosomeNumberDependencyFunction(){}
+    virtual ~LogitnormalDependencyFunction(){}
+
+    FunctionType getName() const {return FunctionType::LOGITNORMAL;}
+    void setDomainsIfNeeded(int minChrNum, int maxChrNum){
+      domainMin_ = minChrNum;
+      domainMax_ = maxChrNum;
+    }
+
+    double getRate(std::vector<Parameter*> params, size_t state) const;
+    size_t getNumOfParameters() const{return 3;}
+    void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber);
+    void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber);
 
 };
 

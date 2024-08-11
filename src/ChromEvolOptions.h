@@ -125,6 +125,7 @@ public:
     static int fixedRootTraitState_;
     static bool weightedTraitRootFreqs_;
     static string traitDataForSimulation_;
+    static bool simulateJointEvolution_;
 
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);

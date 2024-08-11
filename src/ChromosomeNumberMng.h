@@ -161,10 +161,15 @@ namespace bpp{
             // map<int, map<size_t, VVdouble>> getMarginalAncestralReconstruction(DRNonHomogeneousTreeLikelihood* lik) const;
             void computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, VectorSiteContainer* chromsomeVsc, ChromosomeTraitOptimizer* traitOpt = 0);
             void simulateData(string &characterPath);
-            void simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator, Alphabet* alpha);
-            void printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath, Alphabet* alpha);
-            void printTreeWithStates(PhyloTree tree, std::map<uint, std::vector<size_t>> &ancestors, const string &filePath, std::map<uint, string>* prevNames = 0) const;
-            void convertNodesNames(PhyloTree &tree, uint nodeId, std::map<uint, std::vector<size_t>> &ancestors, bool alphabetStates = true, std::map<uint, string>* prevNames = 0) const;
+            //whichSimulation parameter is by deault 0, which means that a single type of data should be simulated. However, when a joint trait model is
+            // simulated we need to types of data - 1 refers to trait data, and 2 refers to chromosome data.
+            void simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator, Alphabet* alpha, SiteSimulationResult** simResult, size_t whichSimulation=0);
+            void simulateTraitData(SimpleSubstitutionProcessSiteSimulator** simulator, Alphabet** alpha, std::shared_ptr<ParametrizablePhyloTree> parTree, std::shared_ptr<FrequencySet> &rootFrequencies, std::shared_ptr<NonHomogeneousSubstitutionProcess> &subProSim);
+            void simulateChromosomeData(SimpleSubstitutionProcessSiteSimulator** simulator, Alphabet** alpha, std::shared_ptr<ParametrizablePhyloTree> parTree, std::shared_ptr<FrequencySet> &rootFrequencies, std::shared_ptr<NonHomogeneousSubstitutionProcess> &subProSim);
+
+            void printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath, Alphabet* alpha, string prefix);
+            void printTreeWithStates(PhyloTree tree, std::map<uint, std::vector<size_t>> &ancestors, const string &filePath, string prefix, std::map<uint, string>* prevNames = 0) const;
+            void convertNodesNames(PhyloTree &tree, uint nodeId, std::map<uint, std::vector<size_t>> &ancestors, string prefix, bool alphabetStates = true, std::map<uint, string>* prevNames = 0) const;
             void writeOutputToFile(ChromosomeNumberOptimizer* chrOptimizer, int &inferrredRootState) const;
             void printLikParameters(ChromosomeNumberOptimizer* chrOptimizer, SingleProcessPhyloLikelihood* lik, ofstream &outFile) const;
             uint findMinCladeSize(std::map<uint, vector<uint>> mapModelNodesIds) const;
@@ -215,7 +220,7 @@ namespace bpp{
             void rescale_tree(PhyloTree* tree, double chrRange);
             void getMaxParsimonyUpperBound(double* parsimonyScore) const;
             // functions to print the tree with ancestral reconstruction
-            void printSimulatedDataAndAncestors(SiteSimulationResult* simResult, string &ancestorsPath) const;
+            void printSimulatedDataAndAncestors(SiteSimulationResult* simResult, string &ancestorsPath, string prefix) const;
             void printSimulatedEvoPath(const string outPath, SiteSimulationResult* simResult, bool &success, size_t maxStateIndex = 0) const;
             static string printTree(const PhyloTree& tree);
             static string nodeToParenthesis(const uint nodeId, const PhyloTree& tree);

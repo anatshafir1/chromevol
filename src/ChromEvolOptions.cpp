@@ -84,6 +84,7 @@ bool ChromEvolOptions::fixedTraitRootFreqs_;
 int ChromEvolOptions::fixedRootTraitState_;
 bool ChromEvolOptions::weightedTraitRootFreqs_;
 string ChromEvolOptions::traitDataForSimulation_;
+bool ChromEvolOptions::simulateJointEvolution_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -159,6 +160,7 @@ void ChromEvolOptions::initDefaultParameters(){
     fixedTraitRootFreqs_ = false;
     fixedRootTraitState_ = -1;
     weightedTraitRootFreqs_ = false;
+    simulateJointEvolution_ = false;
     
     
 
@@ -239,7 +241,9 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     maxIterations_ = (unsigned int)ApplicationTools::getIntParameter("_maxOptimizationItarations", ChromEvol.getParams(), maxIterations_, "", true, 0);
     tolerance_ = ApplicationTools::getDoubleParameter("_tolParamOptimization", ChromEvol.getParams(), tolerance_, "", true, 0);
     simulateTrait_ = ApplicationTools::getBooleanParameter("_simulateTrait", ChromEvol.getParams(), simulateTrait_, "", true, 0);
-    if (!simulateTrait_){
+    simulateJointEvolution_ = ApplicationTools::getBooleanParameter("_simulateJointEvolution", ChromEvol.getParams(), simulateJointEvolution_, "", true, 0);
+    numberOfTraitStates_ = ApplicationTools::getIntParameter("_numberOfTraitStates", ChromEvol.getParams(), numberOfTraitStates_, "", true, 0);
+    if ((!simulateTrait_) || (simulateJointEvolution_)){
         setModelParameters(ChromEvol);
     }
     computeExpectations_ = ApplicationTools::getBooleanParameter("_computeExpectations", ChromEvol.getParams(), computeExpectations_, "", true, 0);
@@ -269,7 +273,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     std::string demiDuplFunc = ApplicationTools::getStringParameter("_demiDuplFunc", ChromEvol.getParams(), "None", "", true, 0);
     std::string baseNumRFunc = ApplicationTools::getStringParameter("_baseNumRFunc", ChromEvol.getParams(), "None", "", true, 0);
     
-    if (!simulateTrait_){
+    if ((!simulateTrait_) || (simulateJointEvolution_)){
         setFunctions(gainFunc, lossFunc, duplFunc, demiDuplFunc, baseNumRFunc);
     }
     
@@ -280,8 +284,16 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     numOfDataToSimulate_ = ApplicationTools::getIntParameter("_numOfDataToSimulate", ChromEvol.getParams(), numOfDataToSimulate_, "", true, 0);
     resultsPathDir_ = ApplicationTools::getAFilePath("_resultsPathDir", ChromEvol.getParams(), false, true, "", true, "none", 0);
     uint maxBaseNumTransition = static_cast<uint>(ApplicationTools::getIntParameter("_maxBaseNumTransition", ChromEvol.getParams(), 18, "", true, 0));
+    uint numberOfModels;
+    if (ChromEvolOptions::simulateJointEvolution_){
+        numberOfModels = ChromEvolOptions::numberOfTraitStates_;
 
-    for (uint i = 1; i <= (uint)numOfModels_; i++){
+    }else{
+        numberOfModels = ChromEvolOptions::numOfModels_;
+
+    }
+
+    for (uint i = 1; i <= (uint)numberOfModels; i++){
         maxBaseNumTransition_[i] = maxBaseNumTransition;
     }
     treeLength_ = ApplicationTools::getDoubleParameter("_treeLength", ChromEvol.getParams(), treeLength_, "", true, 0);
@@ -306,7 +318,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     traitStateModel_ = ApplicationTools::getStringParameter("_traitStateModel", ChromEvol.getParams(), traitStateModel_, "", true, 0);
 
     useMLReconstruction_ = ApplicationTools::getBooleanParameter("_useMLReconstruction", ChromEvol.getParams(), useMLReconstruction_, "", true, 0);
-    numberOfTraitStates_ = ApplicationTools::getIntParameter("_numberOfTraitStates", ChromEvol.getParams(), numberOfTraitStates_, "", true, 0);
+    
     if (numberOfTraitStates_ == 0){
         return;
     }
@@ -401,7 +413,13 @@ void ChromEvolOptions::setModelParameters(BppApplication& ChromEvol){
     std::map<int, size_t> paramNums;
     vector<ChromosomeSubstitutionModel::paramType> modelTypeParams = {ChromosomeSubstitutionModel::GAIN, ChromosomeSubstitutionModel::LOSS, ChromosomeSubstitutionModel::DUPL, ChromosomeSubstitutionModel::DEMIDUPL, ChromosomeSubstitutionModel::BASENUM, ChromosomeSubstitutionModel::BASENUMR};
     vector<string> modelStringParams = {"_gain", "_loss", "_dupl", "_demiPloidyR", "_baseNum", "_baseNumR"};
-    for(uint i = 1; i <= static_cast<uint>(numOfModels_); i++){
+    uint numOfModels;
+    if (ChromEvolOptions::simulateJointEvolution_){
+        numOfModels = static_cast<uint>(numberOfTraitStates_);
+    }else{
+        numOfModels = static_cast<uint>(numOfModels_);
+    }
+    for(uint i = 1; i <= numOfModels; i++){
         for (size_t j = 0; j < modelStringParams.size(); j++){
             string paramName = modelStringParams[j] + "_"+ std::to_string(i);
             vector<string> paramNumAndValues = ApplicationTools::getVectorParameter<string>(paramName, ChromEvol.getParams(), ';', "", "", true, 0);
@@ -605,6 +623,8 @@ int ChromEvolOptions::getFunctionFromString(string funcStr){
         func = static_cast<int> (ChromosomeNumberDependencyFunction::LOGNORMAL);
     }else if (funcStr == "REVERSE_SIGMOID"){
         func = static_cast<int> (ChromosomeNumberDependencyFunction::REVERSE_SIGMOID);
+    }else if(funcStr == "LOGITNORMAL"){
+        func = static_cast<int> (ChromosomeNumberDependencyFunction::LOGITNORMAL);
     }else if (funcStr == "IGNORE"){ 
         func = static_cast<int> (ChromosomeNumberDependencyFunction::IGNORE);
     }else{
@@ -614,7 +634,14 @@ int ChromEvolOptions::getFunctionFromString(string funcStr){
 }
 /*************************************************************************/
 void ChromEvolOptions::getInitialValuesForComplexParams(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &mapOfParams){
-    for (uint i = 1; i <= static_cast<uint>(numOfModels_); i++){
+    uint numOfModels;
+    if (ChromEvolOptions::simulateJointEvolution_){
+        numOfModels = static_cast<uint>(ChromEvolOptions::numberOfTraitStates_);
+
+    }else{
+        numOfModels = static_cast<uint>(ChromEvolOptions::numOfModels_);
+    }
+    for (uint i = 1; i <= numOfModels; i++){
         mapOfParams[i] = std::pair<int, std::map<int, std::vector<double>>>();
         mapOfParams[i].first = baseNum_[i];
         mapOfParams[i].second[static_cast<int>(ChromosomeSubstitutionModel::GAIN)] = gain_[i];

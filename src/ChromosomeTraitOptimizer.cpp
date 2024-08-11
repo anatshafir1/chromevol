@@ -1,22 +1,22 @@
 #include "ChromosomeTraitOptimizer.h"
 using namespace bpp;
 
-std::map <uint, std::vector<uint>> ChromosomeTraitOptimizer::getNodesForEachModel(std::shared_ptr<PhyloTree> expectedMapping, StochasticMapping* stm){
-  std::map <uint, std::vector<uint>> nodeModels;
-  auto nodes = expectedMapping->getAllNodes();
-  for (size_t i = 0; i < nodes.size(); i ++){
-    uint nodeId = expectedMapping->getNodeIndex(nodes[i]);
-    int nodeState = stm->getNodeState(nodes[i]);
-    if (!(expectedMapping->isLeaf(nodeId))){
-      auto sons = expectedMapping->getSons(nodeId);
-      for (size_t j = 0; j < sons.size(); j++){
-        // add +1 so that it will work for the general function that constructs the heterogeneous model
-        nodeModels[static_cast<uint>(nodeState)+1].push_back(sons[j]);
-      }
-    }
-  }
-  return nodeModels;
-}
+// std::map <uint, std::vector<uint>> ChromosomeTraitOptimizer::getNodesForEachModel(std::shared_ptr<PhyloTree> expectedMapping, StochasticMapping* stm){
+//   std::map <uint, std::vector<uint>> nodeModels;
+//   auto nodes = expectedMapping->getAllNodes();
+//   for (size_t i = 0; i < nodes.size(); i ++){
+//     uint nodeId = expectedMapping->getNodeIndex(nodes[i]);
+//     int nodeState = stm->getNodeState(nodes[i]);
+//     if (!(expectedMapping->isLeaf(nodeId))){
+//       auto sons = expectedMapping->getSons(nodeId);
+//       for (size_t j = 0; j < sons.size(); j++){
+//         // add +1 so that it will work for the general function that constructs the heterogeneous model
+//         nodeModels[static_cast<uint>(nodeState)+1].push_back(sons[j]);
+//       }
+//     }
+//   }
+//   return nodeModels;
+// }
 
 
 vector<double> ChromosomeTraitOptimizer::getFrequenciesFromMapOfParams(std::map<string, double> &traitModelParams, bool random){
@@ -119,7 +119,7 @@ void ChromosomeTraitOptimizer::initJointLikelihood(std::map<string, double> trai
   try{
     auto treeChr = stm->createExpectedMappingHistory(numberOfStochasticMappings_);
     // creating the chromosome number model
-    std::map<uint, vector<uint>> mapModelNodesIds = getNodesForEachModel(treeChr, stm);
+    std::map<uint, vector<uint>> mapModelNodesIds = StochasticMapping::getNodesForEachModel(treeChr);
     delete stm;
     std::shared_ptr<ParametrizablePhyloTree> parTreeChr;
     std::vector<std::shared_ptr<ChromosomeSubstitutionModel>> models;

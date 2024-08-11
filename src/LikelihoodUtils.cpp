@@ -216,6 +216,9 @@ std::string LikelihoodUtils::getFunctionName(int func){
     case ChromosomeNumberDependencyFunction::REVERSE_SIGMOID:
         functionName = "REVERSE_SIGMOID";
         break;
+    case ChromosomeNumberDependencyFunction::LOGITNORMAL:
+        functionName = "LOGITNORMAL";
+        break;
     case ChromosomeNumberDependencyFunction::IGNORE:
         functionName = "IGNORE";
         break;

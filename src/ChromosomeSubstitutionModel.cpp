@@ -236,6 +236,40 @@ void RevSigmoidDependencyFunction::getBoundsForInitialParams(size_t index, vecto
   getAbsoluteBounds(index, lowerBound, upperBound, maxChrNumber);
 
 }
+/*****************************************************************************/
+double LogitnormalDependencyFunction::getRate(std::vector<Parameter*> params, size_t state) const{
+  auto rangeFactor = params[0]->getValue();
+  double transformedState = ((double)state-(double)domainMin_+1)/((double)domainMax_-(double)domainMin_+2);
+  auto mu = params[1]->getValue();
+  auto sigma = params[2]->getValue();
+  double pi = 2 * acos(0.0);
+  double expr_1 = 1/(sigma*sqrt(2 * pi));
+  double expr_2 = 1/(transformedState*(1-transformedState));
+  double logit_expr = log(transformedState/(1-transformedState));
+  double expr_3 = std::exp(-(pow(logit_expr-mu, 2)/(2*pow(sigma, 2))));
+  return rangeFactor * expr_1 * expr_2 * expr_3;
+
+}
+/**************************************************************************************/
+void LogitnormalDependencyFunction::getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber){
+  getAbsoluteBounds(index, lowerBound, upperBound, maxChrNumber);
+
+}
+/*************************************************************************************/
+void LogitnormalDependencyFunction::getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber){
+  *lowerBound = lowerBoundOfRateParam;
+  if (index == 0){  // for the range parameter   
+    *upperBound = upperBoundOfRateParam;
+  }else if (index == 1){ // mu
+    *upperBound = upperBoundLinearRateParam;
+  }else if (index == 2){  // sigma
+    *upperBound = upperBoundLinearRateParam*2;
+
+  }else{
+    throw Exception("LogitnormalDependencyFunction::getAbsoluteBounds(): index out of bounds!!");
+    
+  }
+}
 
 
 /*****************************************************************************/
@@ -262,6 +296,8 @@ ChromosomeNumberDependencyFunction* compositeParameter::setDependencyFunction(Ch
     return new PolynomialDependencyFunction();
   case ChromosomeNumberDependencyFunction::REVERSE_SIGMOID:
     return new RevSigmoidDependencyFunction();
+  case ChromosomeNumberDependencyFunction::LOGITNORMAL:
+    return new LogitnormalDependencyFunction();
   default:
     throw Exception("compositeParameter::getDependencyFunction(): No such function!!");
   }
