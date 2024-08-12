@@ -2010,13 +2010,26 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
             outFile << traitParamsNames[i] << " value is " << nullLik.second->getParameter(traitParamsNames[i]).getValue() << std::endl;
         }
         auto characterFreqs = (nullLik.second->getLikelihoodCalculationSingleProcess()->getRootFreqs())->getTargetValue();
+        auto chromosomeFreqs = (nullLik.first->getLikelihoodCalculationSingleProcess()->getRootFreqs())->getTargetValue();
         Vdouble rootFreqsBpp;
+        Vdouble chromFreqBpp;
         copyEigenToBpp(characterFreqs, rootFreqsBpp);
+        copyEigenToBpp(chromosomeFreqs, chromFreqBpp);
         outFile << "Trait Frequencies:\n";
         for (size_t i = 0; i < rootFreqsBpp.size(); i++){
             outFile << "F[" + std::to_string(i) << "] = " << rootFreqsBpp[i] << "\n";
 
         }
+        outFile << "Chromosome numbers root frequencies:" << std::endl;
+        for (size_t i = 0; i < chromFreqBpp.size(); i++){
+            if (i == chromFreqBpp.size() -1){
+                outFile << "F[" << i + alphabet_->getMin() << "] = " << chromFreqBpp[i] << endl;
+            }else{
+                outFile << "F[" << i + alphabet_->getMin() << "] = " << chromFreqBpp[i] << "\t";
+
+            }   
+        }
+
         outFile << "-log likelihood of the trait model (null hypothses): " << nullLik.second->getValue() << std::endl;
         outFile << "-log likelihood of the chromosome number model (null hypothesis): " << nullLik.first->getValue() << std::endl;
         outFile << "-log-likelihood value (null hypothesis): " << opt->getLikelihoodNull() << std::endl;
@@ -2044,6 +2057,8 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
         outFile << parameterNames[i] << " value is " << jointLik->getParameter(parameterNames[i]).getValue() << std::endl;
     }
     outFile << "Trait Frequencies:\n";
+    auto chromosome_lik = jointLik->getAbstractPhyloLikelihood(jointLik->getNumbersOfPhyloLikelihoods()[1]);
+    auto rootChromosomeFreq = (dynamic_cast<const SingleProcessPhyloLikelihood*>(chromosome_lik)->getLikelihoodCalculationSingleProcess()->getRootFreqs())->getTargetValue();
     if ((!ChromEvolOptions::weightedTraitRootFreqs_) && (ChromEvolOptions::fixedRootTraitState_ < 0)){
         getTraitThetas(jointLik, parameterNames, thetas);
         for (size_t i = 0; i < ChromEvolOptions::numberOfTraitStates_; i++){
@@ -2064,6 +2079,18 @@ bool ChromosomeNumberMng::printOutputFileJointLikelihood(const string &fileName,
         }
         outFile << "Trait likelihood in joint model: " << trait_lik->getValue() << std::endl;
     }
+    outFile << "Chromosome numbers root frequencies:" << std::endl;
+    Vdouble rootFreqsBppChromosome;
+    copyEigenToBpp(rootChromosomeFreq, rootFreqsBppChromosome);
+    for (size_t i = 0; i < rootFreqsBppChromosome.size(); i++){
+        if (i == rootFreqsBppChromosome.size() -1){
+            outFile << "F[" << i + alphabet_->getMin() << "] = " << rootFreqsBppChromosome[i] << endl;
+        }else{
+            outFile << "F[" << i + alphabet_->getMin() << "] = " << rootFreqsBppChromosome[i] << "\t";
+
+        }   
+    }
+
     outFile << "-log-likelihood value (alternative hypothesis): " << jointLik->getValue() << std::endl;
     bool nullRejected = true;
     if (!(ChromEvolOptions::runOnlyJointModel_)){
