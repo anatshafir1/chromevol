@@ -353,6 +353,7 @@ VectorSiteContainer* ChromosomeNumberMng::getTraitData(const string &traitPath) 
 }
 /******************************************************************************************************/
 void ChromosomeNumberMng::runJointTraitChromosomeAnalysis(){
+    RandomTools::setSeed(static_cast<long>(ChromEvolOptions::seed_));
     ChromosomeNumberOptimizer* optIndependent;
     SingleProcessPhyloLikelihood* optimizedChromosomeLik;
     if (ChromEvolOptions::runOnlyJointModel_){
