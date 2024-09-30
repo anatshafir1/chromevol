@@ -339,6 +339,7 @@ ChromosomeSubstitutionModel :: ChromosomeSubstitutionModel(
   unsigned int chrRange, 
   rootFreqType freqType,
   std::vector<int> rateChangeType,
+  bool demiOnlyForEven,
   bool simulated):
     AbstractParameterAliasable("Chromosome."),
     AbstractSubstitutionModel(alpha, std::shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), "Chromosome."),
@@ -360,6 +361,7 @@ ChromosomeSubstitutionModel :: ChromosomeSubstitutionModel(
     demiFunc_(),
     baseNumRFunc_(),
     simulated_(simulated),
+    demiOnlyForEven_(demiOnlyForEven),
     vPowExp_()
     
 {
@@ -402,6 +404,7 @@ ChromosomeSubstitutionModel::ChromosomeSubstitutionModel(const ChromosomeAlphabe
   unsigned int chrRange, 
   rootFreqType freqType,
   vector<int> rateChangeType,
+  bool demiOnlyForEven,
   bool simulated):
     AbstractParameterAliasable("Chromosome."),
     AbstractSubstitutionModel(alpha, std::shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), "Chromosome."),
@@ -423,6 +426,7 @@ ChromosomeSubstitutionModel::ChromosomeSubstitutionModel(const ChromosomeAlphabe
     demiFunc_(),
     baseNumRFunc_(),
     simulated_(simulated),
+    demiOnlyForEven_(demiOnlyForEven),
     vPowExp_()
     
 {
@@ -474,6 +478,7 @@ ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
   rootFreqType rootFrequenciesType,
   vector<int> rateChangeType,
   vector<int>& fixedParams,
+  bool demiOnlyForEven,
   double parsimonyBound)
 {
   std::map<int, vector<double>> mapRandomParams;
@@ -529,7 +534,7 @@ ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
     }
   }
 
-  ChromosomeSubstitutionModel* model = new ChromosomeSubstitutionModel(alpha, mapRandomParams, newBaseNumber, chrRange, rootFrequenciesType, rateChangeType);//, useExtendedFloat);
+  ChromosomeSubstitutionModel* model = new ChromosomeSubstitutionModel(alpha, mapRandomParams, newBaseNumber, chrRange, rootFrequenciesType, rateChangeType, demiOnlyForEven);//, useExtendedFloat);
   return model;
 
 }
@@ -783,13 +788,17 @@ void ChromosomeSubstitutionModel::updateQWithDemiDupl(size_t i, size_t minChrNum
 
                         
     }else if (i % 2 != 0 && (size_t)ceil((double)i*1.5) <= maxChrNum){
-      if (i == 1){
-        generator_(i-minChrNum, (size_t)ceil((double)i * 1.5)-minChrNum) += demiploidy_->getRate(i);
-      }else{
-        generator_(i-minChrNum, (size_t)ceil((double)i * 1.5)-minChrNum) += demiploidy_->getRate(i)/2;
-        generator_(i-minChrNum, (size_t)floor((double)i * 1.5)-minChrNum) += demiploidy_->getRate(i)/2;
+      if (!demiOnlyForEven_){
+        if (i == 1){
+          generator_(i-minChrNum, (size_t)ceil((double)i * 1.5)-minChrNum) += demiploidy_->getRate(i);
+        }else{
+          generator_(i-minChrNum, (size_t)ceil((double)i * 1.5)-minChrNum) += demiploidy_->getRate(i)/2;
+          generator_(i-minChrNum, (size_t)floor((double)i * 1.5)-minChrNum) += demiploidy_->getRate(i)/2;
+
+        }
 
       }
+
 
     }else{
       if (i != maxChrNum){

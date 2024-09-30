@@ -79,19 +79,19 @@ namespace bpp{
       virtual ~StochasticMappingUtils() {}
 
     public:
-      static void printResultsForEachMapping(PhyloTree* tree, std::map<uint, std::map<int, double>> &expectationsPerTypeRootToLeaf, const NonHomogeneousSubstitutionProcess* NonHomoProcess, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafTransitions, std::map<uint, std::map<size_t, bool>> &presentMapping, const string &outStMappingRootToLeafPath, size_t mappingIndex);
+      static void printResultsForEachMapping(PhyloTree* tree, std::map<uint, std::map<int, double>> &expectationsPerTypeRootToLeaf, const NonHomogeneousSubstitutionProcess* NonHomoProcess, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafTransitions, std::map<uint, std::map<size_t, bool>> &presentMapping, const string &outStMappingRootToLeafPath, size_t mappingIndex, bool demiOnlyForEven);
       static void printStochasticMappingEvolutionaryPath(ChromosomeAlphabet* alphabet, std::shared_ptr<PhyloTree> stmTree, const std::map<uint, std::vector<MutationPath>> &mappings, const std::map<uint, std::vector<size_t>> &ancestralStates, size_t mappingIndex, const string &outPathPerMapping);
       static void printMappingStretchedBranches(const string &stretchedBranchesPath, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched, const std::shared_ptr<PhyloTree> tree);
       static void fixFailedMappings(PhyloTree* tree, StochasticMapping* stm, std::map<uint, std::map<size_t, std::pair<double, double>>> &originalBrLenVsStretched, size_t numOfFixingMappingIterations);
-      static void printRootToLeaf(PhyloTree* tree, ChromosomeAlphabet* alphabet, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafOccurrences, std::map<uint, std::map<size_t, bool>> &presentMapping, size_t numOfMappings, const NonHomogeneousSubstitutionProcess* NonHomoProcess, const string &resultsDir);
+      static void printRootToLeaf(PhyloTree* tree, ChromosomeAlphabet* alphabet, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafOccurrences, std::map<uint, std::map<size_t, bool>> &presentMapping, size_t numOfMappings, const NonHomogeneousSubstitutionProcess* NonHomoProcess, const string &resultsDir, bool demiOnlyForEven);
       static void writeNanInTable(ofstream &stream);
       static void writeZeroInTable(ofstream &stream);
       // get model index for each node (i.e., the model of the father, because this is the model which applies on the son branch)
       static std::map<uint, size_t> getModelForEachBranch(PhyloTree &tree, const NonHomogeneousSubstitutionProcess &models);
       static void getModeForSons(PhyloTree &tree, uint fatherId, uint sonId, const NonHomogeneousSubstitutionProcess* NonHomoModel,  std::map<uint, size_t> &modelPerNode);
       static std::string getTypeOfTransitionStr(int transitionType);
-      static std::map<int, double> getTypeForEachTransitionPerNode(std::shared_ptr<const ChromosomeSubstitutionModel> chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId);
-      static bool getProbabilitiesPerType(vector<double> &probabilities, int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model);
+      static std::map<int, double> getTypeForEachTransitionPerNode(std::shared_ptr<const ChromosomeSubstitutionModel> chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId, bool demiOnlyForEven);
+      static bool getProbabilitiesPerType(vector<double> &probabilities, int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model, bool demiOnlyForEven);
       static vector <uint> getVectorOfMapKeys(std::map<uint, vector<size_t>> &mapOfVectors);
 
 

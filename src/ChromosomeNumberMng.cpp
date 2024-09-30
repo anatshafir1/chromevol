@@ -840,7 +840,7 @@ std::shared_ptr<NonHomogeneousSubstitutionProcess> ChromosomeNumberMng::setHeter
     copyEigenToBpp(rootFreqsValues, rootFreqsBpp);
     std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
     
-    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelsParams[1].second, modelsParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
+    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelsParams[1].second, modelsParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_);
     std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqsBpp);
     std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
     std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree, rootFrequencies);
@@ -848,7 +848,7 @@ std::shared_ptr<NonHomogeneousSubstitutionProcess> ChromosomeNumberMng::setHeter
     // adding models
     for (uint i = 1; i <= numOfModels; i++){
         if (i > 1){
-            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelsParams[i].second, modelsParams[i].first, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
+            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelsParams[i].second, modelsParams[i].first, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_);
         }   
         subProSim->addModel(std::shared_ptr<ChromosomeSubstitutionModel>(chrModel->clone()), mapModelNodesIds[i]);
     }
@@ -866,7 +866,7 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setHete
     std::shared_ptr<ParametrizablePhyloTree> parTree = std::shared_ptr<ParametrizablePhyloTree>(tree->clone());
     
     uint numOfModels = static_cast<uint>(likProcess->getSubstitutionProcess().getNumberOfModels());
-    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelParams[1].second, modelParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
+    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelParams[1].second, modelParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_);
     std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chrModel->getStateMap(), false)), rootFreqsBpp);
     //std::shared_ptr<FrequencySet> rootFrequencies = static_pointer_cast<FrequencySet>(rootFreqsFixed);
     std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
@@ -875,7 +875,7 @@ std::shared_ptr<LikelihoodCalculationSingleProcess> ChromosomeNumberMng::setHete
     // adding models
     for (uint i = 1; i <= numOfModels; i++){
         if (i > 1){
-            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelParams[i].second, modelParams[i].first, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
+            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, modelParams[i].second, modelParams[i].first, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_);
         }   
         subProSim->addModel(std::shared_ptr<ChromosomeSubstitutionModel>(chrModel->clone()), mapModelNodesIds[i]);
     }
@@ -963,7 +963,7 @@ void ChromosomeNumberMng::simulateChromosomeData(SimpleSubstitutionProcessSiteSi
     ChromEvolOptions::getInitialValuesForComplexParams(complexParamsValues);
     std::map<uint, uint> maxBaseNumTransition = (ChromEvolOptions::simulateData_) ? ChromEvolOptions::maxBaseNumTransition_ : chrRange_;
     //1. ChromEvolOptions::mapModelNodesIds_: already calculated
-    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[1].second, complexParamsValues[1].first, maxBaseNumTransition[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, true);
+    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[1].second, complexParamsValues[1].first, maxBaseNumTransition[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true);
     if ((chrModel->getBaseNumber() != IgnoreParam) && (ChromEvolOptions::correctBaseNumber_)){
         chrModel->correctBaseNumForSimulation(ChromEvolOptions::maxChrInferred_);
 
@@ -988,7 +988,7 @@ void ChromosomeNumberMng::simulateChromosomeData(SimpleSubstitutionProcessSiteSi
     }
     for (uint i = 1; i <= numberOfModels; i++){
         if (i > 1){
-            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[i].second, complexParamsValues[i].first, maxBaseNumTransition[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, true);
+            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[i].second, complexParamsValues[i].first, maxBaseNumTransition[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true);
             if (chrModel->getBaseNumber() != IgnoreParam){
                 chrModel->correctBaseNumForSimulation(ChromEvolOptions::maxChrInferred_);
 
@@ -1325,7 +1325,7 @@ void ChromosomeNumberMng::runStochasticMapping(ChromosomeNumberOptimizer* chrOpt
     std::map<uint, std::map<size_t, bool>> presentMapping;
     auto rootToLeafTransitions = stm->getNumOfOccurrencesFromRootToNode(presentMapping);
     //const string outStMappingRootToLeaf = ChromEvolOptions::resultsPathDir_+"//"+ "stMapping_root_to_leaf.txt";
-    StochasticMappingUtils::printRootToLeaf(tree_, alphabet_, rootToLeafTransitions, presentMapping, ChromEvolOptions::NumOfSimulations_, nonHomoProcess, ChromEvolOptions::resultsPathDir_);
+    StochasticMappingUtils::printRootToLeaf(tree_, alphabet_, rootToLeafTransitions, presentMapping, ChromEvolOptions::NumOfSimulations_, nonHomoProcess, ChromEvolOptions::resultsPathDir_, ChromEvolOptions::demiOnlyForEven_);
     
     Vdouble dwellingTimesPerState = stm->getDwellingTimesUnderEachState();
     auto numOfOccurencesPerTransition = stm->getTotalNumOfOcuurencesForEachTransition();

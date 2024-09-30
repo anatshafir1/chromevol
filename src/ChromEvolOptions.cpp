@@ -85,6 +85,7 @@ int ChromEvolOptions::fixedRootTraitState_;
 bool ChromEvolOptions::weightedTraitRootFreqs_;
 string ChromEvolOptions::traitDataForSimulation_;
 bool ChromEvolOptions::simulateJointEvolution_;
+bool ChromEvolOptions::demiOnlyForEven_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -161,6 +162,7 @@ void ChromEvolOptions::initDefaultParameters(){
     fixedRootTraitState_ = -1;
     weightedTraitRootFreqs_ = false;
     simulateJointEvolution_ = false;
+    demiOnlyForEven_ = false;
     
     
 
@@ -229,6 +231,7 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     minChrNum_ = ApplicationTools::getIntParameter("_minChrNum", ChromEvol.getParams(), minChrNum_, "", true, 0);
     numOfModels_ = ApplicationTools::getIntParameter("_numOfModels", ChromEvol.getParams(), numOfModels_, "", true, 0);
     seed_ = ApplicationTools::getIntParameter("_seed", ChromEvol.getParams(), seed_, "", true, 0);
+    demiOnlyForEven_ = ApplicationTools::getBooleanParameter("_demiOnlyForEven", ChromEvol.getParams(), demiOnlyForEven_, "", true, 0);
     minBaseNumberBound_ = ApplicationTools::getIntParameter("_minBaseNumberBound", ChromEvol.getParams(), minBaseNumberBound_, "", true, 0);
     simulateData_ = ApplicationTools::getBooleanParameter("_simulateData", ChromEvol.getParams(), simulateData_, "", true, 0);
     if (simulateData_){

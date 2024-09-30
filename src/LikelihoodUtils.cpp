@@ -768,7 +768,7 @@ SubstitutionProcess* LikelihoodUtils::setChromosomeSubstitutionModel(const Phylo
     std::map<uint, std::map<int, vector<string>>> mapOfParamsNamesPerModelType;
     LikelihoodUtils::setParamsNameInForMultiProcess(mapOfParamsNamesPerModelType, modelParams);
     std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
-    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet, modelParams[1].second, modelParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
+    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet, modelParams[1].second, modelParams[1].first, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_);
     if (weightedRootFreqs){
         subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree);
 
@@ -782,7 +782,7 @@ SubstitutionProcess* LikelihoodUtils::setChromosomeSubstitutionModel(const Phylo
     // adding models
     for (uint i = 1; i <= numOfModels; i++){
         if (i > 1){
-            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet, modelParams[i].second, modelParams[i].first, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_);
+            chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet, modelParams[i].second, modelParams[i].first, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_);
         }   
         subProSim->addModel(chrModel, mapModelNodesIds[i]);
         if (models){
@@ -814,7 +814,7 @@ SubstitutionProcess* LikelihoodUtils::setRandomChromosomeSubstitutionModel(std::
     LikelihoodUtils::setParamsNameInForMultiProcess(mapOfParamsNamesPerModelType, modelParams);
     std::shared_ptr<DiscreteDistribution> rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
     std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
-    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::shared_ptr<ChromosomeSubstitutionModel>(ChromosomeSubstitutionModel::initRandomModel(alphabet, modelParams[1].first, modelParams[1].second, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, fixedParams[1], parsimonyBound));
+    std::shared_ptr<ChromosomeSubstitutionModel> chrModel = std::shared_ptr<ChromosomeSubstitutionModel>(ChromosomeSubstitutionModel::initRandomModel(alphabet, modelParams[1].first, modelParams[1].second, baseNumberUpperBound[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, fixedParams[1], ChromEvolOptions::demiOnlyForEven_, parsimonyBound));
     if (weightedRootFreqs){
         subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(rdist, parTree);
 
@@ -829,7 +829,7 @@ SubstitutionProcess* LikelihoodUtils::setRandomChromosomeSubstitutionModel(std::
     // adding models
     for (uint i = 1; i <= numOfModels; i++){
         if (i > 1){
-            chrModel = std::shared_ptr<ChromosomeSubstitutionModel>(ChromosomeSubstitutionModel::initRandomModel(alphabet, modelParams[i].first, modelParams[i].second, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, fixedParams[i], parsimonyBound));
+            chrModel = std::shared_ptr<ChromosomeSubstitutionModel>(ChromosomeSubstitutionModel::initRandomModel(alphabet, modelParams[i].first, modelParams[i].second, baseNumberUpperBound[i], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, fixedParams[i], ChromEvolOptions::demiOnlyForEven_, parsimonyBound));
         }  
         subProSim->addModel(chrModel, mapModelNodesIds[i]);
         if (models){

@@ -4,7 +4,7 @@
 using namespace bpp;
 using namespace std;
 
-void StochasticMappingUtils::printResultsForEachMapping(PhyloTree* tree, std::map<uint, std::map<int, double>> &expectationsPerTypeRootToNode, const NonHomogeneousSubstitutionProcess* NonHomoProcess, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafTransitions, std::map<uint, std::map<size_t, bool>> &presentMapping, const string &outStMappingRootToLeafPath, size_t mappingIndex){
+void StochasticMappingUtils::printResultsForEachMapping(PhyloTree* tree, std::map<uint, std::map<int, double>> &expectationsPerTypeRootToNode, const NonHomogeneousSubstitutionProcess* NonHomoProcess, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafTransitions, std::map<uint, std::map<size_t, bool>> &presentMapping, const string &outStMappingRootToLeafPath, size_t mappingIndex, bool demiOnlyForEven){
     ofstream stream;
     std::map<uint, size_t> modelsForBranch = getModelForEachBranch(*tree, *NonHomoProcess);
     stream.open(outStMappingRootToLeafPath);
@@ -52,7 +52,7 @@ void StochasticMappingUtils::printResultsForEachMapping(PhyloTree* tree, std::ma
                     auto &transitions = rootToLeafTransitions[nodeId][mappingIndex];
                     auto model = NonHomoProcess->getModel(modelsForBranch[nodeId]);
                     auto chrModel = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(model);
-                    std::map<int, double> transitionsPerType = getTypeForEachTransitionPerNode(chrModel, transitions, nodeId);
+                    std::map<int, double> transitionsPerType = getTypeForEachTransitionPerNode(chrModel, transitions, nodeId, demiOnlyForEven);
                     for (int type = 0; type < ChromosomeSubstitutionModel::typeOfTransition::NUMTYPES; type++){
                         stream << "," << transitionsPerType[type];
                         if (expectationsPerTypeRootToNode.find(nodeId) == expectationsPerTypeRootToNode.end()){
@@ -197,7 +197,7 @@ void StochasticMappingUtils::fixFailedMappings(PhyloTree* tree, StochasticMappin
     // }
 }
 /**************************************************************************************/
-void StochasticMappingUtils::printRootToLeaf(PhyloTree* tree, ChromosomeAlphabet* alphabet, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafOccurrences, std::map<uint, std::map<size_t, bool>> &presentMapping, size_t numOfMappings, const NonHomogeneousSubstitutionProcess* NonHomoProcess, const string &resultsDir){
+void StochasticMappingUtils::printRootToLeaf(PhyloTree* tree, ChromosomeAlphabet* alphabet, std::map<uint, std::map<size_t, std::map<std::pair<size_t, size_t>, double>>> &rootToLeafOccurrences, std::map<uint, std::map<size_t, bool>> &presentMapping, size_t numOfMappings, const NonHomogeneousSubstitutionProcess* NonHomoProcess, const string &resultsDir, bool demiOnlyForEven){
   const string outStMappingRootToLeafPath =  resultsDir+"//"+ "stMapping_root_to_leaf.txt";
   const string outStMappingRootToLeafExpPath =  resultsDir+"//"+ "stMapping_root_to_leaf_exp.csv";
   ofstream stream;
@@ -274,7 +274,7 @@ void StochasticMappingUtils::printRootToLeaf(PhyloTree* tree, ChromosomeAlphabet
   
   for (size_t i = 0; i < numOfMappings; i++){
       const string outStMappingRootToLeafCSVPath =  resultsDir+"//"+ "stMapping_mapping_" + std::to_string(i) + ".csv";
-      printResultsForEachMapping(tree, expectationsPerTypeRootToLeaf, NonHomoProcess, rootToLeafOccurrences, presentMapping, outStMappingRootToLeafCSVPath, i);
+      printResultsForEachMapping(tree, expectationsPerTypeRootToLeaf, NonHomoProcess, rootToLeafOccurrences, presentMapping, outStMappingRootToLeafCSVPath, i, demiOnlyForEven);
   }
   ofstream stream_exp;
   stream_exp.open(outStMappingRootToLeafExpPath);
@@ -372,7 +372,7 @@ std::string StochasticMappingUtils::getTypeOfTransitionStr(int transitionType){
     
 }
 /**************************************************************/
-std::map<int, double> StochasticMappingUtils::getTypeForEachTransitionPerNode(std::shared_ptr<const ChromosomeSubstitutionModel> chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId){
+std::map<int, double> StochasticMappingUtils::getTypeForEachTransitionPerNode(std::shared_ptr<const ChromosomeSubstitutionModel> chrModel, std::map<pair<size_t, size_t>, double> &transitionsPerNode, uint nodeId, bool demiOnlyForEven){
     std::map<int, double> expectationsPerType;
     auto itTransitions = transitionsPerNode.begin();
     while(itTransitions != transitionsPerNode.end()){
@@ -380,7 +380,7 @@ std::map<int, double> StochasticMappingUtils::getTypeForEachTransitionPerNode(st
         int startState = static_cast<int>((itTransitions->first).first);
         int endState = static_cast<int>((itTransitions->first).second);
         double expectation = transitionsPerNode[itTransitions->first];
-        bool legalMove = getProbabilitiesPerType(probabilities, startState, endState, chrModel);
+        bool legalMove = getProbabilitiesPerType(probabilities, startState, endState, chrModel, demiOnlyForEven);
         if (!legalMove){
             itTransitions ++;
             continue;
@@ -397,7 +397,7 @@ std::map<int, double> StochasticMappingUtils::getTypeForEachTransitionPerNode(st
 
 }
 /**************************************************************/
-bool StochasticMappingUtils::getProbabilitiesPerType(vector<double> &probabilities, int startStateIndex, int endStateIndex, std::shared_ptr<const ChromosomeSubstitutionModel> model){
+bool StochasticMappingUtils::getProbabilitiesPerType(vector<double> &probabilities, int startStateIndex, int endStateIndex, std::shared_ptr<const ChromosomeSubstitutionModel> model, bool demiOnlyForEven){
     // convert from state index to real chromsome number
     bool legalMove = false;
     probabilities.resize(ChromosomeSubstitutionModel::NUMTYPES);
@@ -458,17 +458,22 @@ bool StochasticMappingUtils::getProbabilitiesPerType(vector<double> &probabiliti
                 sumOfRates += model->getDemiDupl()->getRate(chrStart);
             }
         }else{
-            if ((chrEnd == (int)ceil(chrStart * 1.5)) || (chrEnd == (int)floor(chrStart * 1.5))){
-                legalMove = true;
-                double demiDupRate;
-                if (chrStart == 1){
-                    demiDupRate =  model->getDemiDupl()->getRate(chrStart);
-                }else{
-                    demiDupRate = model->getDemiDupl()->getRate(chrStart)/2;
+            if (!demiOnlyForEven){
+                if ((chrEnd == (int)ceil(chrStart * 1.5)) || (chrEnd == (int)floor(chrStart * 1.5))){
+                    legalMove = true;
+                    double demiDupRate;
+                    if (chrStart == 1){
+                        demiDupRate =  model->getDemiDupl()->getRate(chrStart);
+                    }else{
+                        demiDupRate = model->getDemiDupl()->getRate(chrStart)/2;
+                    }
+                    probabilities[(size_t)(ChromosomeSubstitutionModel::DEMIDUPL_T)] = demiDupRate;
+                    sumOfRates += demiDupRate;
                 }
-                probabilities[(size_t)(ChromosomeSubstitutionModel::DEMIDUPL_T)] = demiDupRate;
-                sumOfRates += demiDupRate;
+
+                
             }
+
         }
 
     }

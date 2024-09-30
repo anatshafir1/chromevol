@@ -377,6 +377,7 @@ private:
   ChromosomeNumberDependencyFunction::FunctionType demiFunc_;
   ChromosomeNumberDependencyFunction::FunctionType baseNumRFunc_;
   bool simulated_;
+  bool demiOnlyForEven_;
  
 
 
@@ -396,6 +397,7 @@ public:
     unsigned int maxChrRange, 
     rootFreqType freqType,
     vector<int> rateChangeType,
+    bool demiOnlyForEven,
     bool simulated = false);
 
   ChromosomeSubstitutionModel(const ChromosomeAlphabet* alpha, 
@@ -404,6 +406,7 @@ public:
     unsigned int maxChrRange, 
     rootFreqType freqType,
     vector<int> rateChangeType,
+    bool demiOnlyForEven,
     bool simulated = false);
 
 
@@ -445,6 +448,7 @@ public:
     demiFunc_(model.demiFunc_),
     baseNumRFunc_(model.baseNumRFunc_),
     simulated_(model.simulated_),
+    demiOnlyForEven_(model.demiOnlyForEven_),
     vPowExp_(model.vPowExp_)
   {
     std::vector<compositeParameter**> newModelParams = {&gain_, &loss_, &dupl_, &demiploidy_, &baseNumR_};
@@ -482,6 +486,7 @@ public:
     rootFreqType rootFrequenciesType,
     std::vector<int> rateChangeType,
     std::vector<int>& fixedParams,
+    bool demiOnlyForEven,
     double parsimonyBound = 0);
 
 

@@ -563,9 +563,13 @@ bool ComputeChromosomeTransitionsExp::isMaxStateValid(int prevState, std::shared
                 valid = true;
             }
         }else{
-            if ((maxState == (int)ceil(initState * 1.5)) || (maxState == (int)floor(initState * 1.5))){
-                valid = true;
+            if (!ChromEvolOptions::demiOnlyForEven_){
+                if ((maxState == (int)ceil(initState * 1.5)) || (maxState == (int)floor(initState * 1.5))){
+                    valid = true;
+                }
+
             }
+
         }
         if (valid){
             return valid;
@@ -649,17 +653,21 @@ void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endSt
                     sumOfRates += model->getDemiDupl()->getRate(chrStart);
                 }
             }else{
-                if ((chrEnd == (int)ceil(chrStart * 1.5)) || (chrEnd == (int)floor(chrStart * 1.5))){
-                    legalMove = true;
-                    double demiDupRate;
-                    if (chrStart == 1){
-                        demiDupRate =  model->getDemiDupl()->getRate(chrStart);
-                    }else{
-                        demiDupRate = model->getDemiDupl()->getRate(chrStart)/2;
+                if (!ChromEvolOptions::demiOnlyForEven_){
+                    if ((chrEnd == (int)ceil(chrStart * 1.5)) || (chrEnd == (int)floor(chrStart * 1.5))){
+                        legalMove = true;
+                        double demiDupRate;
+                        if (chrStart == 1){
+                            demiDupRate =  model->getDemiDupl()->getRate(chrStart);
+                        }else{
+                            demiDupRate = model->getDemiDupl()->getRate(chrStart)/2;
+                        }
+                        stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::DEMIDUPL_T] = demiDupRate;
+                        sumOfRates += demiDupRate;
                     }
-                    stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::DEMIDUPL_T] = demiDupRate;
-                    sumOfRates += demiDupRate;
+
                 }
+
             }
 
         }
@@ -980,7 +988,7 @@ std::map<int, double> ComputeChromosomeTransitionsExp::getExpectationsPerType(co
             continue;
         }
         auto &transitionsPerNode = expectationsPerNode[nodeId]; // don't want to create a local copy of this element, just to use a reference
-        auto transitionsTypesPerNode = StochasticMappingUtils::getTypeForEachTransitionPerNode(chrModel, transitionsPerNode, nodeId);
+        auto transitionsTypesPerNode = StochasticMappingUtils::getTypeForEachTransitionPerNode(chrModel, transitionsPerNode, nodeId, ChromEvolOptions::demiOnlyForEven_);
         auto typesIt = transitionsTypesPerNode.begin();
         while(typesIt != transitionsTypesPerNode.end()){
             if (transitionsTypesPerNode.find(typesIt->first) == transitionsTypesPerNode.end()){
