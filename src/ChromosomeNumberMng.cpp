@@ -341,12 +341,17 @@ VectorSiteContainer* ChromosomeNumberMng::getTraitData(const string &traitPath) 
     VectorSequenceContainer* vsc_seq = fasta.readSequences(traitPath, alpha);
     VectorSiteContainer* vsc = new VectorSiteContainer(alpha);
     vector <string> sequenceNames = vsc_seq->getSequenceNames();
+    std::set<string> observedStates;
 
     for (size_t i = 0; i < sequenceNames.size(); i++){
         BasicSequence seq = vsc_seq->getSequence(sequenceNames[i]);
         BasicSequence new_seq = BasicSequence(seq.getName(), seq.getChar(0), alpha);
+        observedStates.insert(seq.getChar(0));
         vsc->addSequence(new_seq);
 
+    }
+    if (observedStates.size() < ChromEvolOptions::numberOfTraitStates_){
+        throw Exception("ERROR!!! Number of observed trait states is smaller than the number of specified states! This might cause problems in stochastic mappings and yield unreliable results!!!\n");
     }
     return vsc;
 
