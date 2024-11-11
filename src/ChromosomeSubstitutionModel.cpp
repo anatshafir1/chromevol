@@ -1138,11 +1138,12 @@ void ChromosomeSubstitutionModel::calculatePijtUsingEigenValues(double t) const{
   }
 }
 
-
 /******************************************************************************/
+#ifdef USE_VERSION_EIGEN_PIJT
 
 const Matrix<double>& ChromosomeSubstitutionModel::getPij_t(double t) const
 {
+  size_t minTaylorIterations = 5;
   if (t == 0)
   {
     MatrixTools::getId(size_, pijt_);
@@ -1171,7 +1172,7 @@ const Matrix<double>& ChromosomeSubstitutionModel::getPij_t(double t) const
     for (size_t iternum = 2; iternum <  vPowExp_.size(); iternum++){
       calculateExp_Qt(iternum, &s, v);
 
-      if (iternum > 2){
+      if (iternum > minTaylorIterations){
         converged = checkIfReachedConvergence(pijt_, pijt_temp);
         if (converged){
           break;
@@ -1218,10 +1219,88 @@ const Matrix<double>& ChromosomeSubstitutionModel::getPij_t(double t) const
     }
 
   }
-
-  /////////////////////////////
   return pijt_;
 }
+
+#else
+
+const Matrix<double>& ChromosomeSubstitutionModel::getPij_t(double t) const
+{
+  size_t minTaylorIterations = 5;
+  if (t == 0)
+  {
+    MatrixTools::getId(size_, pijt_);
+  }
+  else
+  {
+    RowMatrix<double> pijt_temp;
+    MatrixTools::getId(size_, pijt_temp);
+    double s = 1.0;
+    double v = rate_ * t;
+    double norm = v * firstNormQ_;
+    size_t m = 0;
+    bool converged = false;
+    //while (v > 0.5)    // exp(r*t*A)=(exp(r*t/(2^m) A))^(2^m)
+    while (norm > 0.5)
+    {
+      m += 1;
+      v /= 2;
+      norm /= 2;
+    }
+    for (size_t iternum = 2; iternum <  vPowExp_.size(); iternum++){
+      calculateExp_Qt(iternum, &s, v);
+
+      if (iternum > minTaylorIterations){
+        converged = checkIfReachedConvergence(pijt_, pijt_temp);
+        if (converged){
+          break;
+        }
+      }
+      MatrixTools::copy(pijt_, pijt_temp);
+      if (iternum > 250){
+        //std :: cout << "ERROR: Pijt did not reach convergence for t = "<< t <<"!"<<endl;
+        throw Exception("ChromosomeSubstitutionModel: Taylor series did not reach convergence!");
+        break;
+      }
+      if (iternum == vPowExp_.size()-1 && !converged){  //need to add more powers to the matrix
+        RowMatrix<double> new_pow;
+      //new_pow.resize(size_, size_);
+        MatrixTools :: mult(vPowExp_[vPowExp_.size()-1], generator_, new_pow);
+        vPowExp_.push_back(new_pow);
+
+      }
+
+    }
+    while (m > 0){  // recover the 2^m
+      
+      MatrixTools::mult(pijt_, pijt_, tmpMat_);
+      MatrixTools::copy(tmpMat_, pijt_);
+
+      m--;
+    }
+  }
+  
+  //just for test/////////////////////
+  // bool correct = true;
+  if (!pijtCalledFromDeriv_){
+    for (size_t i = 0; i < size_; i++){
+      for (size_t j = 0; j < size_; j++){
+        if (pijt_(i,j) < 0){
+          pijt_(i,j) = NumConstants::VERY_TINY(); // trying to do it exactly as in ChromEvol. Maybe the "nan" problem will be solved
+          //pijt_(i,j) = 0;
+        }
+        else if (pijt_(i, j) > 1){
+          pijt_(i,j) = 1.0;
+        }
+
+      }
+    }
+
+  }
+  return pijt_;
+}
+#endif
+/******************************************************************************/
 double ChromosomeSubstitutionModel::getFirstNorm() const{
   double norm = 0;
   for (size_t i = 0; i < size_; i++){

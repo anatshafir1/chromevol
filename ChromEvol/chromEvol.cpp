@@ -39,6 +39,9 @@ int main(int args, char **argv) {
         return 0;
     }
     try{
+        #ifdef USE_VERSION_EIGEN_PIJT
+        std::cout << "Running version with all options to calculate Pijt matrix" << std::endl;
+        #endif
         time_t t1;
         time(&t1);
         time_t t2;

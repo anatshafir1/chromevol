@@ -44,6 +44,14 @@ IF (USE_DEBUG)
   add_compile_options(-DDEBUG)
 ENDIF()
 
+
+option(USE_VERSION_EIGEN_PIJT "Use Eigen-based PIJT version" OFF)
+
+IF(USE_VERSION_EIGEN_PIJT)
+  MESSAGE("-- Compiling with Eigen-decomposition-based PIJT version")
+  add_compile_options(-DUSE_VERSION_EIGEN_PIJT)
+ENDIF()
+
 # Libtool-like version number
 # CURRENT:REVISION:AGE => file.so.(C-A).A.R
 # current:  The most recent interface number that this library implements.
