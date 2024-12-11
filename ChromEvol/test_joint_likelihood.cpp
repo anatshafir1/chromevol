@@ -1121,10 +1121,8 @@ double calculateLikelihood(shared_ptr<PhyloTree> tree, std::unordered_map<string
     return likelihood;
 
 }
-
 /******************************************************/
-int main(){
-  //testTraitWeighted();
+void testBMTraitModel(){
   Newick reader;
   shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("((((P:0.21,H:0.21):0.28,M:0.49):0.13,A:0.62):0.38,G:1.0);", false, "", false, false));
   std::unordered_map<string, double> traitData;
@@ -1135,6 +1133,124 @@ int main(){
   traitData["H"] = 4.09434;
   double likelihood = calculateLikelihood(pTree, traitData);
   std::cout << "likelihood is " << likelihood << std::endl;
+
+}
+/******************************************************/
+void testChromosomeBMSubstitutionModel(){
+  Newick reader;
+  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("(((S1:0.1,S2:0.1):0.3,S3:0.4):0.2,(S4:0.3,S5:0.3):0.3);", false, "", false, false));
+  const ChromosomeAlphabet* alphabetChr = new ChromosomeAlphabet(3,20);
+  auto rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+  auto parTree =  std::make_shared<ParametrizablePhyloTree>(*pTree);
+  std::map<int, std::vector<double>> mapOfParamValues;
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::GAIN)].push_back(2);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::LOSS)].push_back(2);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::DUPL)].push_back(3);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::DEMIDUPL)].push_back(1.3);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::BASENUMR)].push_back(0.1);
+  uint chrRange = 15;
+  int baseNumber = 6;
+  std::vector<int> rateChangeType;
+  for (size_t i = 0; i < 5; i++){
+    rateChangeType.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::CONSTANT));
+
+  }
+  std::shared_ptr<VectorSiteContainer> vscChr = std::make_shared<VectorSiteContainer>(alphabetChr);
+	vscChr->addSequence(BasicSequence("S1", "3", alphabetChr));
+	vscChr->addSequence(BasicSequence("S2", "6", alphabetChr));
+	vscChr->addSequence(BasicSequence("S3", "18", alphabetChr));
+	vscChr->addSequence(BasicSequence("S4", "12", alphabetChr));
+	vscChr->addSequence(BasicSequence("S5", "6", alphabetChr));
+  std::shared_ptr<ChromosomeSubstitutionModel> chrModel1 = std::make_shared<ChromosomeSubstitutionModel>(alphabetChr, mapOfParamValues, baseNumber, chrRange, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType, false);
+
+  std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim;
+  subProSim = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdist->clone()), parTree);
+  auto nodes = pTree->getAllNodes();
+  std::vector<uint> modelNodes;
+  for (size_t i = 0; i < nodes.size(); i++){
+    auto nodeId = pTree->getNodeIndex(nodes[i]);
+    if (nodeId == pTree->getRootIndex()){
+      continue;
+    }
+    modelNodes.push_back(nodeId);
+  }
+  subProSim->addModel(chrModel1, modelNodes);
+  SubstitutionProcess* subProcess= subProSim->clone();
+  Context context;
+  auto lik = std::make_shared<LikelihoodCalculationSingleProcess>(context, *(vscChr->clone()), *subProcess, true);
+  auto phylo1 = std::make_shared<SingleProcessPhyloLikelihood>(context, lik);
+  double chrModelLik = phylo1->getValue();
+  std::cout << "Regular chromosome model likelihood is: " << chrModelLik << std::endl;
+  // defining chromosome model BM:
+  double sigma = 3.15;
+  double mu = 1.82;
+  double traitState = 2;
+  double minTraitState = 0.1;
+  double maxTraitState = 10;
+  std::map<int, std::vector<double>> mapOfParamValues2;
+  mapOfParamValues2[static_cast<int>(ChromosomeSubstitutionModel::GAIN)].push_back(1);
+  mapOfParamValues2[static_cast<int>(ChromosomeSubstitutionModel::GAIN)].push_back(0.5);
+  mapOfParamValues2[static_cast<int>(ChromosomeSubstitutionModel::LOSS)].push_back(1.5);
+  mapOfParamValues2[static_cast<int>(ChromosomeSubstitutionModel::LOSS)].push_back(0.25);
+  mapOfParamValues2[static_cast<int>(ChromosomeSubstitutionModel::DUPL)].push_back(1.5);
+  mapOfParamValues2[static_cast<int>(ChromosomeSubstitutionModel::DUPL)].push_back(0.75);
+  mapOfParamValues2[static_cast<int>(ChromosomeSubstitutionModel::DEMIDUPL)].push_back(1.3);
+  mapOfParamValues2[static_cast<int>(ChromosomeSubstitutionModel::BASENUMR)].push_back(0.1);
+
+  std::vector<int> rateChangeType2;
+  rateChangeType2.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::CONSTANT));
+  for (size_t i = 0; i < 3; i++){
+    rateChangeType2.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::LINEAR));
+
+  }
+  rateChangeType2.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::CONSTANT));
+  std::shared_ptr<ChromosomeBMSubstitutionModel> chrBMModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu, sigma, traitState, minTraitState, maxTraitState, alphabetChr, mapOfParamValues2, baseNumber, chrRange, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType2, false);
+  std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim2;
+  auto parTree2 =  std::make_shared<ParametrizablePhyloTree>(*pTree);
+  subProSim2 = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdist->clone()), parTree2);
+  subProSim2->addModel(chrBMModel, modelNodes);
+  SubstitutionProcess* subProcess2= subProSim2->clone();
+  Context context2;
+  auto lik2 = std::make_shared<LikelihoodCalculationSingleProcess>(context2, *(vscChr->clone()), *subProcess2, true);
+  auto phylo2 = std::make_shared<SingleProcessPhyloLikelihood>(context2, lik2);
+  double chrModelLik2 = phylo2->getValue();
+  std::cout << "BM chromosome model likelihood is: " << chrModelLik2 << std::endl;
+
+  //  printing the updated parameters
+
+  auto parameters = phylo2->getSubstitutionModelParameters();
+  for (size_t i = 0; i < parameters.size(); i++){
+    std::cout << "\t" << parameters[i].getName() << " value is " << parameters[i].getValue() << std::endl;
+  }
+
+  phylo2->setParameterValue("Chromosome.state_1", 4);
+  std::cout << "BM chromosome model likelihood is after changing state: " << phylo2->getValue() << std::endl;
+  phylo1->setParameterValue("Chromosome.gain0_1", 3);
+  phylo1->setParameterValue("Chromosome.loss0_1", 2.5);
+  phylo1->setParameterValue("Chromosome.dupl0_1", 4.5);
+  std::cout << "Regular chromosome model likelihood is after the parallel change: " << phylo1->getValue() << std::endl;
+  // Now getting back to previous likelihood by changing the transition type parameters
+  phylo2->setParameterValue("Chromosome.gain0_1", 1.5);
+  phylo2->setParameterValue("Chromosome.gain1_1", 0.125);
+
+  phylo2->setParameterValue("Chromosome.loss0_1", 1.8);
+  phylo2->setParameterValue("Chromosome.loss1_1", 0.05);
+
+  phylo2->setParameterValue("Chromosome.dupl0_1", 1);
+  phylo2->setParameterValue("Chromosome.dupl1_1", 0.5);
+
+  std::cout << "BM chromosome model likelihood is after changing back: " << phylo2->getValue() << std::endl;
+
+
+
+
+}
+
+/******************************************************/
+int main(){
+  //testTraitWeighted();
+  testChromosomeBMSubstitutionModel();
+
   return 0;
   // string simulations_path = "/home/anat/Docs/Sida/simulations";
   // size_t num_of_simulations = 100;

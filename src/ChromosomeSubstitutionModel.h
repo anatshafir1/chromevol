@@ -12,15 +12,8 @@
 #include <Bpp/Seq/Alphabet/ChromosomeAlphabet.h>
 #include <Bpp/Exceptions.h>
 #include <regex>
-//#include <Bpp/Phyl/NewLikelihood/DataFlow/ExtendedFloatTools.h>
+#include "ChromosomeNumberDependencyFunction.h"
 
-#define lowerBoundOfRateParam 0.0
-#define lowerBoundOfExpParam -3.0
-#define upperBoundOfRateParam 100.0
-#define upperBoundLinearRateParam 5.0
-#define upperBoundExpParam 4.6
-#define logNormalDomainFactor 4
-#define revSigmoidExpRateParam 2
 #define IgnoreParam -999
 #define DemiEqualDupl -2
 #define EPSILON 2.22045e-016
@@ -28,189 +21,9 @@ extern int lowerLimitBaseNumber;
 using namespace std;
 namespace bpp
 {
-class ChromosomeNumberDependencyFunction{
-  protected:
-    // the min and max chromosome counts
-    int domainMin_;
-    int domainMax_;
-
-  public:
-    enum FunctionType {CONSTANT, LINEAR, LINEAR_BD, EXP, POLYNOMIAL, LOGNORMAL, REVERSE_SIGMOID, LOGITNORMAL, IGNORE};
-    ChromosomeNumberDependencyFunction():domainMin_(0), domainMax_(0){}
-    virtual ~ChromosomeNumberDependencyFunction(){}
-
-    virtual FunctionType getName() const = 0;
-    virtual double getRate(std::vector<Parameter*> params, size_t state) const = 0;
-    virtual size_t getNumOfParameters() const = 0;
-    virtual void setDomainsIfNeeded(int minChrNum, int maxChrNum){}
-
-    virtual void updateBounds(ParameterList& params, std::vector<string> paramsNames, size_t index, double* lowerBound, double* upperBound, int maxChrNum){
-      std::shared_ptr<IntervalConstraint> interval = dynamic_pointer_cast<IntervalConstraint>(params.getParameter(paramsNames[index]).getConstraint());
-      *lowerBound = interval->getLowerBound();
-      *upperBound = interval->getUpperBound();
-    }
-    virtual void updateBounds(Function* f, const std::string &paramName, double &lowerBound, double &upperBound){return;};
-    virtual void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber){
-      *lowerBound = lowerBoundOfRateParam;
-      *upperBound = upperBoundOfRateParam;
-    }
-    virtual void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber){
-      *lowerBound = lowerBoundOfRateParam;
-      *upperBound = upperBoundOfRateParam;
-    }
-    virtual double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, int minChrNum, int maxChrNum){
-      return parsimonyBound;
-
-    }
-
-};
-class ConstantDependencyFunction :
-  public virtual ChromosomeNumberDependencyFunction
-{
-  public:
-    ConstantDependencyFunction():ChromosomeNumberDependencyFunction(){}
-    virtual ~ConstantDependencyFunction(){}
-
-    FunctionType getName() const{return FunctionType::CONSTANT;}
-    double getRate(std::vector<Parameter*> params, size_t state) const;
-    size_t getNumOfParameters() const{return 1;}
-    double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, int minChrNum, int maxChrNum){
-      return parsimonyBound;
-    }
-
-};
-class LinearDependencyFunction:
-  public virtual ChromosomeNumberDependencyFunction
-{
-  public:
-
-    LinearDependencyFunction():ChromosomeNumberDependencyFunction(){}
-    virtual ~LinearDependencyFunction(){}
-
-    FunctionType getName() const{return FunctionType::LINEAR;}
-    double getRate(std::vector<Parameter*> params, size_t state) const;
-    size_t getNumOfParameters() const{return 2;}
-    void updateBounds(ParameterList& params, std::vector<string> paramsNames, size_t index, double* lowerBound, double* upperBound, int maxChrNum);
-    void updateBounds(Function* f, const std::string &paramName, double &lowerBound, double &upperBound);
-    void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber);
-    void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber);
-    double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, int minChrNum, int maxChrNum);
-
-};
-class LinearBDDependencyFunction:
-  public virtual ChromosomeNumberDependencyFunction
-{
-  public:
-    LinearBDDependencyFunction():ChromosomeNumberDependencyFunction(){}
-    virtual ~LinearBDDependencyFunction(){}
-
-    FunctionType getName() const{return FunctionType::LINEAR_BD;}
-    double getRate(std::vector<Parameter*> params, size_t state) const;
-    size_t getNumOfParameters() const{return 1;}
-    //double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, int minChrNum, int maxChrNum);
-    double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, int minChrNum, int maxChrNum);
-
-};
-class ExponentailDependencyFunction:
-  public virtual ChromosomeNumberDependencyFunction
-{
-  public:
-    ExponentailDependencyFunction():ChromosomeNumberDependencyFunction(){}
-    virtual ~ExponentailDependencyFunction(){}
-
-    FunctionType getName() const {return FunctionType::EXP;}
-    double getRate(std::vector<Parameter*> params, size_t state) const;
-    size_t getNumOfParameters() const{return 2;}
-    void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber);
-    void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber);
-    double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, int minChrNum, int maxChrNum);
-
-};
-class PolynomialDependencyFunction:
-  public virtual ChromosomeNumberDependencyFunction
-{
-  public:
-    PolynomialDependencyFunction():ChromosomeNumberDependencyFunction(){}
-    virtual ~PolynomialDependencyFunction(){}
-
-    FunctionType getName() const{return FunctionType::POLYNOMIAL;}
-    double getRate(std::vector<Parameter*> params, size_t state) const;
-    size_t getNumOfParameters() const{return 3;}
-    void setDomainsIfNeeded(int minChrNum, int maxChrNum){
-      domainMin_ = minChrNum;
-      domainMax_ = maxChrNum;
-    }
-    //void updateBounds(ParameterList& params, std::vector<string> paramsNames, size_t index, double* lowerBound, double* upperBound, int maxChrNum);
-    //void updateBounds(Function* f, const std::string &paramName, double &lowerBound, double &upperBound);
-    void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber);
-    void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber);
-
-};
-class LognormalDependencyFunction:
-  public virtual ChromosomeNumberDependencyFunction
-{
-  private:
-  //int maxChrNum_;
-  public:
-    LognormalDependencyFunction():ChromosomeNumberDependencyFunction(){}
-    virtual ~LognormalDependencyFunction(){}
-
-    FunctionType getName() const {return FunctionType::LOGNORMAL;}
-    void setDomainsIfNeeded(int minChrNum, int maxChrNum){
-      domainMin_ = minChrNum;
-      domainMax_ = maxChrNum;
-    }
-
-    double getRate(std::vector<Parameter*> params, size_t state) const;
-    size_t getNumOfParameters() const{return 3;}
-    void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber);
-    void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber);
-
-};
-class RevSigmoidDependencyFunction:
-  public virtual ChromosomeNumberDependencyFunction
-{
-  public:
-    RevSigmoidDependencyFunction():ChromosomeNumberDependencyFunction(){}
-    virtual ~RevSigmoidDependencyFunction(){}
-
-    FunctionType getName() const {return FunctionType::REVERSE_SIGMOID;}
-    double getRate(std::vector<Parameter*> params, size_t state) const;
-    size_t getNumOfParameters() const{return 3;}
-    void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber);
-    void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber);
-    void setDomainsIfNeeded(int minChrNum, int maxChrNum){
-      domainMin_ = minChrNum;
-      domainMax_ = maxChrNum;
-    }
-
-};
-class LogitnormalDependencyFunction:
-  public virtual ChromosomeNumberDependencyFunction
-{
-  private:
-  //int maxChrNum_;
-  public:
-    LogitnormalDependencyFunction():ChromosomeNumberDependencyFunction(){}
-    virtual ~LogitnormalDependencyFunction(){}
-
-    FunctionType getName() const {return FunctionType::LOGITNORMAL;}
-    void setDomainsIfNeeded(int minChrNum, int maxChrNum){
-      domainMin_ = minChrNum;
-      domainMax_ = maxChrNum;
-    }
-
-    double getRate(std::vector<Parameter*> params, size_t state) const;
-    size_t getNumOfParameters() const{return 3;}
-    void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, int maxChrNumber);
-    void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, int maxChrNumber);
-
-};
-
-class ChromosomeSubstitutionModel;
-
-
-class compositeParameter{
+  class ChromosomeSubstitutionModel;
+  class ChromosomeBMSubstitutionModel;
+  class compositeParameter{
   //public:
     //enum FunctionType {CONSTANT, LINEAR, LINEAR_BD, EXP, POLYNOMIAL, LOGNORMAL, REVERSE_SIGMOID, IGNORE};
     //enum ParamName {BASENUMR, LOSS, GAIN, DUPL, DEMI_DUPL, PARAMNAME_COUNT}; // 24_08 ->use only the substitution model 
@@ -248,8 +61,8 @@ class compositeParameter{
     //static size_t getNumOfParameters(ChromosomeNumberDependencyFunction* func){return func->getNumOfParameters();} 
 
     // Returns the value of the overall independent/dependent rate on the number of chromosomes (for any function)
-    double getRate(size_t state) const;
-    static ChromosomeNumberDependencyFunction* setDependencyFunction(ChromosomeNumberDependencyFunction::FunctionType funcType);
+    double getRate(double state) const;
+    static ChromosomeNumberDependencyFunction* setDependencyFunction(ChromosomeNumberDependencyFunction::FunctionType funcType, bool continuous=false);
     
 
 
@@ -344,8 +157,10 @@ class compositeParameter{
     // void getReverseSigmoidBounds(size_t index, double* lowerBound, double* upperBound){
     //   throw Exception("Not implemented yet!");
     // }
-    friend ChromosomeSubstitutionModel;  
+    friend ChromosomeSubstitutionModel; 
+    friend ChromosomeBMSubstitutionModel;
 };
+
 
 
 class ChromosomeSubstitutionModel :
@@ -358,7 +173,7 @@ public:
   // All the non-composite parameters should come before the composite ones!!! For example, BASENUM is the first one
   enum paramType {BASENUM = 0, BASENUMR = 1, DUPL = 2, LOSS = 3, GAIN = 4, DEMIDUPL = 5, NUM_OF_CHR_PARAMS = 6};
 
-private:
+protected:
   compositeParameter* gain_;
   compositeParameter* loss_;
   compositeParameter* dupl_;
@@ -378,10 +193,6 @@ private:
   ChromosomeNumberDependencyFunction::FunctionType baseNumRFunc_;
   bool simulated_;
   bool demiOnlyForEven_;
- 
-
-
-protected:
   mutable std::vector< RowMatrix<double> > vPowExp_;
 
 
@@ -406,6 +217,27 @@ public:
     unsigned int maxChrRange, 
     rootFreqType freqType,
     vector<int> rateChangeType,
+    bool demiOnlyForEven,
+    bool simulated = false);
+
+  ChromosomeSubstitutionModel(const ChromosomeAlphabet* alpha, 
+    std::map<int, vector<double>> mapOfParamValues,
+    int baseNum,
+    unsigned int chrRange, 
+    rootFreqType freqType,
+    bool demiOnlyForEven,
+    bool simulated = false);
+
+  ChromosomeSubstitutionModel(
+    const ChromosomeAlphabet* alpha, 
+    std::vector<double> gain, 
+    std::vector<double> loss, 
+    std::vector<double> dupl, 
+    std::vector<double> demi,
+    int baseNum,
+    std::vector<double> baseNumR,
+    unsigned int chrRange, 
+    rootFreqType freqType,
     bool demiOnlyForEven,
     bool simulated = false);
 
@@ -466,7 +298,9 @@ public:
       }
 
       *(newModelParams[i]) = new compositeParameter(originalModelParams[i]->getFuncType(), originalModelParams[i]->getName(), newParams);
-      (*(newModelParams[i]))->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
+      double minDomain = (*(newModelParams[i]))->func_->getMinDomain();
+      double maxDomain = (*(newModelParams[i]))->func_->getMaxDomain();
+      (*(newModelParams[i]))->func_->setDomainsIfNeeded(minDomain, maxDomain);
 
     }
 
@@ -538,10 +372,12 @@ public:
   //These functions should be used from chromsome number optimizer
   void checkParametersBounds() const;
   // this function is needed, because a large range of base number tends to lead to very high chromosome numbers in the simulation
-  void correctBaseNumForSimulation(int maxChrNum);
+  virtual void correctBaseNumForSimulation(int maxChrNum);
 
 
 protected:
+  virtual void setAllFunctionsDomains();
+  void defineFunctionsNames(vector<int> &rateChangeType);
   void addCompositeParameter(std::vector<Parameter*> parameters);
   void getCompositeParametersValues(std::string paramName, compositeParameter* param);
   void calculatePijtUsingEigenValues(double t) const;
@@ -552,13 +388,13 @@ protected:
   //void updateExpParameters();
   //void updateBaseNumParameters(std::shared_ptr<IntervalConstraint> interval);
   void updateMatrices();
-  void updateQWithBaseNumParameters(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
-  void updateQWithGain(size_t currChrNum, size_t minChrNum);
-  void updateQWithLoss(size_t currChrNum, size_t minChrNum);
-  void updateQWithDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum = 0);
-  void updateQWithDemiDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
+  virtual void updateQWithBaseNumParameters(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
+  virtual void updateQWithGain(size_t currChrNum, size_t minChrNum);
+  virtual void updateQWithLoss(size_t currChrNum, size_t minChrNum);
+  virtual void updateQWithDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum = 0);
+  virtual void updateQWithDemiDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
   void updateEigenMatrices();
-  void getParametersValues();
+  virtual void getParametersValues();
   void calculateExp_Qt(size_t pow, double s, size_t m, double v) const;
   void calculateExp_Qt(size_t pow, double* s, double v) const;
   double getFirstNorm() const;
@@ -566,8 +402,88 @@ protected:
   //void updateConstRateParameter(double paramValueConst, double paramValueChange, string parameterName, std::shared_ptr<IntervalConstraint> interval);
   //void updateLinearChangeParameter(double paramValueConst, double paramValueChange, string parameterName);
   //void setNewBoundsForLinearParameters(double &constRate, double &changeRate, string paramNameConst, string paramNameLinear);
-  std::vector<Parameter*> createCompositeParameter(ChromosomeNumberDependencyFunction::FunctionType &func, std::string paramName, vector<double> &vectorOfValues);
+  virtual std::vector<Parameter*> createCompositeParameter(ChromosomeNumberDependencyFunction::FunctionType &func, std::string paramName, vector<double> &vectorOfValues);
   friend class compositeParameter;
+};
+class ChromosomeBMSubstitutionModel :
+  public ChromosomeSubstitutionModel
+{
+    protected:
+    double mu_; // brownian motion parameter -> the state at the root
+    double sigma_; // brownian motion parameter sigma^2 (the variance)
+    double state_;  // the mean state of the branch (for Pij(t) matrix). Each branch has its own model, where mu, sigma, and other chromosome number parameters are shared
+    double minTraitState_; // the minimum trait state in the data (will dictate the bounds for the dependency functions)
+    double maxTraitState_; // the maximum trait state in the data (will dictate the bounds for the dependency functions)
+    
+
+
+public:
+  ChromosomeBMSubstitutionModel(double mu,
+    double sigma,
+    double state,
+    double minTraitState,
+    double maxTraitState,
+    const ChromosomeAlphabet* alpha, 
+    vector<double> gain, 
+    vector<double> loss, 
+    vector<double> dupl, 
+    vector<double> demi,
+    int baseNum,
+    vector<double> baseNumR,
+    unsigned int maxChrRange, 
+    rootFreqType freqType,
+    vector<int> rateChangeType,
+    bool demiOnlyForEven,
+    bool simulated = false);
+
+
+  ChromosomeBMSubstitutionModel(double mu,
+    double sigma,
+    double state,
+    double minTraitState,
+    double maxTraitState,
+    const ChromosomeAlphabet* alpha, 
+    std::map<int, vector<double>> mapOfParamValues,
+    int baseNum,
+    unsigned int maxChrRange, 
+    rootFreqType freqType,
+    vector<int> rateChangeType,
+    bool demiOnlyForEven,
+    bool simulated = false);
+
+
+  virtual ~ChromosomeBMSubstitutionModel() {
+
+  }
+  ChromosomeBMSubstitutionModel(const ChromosomeBMSubstitutionModel& model):
+    AbstractParameterAliasable(model),
+    ChromosomeSubstitutionModel(model),
+    mu_(model.mu_),
+    sigma_(model.sigma_),
+    state_(model.state_),
+    minTraitState_(model.minTraitState_),
+    maxTraitState_(model.maxTraitState_)
+  {
+    
+  }
+
+
+  ChromosomeBMSubstitutionModel* clone() const { return new ChromosomeBMSubstitutionModel(*this);}
+  void correctBaseNumForSimulation(int maxChrNum);
+  protected:
+    void setAllFunctionsDomains();
+    std::vector<Parameter*> createCompositeParameter(ChromosomeNumberDependencyFunction::FunctionType &func, std::string paramName, vector<double> &vectorOfValues);
+    void updateQWithBaseNumParameters(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
+    void updateQWithGain(size_t currChrNum, size_t minChrNum);
+    void updateQWithLoss(size_t currChrNum, size_t minChrNum);
+    void updateQWithDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum = 0);
+    void updateQWithDemiDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
+    void updateBMParameters();
+    void getParametersValues();
+
+
+
+friend class compositeParameter;
 };
 } // end of namespace bpp.
 

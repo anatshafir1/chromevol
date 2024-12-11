@@ -6,6 +6,7 @@
 # File list
 set (CPP_FILES
   ChrFasta.cpp
+  ChromosomeNumberDependencyFunction.cpp
   ChromosomeSubstitutionModel.cpp
   StochasticMappingUtils.cpp
   TreeUtils.cpp
