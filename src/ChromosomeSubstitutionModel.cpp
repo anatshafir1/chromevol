@@ -444,11 +444,25 @@ void ChromosomeSubstitutionModel::updateParameters(vector<double> &gain, vector<
 }
 /******************************************************************************/
 void ChromosomeSubstitutionModel::setAllFunctionsDomains(){
-  gain_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
-  loss_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
-  dupl_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
-  demiploidy_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
-  baseNumR_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
+  if (gainFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    gain_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
+
+  }
+  if (lossFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    loss_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
+  }
+  if (duplFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    dupl_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
+
+  }
+  if (demiFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    demiploidy_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
+
+  }
+  if (baseNumRFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    baseNumR_->func_->setDomainsIfNeeded(ChrMinNum_, ChrMaxNum_);
+
+  }
 
 }
 
