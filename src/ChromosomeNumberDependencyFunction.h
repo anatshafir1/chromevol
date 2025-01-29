@@ -38,6 +38,7 @@ class ChromosomeNumberDependencyFunction{
 
     virtual FunctionType getName() const = 0;
     virtual double getRate(std::vector<Parameter*> params, double state) const = 0;
+    virtual double getRate(std::vector<double> params, double state) const = 0;
     virtual size_t getNumOfParameters() const = 0;
     virtual void setDomainsIfNeeded(double minChrNum, double maxChrNum){}
     double getMinDomain(){return domainMin_;}
@@ -74,6 +75,7 @@ class ConstantDependencyFunction :
 
     FunctionType getName() const{return FunctionType::CONSTANT;}
     double getRate(std::vector<Parameter*> params, double state) const;
+    double getRate(std::vector<double> params, double state) const;
     size_t getNumOfParameters() const{return 1;}
     double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, double minChrNum, double maxChrNum){
       return parsimonyBound;
@@ -91,6 +93,7 @@ class LinearDependencyFunction:
 
     FunctionType getName() const{return FunctionType::LINEAR;}
     double getRate(std::vector<Parameter*> params, double state) const;
+    double getRate(std::vector<double> params, double state) const;
     size_t getNumOfParameters() const{return 2;}
     void setDomainsIfNeeded(double minChrNum, double maxChrNum){
       domainMin_ = minChrNum;
@@ -113,6 +116,7 @@ class LinearBDDependencyFunction:
 
     FunctionType getName() const{return FunctionType::LINEAR_BD;}
     double getRate(std::vector<Parameter*> params, double state) const;
+    double getRate(std::vector<double> params, double state) const;
     size_t getNumOfParameters() const{return 1;}
     //double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, int minChrNum, int maxChrNum);
     double getParsimonyBound(std::vector<double> params, double parsimonyBound, size_t index, double minChrNum, double maxChrNum);
@@ -128,6 +132,7 @@ class ExponentailDependencyFunction:
 
     FunctionType getName() const {return FunctionType::EXP;}
     double getRate(std::vector<Parameter*> params, double state) const;
+    double getRate(std::vector<double> params, double state) const;
     void setDomainsIfNeeded(double minChrNum, double maxChrNum){
       domainMin_ = minChrNum;
       domainMax_ = maxChrNum;
@@ -148,6 +153,7 @@ class PolynomialDependencyFunction:
 
     FunctionType getName() const{return FunctionType::POLYNOMIAL;}
     double getRate(std::vector<Parameter*> params, double state) const;
+    double getRate(std::vector<double> params, double state) const;
     size_t getNumOfParameters() const{return 3;}
     void setDomainsIfNeeded(double minChrNum, double maxChrNum){
       domainMin_ = minChrNum;
@@ -176,6 +182,7 @@ class LognormalDependencyFunction:
     }
 
     double getRate(std::vector<Parameter*> params, double state) const;
+    double getRate(std::vector<double> params, double state) const;
     size_t getNumOfParameters() const{return 3;}
     void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, double maxChrNumber);
     void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, double maxChrNumber);
@@ -191,6 +198,7 @@ class RevSigmoidDependencyFunction:
 
     FunctionType getName() const {return FunctionType::REVERSE_SIGMOID;}
     double getRate(std::vector<Parameter*> params, double state) const;
+    double getRate(std::vector<double> params, double state) const;
     size_t getNumOfParameters() const{return 3;}
     void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, double maxChrNumber);
     void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, double maxChrNumber);
@@ -217,6 +225,7 @@ class LogitnormalDependencyFunction:
     }
 
     double getRate(std::vector<Parameter*> params, double state) const;
+    double getRate(std::vector<double> params, double state) const;
     size_t getNumOfParameters() const{return 3;}
     void getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, double maxChrNumber);
     void getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, double maxChrNumber);

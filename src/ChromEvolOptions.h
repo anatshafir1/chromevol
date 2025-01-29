@@ -127,6 +127,9 @@ public:
     static string traitDataForSimulation_;
     static bool simulateJointEvolution_;
     static bool demiOnlyForEven_;
+    static bool continuousTrait_;
+    static double mu_;
+    static double sigma_;
 
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);

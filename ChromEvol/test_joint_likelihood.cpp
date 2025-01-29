@@ -10,6 +10,8 @@
 #include "JointTraitChromosomeLikelihood.h"
 #include <Bpp/Numeric/Random/RandomTools.h>
 #include <Bpp/Numeric/Function/BrentOneDimension.h>
+#include "BrownianMotionAncestralReconstruction.h"
+#include "BrownianMotionLikelihood.h"
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -1136,6 +1138,30 @@ void testBMTraitModel(){
 
 }
 /******************************************************/
+void testBrownianMotionMLAncestralstates(){
+  Newick reader;
+  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("((((P:0.21,H:0.21):0.28,M:0.49):0.13,A:0.62):0.38,G:1.0);", false, "", false, false));
+  std::unordered_map<string, double> traitData;
+  traitData["G"] = -1.46968;
+  traitData["A"] = 2.02815;
+  traitData["M"] = 2.37024;
+  traitData["P"] = 3.61092;
+  traitData["H"] = 4.09434;
+  double muMLE = 1.18372461;
+  double sigmaMLE = 3.153838667703223;
+  // test the case where the parameters match the MLE
+  BrownianMotionAncestralReconstruction* bmAncestral = new BrownianMotionAncestralReconstruction(muMLE, sigmaMLE, muMLE, sigmaMLE, traitData, pTree);
+  bmAncestral->reconstructAncestralStates();
+  auto reconstructedStates = bmAncestral->getAncestralStates();
+  auto it = reconstructedStates.begin();
+  while ( it != reconstructedStates.end()){
+    std::cout << "Node id is " << it->first << " state is " << it->second << std::endl;
+    it ++;
+  }
+  delete bmAncestral;
+
+}
+/******************************************************/
 void testChromosomeBMSubstitutionModel(){
   Newick reader;
   shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("(((S1:0.1,S2:0.1):0.3,S3:0.4):0.2,(S4:0.3,S5:0.3):0.3);", false, "", false, false));
@@ -1204,7 +1230,7 @@ void testChromosomeBMSubstitutionModel(){
 
   }
   rateChangeType2.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::CONSTANT));
-  std::shared_ptr<ChromosomeBMSubstitutionModel> chrBMModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu, sigma, traitState, minTraitState, maxTraitState, alphabetChr, mapOfParamValues2, baseNumber, chrRange, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType2, false);
+  std::shared_ptr<ChromosomeBMSubstitutionModel> chrBMModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu, sigma, traitState, minTraitState, maxTraitState, minTraitState, maxTraitState, alphabetChr, mapOfParamValues2, baseNumber, chrRange, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType2, false);
   std::shared_ptr<NonHomogeneousSubstitutionProcess> subProSim2;
   auto parTree2 =  std::make_shared<ParametrizablePhyloTree>(*pTree);
   subProSim2 = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdist->clone()), parTree2);
@@ -1245,10 +1271,31 @@ void testChromosomeBMSubstitutionModel(){
 
 
 }
+void testBrownianMotionLikelihood(){
+  Newick reader;
+  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("((((P:0.21,H:0.21):0.28,M:0.49):0.13,A:0.62):0.38,G:1.0);", false, "", false, false));
+  std::unordered_map<string, double> traitData;
+  traitData["G"] = -1.46968;
+  traitData["A"] = 2.02815;
+  traitData["M"] = 2.37024;
+  traitData["P"] = 3.61092;
+  traitData["H"] = 4.09434;
+  double muMLE = 1.18372461;
+  double sigmaMLE = 3.153838667703223;
+  BrownianMotionLikelihood* bm = new BrownianMotionLikelihood(pTree, traitData);
+  //bm->calculateContrasts();
+  std::cout << "mu is: " << bm->getMuMLE() << std::endl;
+  std::cout << "sigma is: " << bm->getSigmaMLE() << std::endl;
+  bm->calculateLikelihood(muMLE, sigmaMLE);
+  std::cout << "likelihood is: " << bm->getLikelihood() << std::endl;
+  delete bm;
 
+}
 /******************************************************/
 int main(){
   //testTraitWeighted();
+  //testBrownianMotionMLAncestralstates();
+  //testBrownianMotionLikelihood();
   testChromosomeBMSubstitutionModel();
 
   return 0;

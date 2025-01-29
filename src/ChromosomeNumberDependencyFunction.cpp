@@ -19,12 +19,39 @@ using namespace std;
 double ConstantDependencyFunction::getRate(std::vector<Parameter*> params, double state) const{
   return params[0]->getValue();
 }
+/**************************************************************************************/
+double ConstantDependencyFunction::getRate(std::vector<double> params, double state) const{
+  return params[0];
+
+}
 
 /**************************************************************************************/
 double LinearDependencyFunction::getRate(std::vector<Parameter*> params, double state) const{
   double func_res = params[0]->getValue() + ((state-1)*params[1]->getValue());
   if (func_res < 0){  //check it - I don't remember why it is here - shoudn't be negative anyway...
-    return 0;
+    std::shared_ptr<IntervalConstraint> interval0 = dynamic_pointer_cast<IntervalConstraint>(params[0]->getConstraint());
+    std::shared_ptr<IntervalConstraint> interval1 = dynamic_pointer_cast<IntervalConstraint>(params[1]->getConstraint());
+    std::cout << "Intervals of param0 are " << interval0->getLowerBound() << " " << interval0->getUpperBound() << std::endl;
+    std::cout << "Intervals of param1 are " << interval1->getLowerBound() << " " << interval1->getUpperBound() << std::endl;
+    std::cout << "Current state is " << state << std::endl;
+    std::cout << "function is in the form of p0 + p1*(s-1)" << std::endl;
+    std::cout << "p0 is " << params[0]->getValue() << std::endl;
+    std::cout << "p1 is " << params[1]->getValue() << std::endl;
+    std::cout << "min domain is " << domainMin_<< std::endl;
+    std::cout << "max domain is " << domainMax_ << std::endl;
+    string paramName  = params[0]->getName();
+    //return 0;
+
+    throw Exception("LinearDependencyFunction::getRate(): Negative rate!!! Parameters are " + paramName + "\n");
+  }
+  return func_res;
+
+}
+/**************************************************************************************/
+double LinearDependencyFunction::getRate(std::vector<double> params, double state) const{
+  double func_res = params[0] + ((state-1)*params[1]);
+  if (func_res < 0){
+    throw Exception("LinearDependencyFunction::getRate(): Negative rate!!!");
   }
   return func_res;
 
@@ -71,7 +98,7 @@ void LinearDependencyFunction::updateBounds(ParameterList& params, std::vector<s
           }else{
             *lowerBound = std::min(-params.getParameter(paramsNames[0]).getValue() / domainMax_, -params.getParameter(paramsNames[0]).getValue() / domainMin_);
           }
-          *upperBound = upperBoundLinearRateParam;
+          *upperBound = std::max(-params.getParameter(paramsNames[0]).getValue() / domainMax_, -params.getParameter(paramsNames[0]).getValue() / domainMin_);
 
         }else{
           *upperBound = upperBoundLinearRateParam;
@@ -102,7 +129,15 @@ void LinearDependencyFunction::updateBounds(Function* f, const std::string &para
 void LinearDependencyFunction::getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, double maxChrNumber){
   if (index == 0){
     if (continuous_){
-      *lowerBound = std::max(std::max(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_)), lowerBoundOfRateParam);
+      //*lowerBound = std::max(std::max(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_)), lowerBoundOfRateParam);
+      if (domainMin_ > 0){
+        *lowerBound = std::min(std::min(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_)), lowerBoundOfRateParam);
+
+      }else{
+        *lowerBound = lowerBoundOfRateParam;
+      }
+      
+      
     }else{
       *lowerBound = lowerBoundOfRateParam;
     }
@@ -122,7 +157,7 @@ void LinearDependencyFunction::getBoundsForInitialParams(size_t index, vector<do
           }else{
             *lowerBound = std::min(-paramValues[0] / domainMax_, -paramValues[0] / domainMin_);
           }
-          *upperBound = upperBoundLinearRateParam;
+          *upperBound = std::max(-paramValues[0] / domainMax_, -paramValues[0] / domainMin_);
 
         }else{
           *upperBound = upperBoundLinearRateParam;
@@ -145,7 +180,13 @@ void LinearDependencyFunction::getBoundsForInitialParams(size_t index, vector<do
 void LinearDependencyFunction::getAbsoluteBounds(size_t index, double* lowerBound, double* upperBound, double maxChrNumber){
   if (index == 0){
     if (continuous_){
-      *lowerBound = std::max(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_));
+      //*lowerBound = std::max(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_));
+      if (domainMin_ > 0){
+        *lowerBound = std::min(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_));
+      }else{
+        *lowerBound = lowerBoundOfRateParam;
+
+      }
     }else{
       *lowerBound = -upperBoundLinearRateParam*(maxChrNumber - 1);
     }
@@ -192,11 +233,27 @@ double LinearBDDependencyFunction::getRate(std::vector<Parameter*> params, doubl
   return params[0]->getValue() * state;
 }
 /**************************************************************************************/
+double LinearBDDependencyFunction::getRate(std::vector<double> params, double state) const{
+  auto res = params[0] * state;
+  if (res < 0){
+    throw Exception("LinearBDDependencyFunction::getRate(): Negative rate!!!");
+  }
+  return res;
+}
+/**************************************************************************************/
 double ExponentailDependencyFunction::getRate(std::vector<Parameter*> params, double state) const{
   return params[0]->getValue() * std::exp((state-1)*params[1]->getValue());
 }
 /**************************************************************************************/
 
+double ExponentailDependencyFunction::getRate(std::vector<double> params, double state) const{
+  auto res = params[0] * std::exp((state-1) * params[1]);
+  if (res < 0){
+    throw Exception("ExponentailDependencyFunction::getRate(): Negative rate!!!");
+  }
+  return res;
+}
+/**************************************************************************************/
 void ExponentailDependencyFunction::getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, double maxChrNumber){
   getAbsoluteBounds(index, lowerBound, upperBound, maxChrNumber);
 
@@ -230,6 +287,15 @@ double ExponentailDependencyFunction::getParsimonyBound(std::vector<double> para
 /**************************************************************************************/
 double PolynomialDependencyFunction::getRate(std::vector<Parameter*> params, double state) const{
   return (params[0]->getValue()) * pow(state + params[1]->getValue(), params[2]->getValue());
+
+}
+/**************************************************************************************/
+double PolynomialDependencyFunction::getRate(std::vector<double> params, double state) const{
+  auto res = (params[0]) * pow(state + params[1], params[2]);
+  if (res < 0){
+    throw Exception("PolynomialDependencyFunction::getRate(): Negative rate!!!");
+  }
+  return res;
 
 }
 /**************************************************************************************/
@@ -268,6 +334,23 @@ double LognormalDependencyFunction::getRate(std::vector<Parameter*> params, doub
   return rangeFactor *eq_part_1 * eq_part_2;
 
 }
+/*************************************************************************************/
+double LognormalDependencyFunction::getRate(std::vector<double> params, double state) const{
+  auto rangeFactor = params[0];
+  double scalingFactor = domainMax_/logNormalDomainFactor;
+  double transformedState = state/scalingFactor;
+  auto mu = params[1];
+  auto sigma = params[2];
+  double pi = 2 * acos(0.0);
+  auto eq_part_1 = 1/(transformedState*sigma*sqrt(2 * pi));
+  auto eq_part_2 = std::exp(-(pow(log(transformedState)-mu, 2)/(2*pow(sigma, 2))));
+  auto res =  rangeFactor *eq_part_1 * eq_part_2;
+  if (res < 0){
+    throw Exception("LognormalDependencyFunction::getRate(): Negative rate!!!");
+  }
+  return res;
+
+}
 /**************************************************************************************/
 void LognormalDependencyFunction::getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, double maxChrNumber){
   getAbsoluteBounds(index, lowerBound, upperBound, maxChrNumber);
@@ -299,6 +382,22 @@ double RevSigmoidDependencyFunction::getRate(std::vector<Parameter*> params, dou
   auto p3 = params[2]->getValue();
   // f(x) = p1* (e^-p2(x-p3)/(1+(e^-p2(x-p3))))
   return p1/(1+(std::exp(p2-(p3*state))));// (std::exp(-p2*(x-p3))/(1+(std::exp(-p2*(x-p3)))));
+
+}
+/**************************************************************************************/
+double RevSigmoidDependencyFunction::getRate(std::vector<double> params, double state) const{
+  // p1 is the range parameter
+  auto p1 = params[0];
+  // p2 is the exponent multiplier parameter
+  auto p2 = params[1];
+  // p3 is the shift parameter (should manipulate the cut of the reverse sigmoid tail)
+  auto p3 = params[2];
+  // f(x) = p1* (e^-p2(x-p3)/(1+(e^-p2(x-p3))))
+  auto res =  p1/(1+(std::exp(p2-(p3*state))));// (std::exp(-p2*(x-p3))/(1+(std::exp(-p2*(x-p3)))));
+  if (res < 0){
+    throw Exception("RevSigmoidDependencyFunction::getRate(): Negative rate!!!");
+  }
+  return res;
 
 }
 /**************************************************************************************/
@@ -336,6 +435,25 @@ double LogitnormalDependencyFunction::getRate(std::vector<Parameter*> params, do
   double logit_expr = log(transformedState/(1-transformedState));
   double expr_3 = std::exp(-(pow(logit_expr-mu, 2)/(2*pow(sigma, 2))));
   return rangeFactor * expr_1 * expr_2 * expr_3;
+
+}
+/*****************************************************************************/
+double LogitnormalDependencyFunction::getRate(std::vector<double> params, double state) const{
+  auto rangeFactor = params[0];
+  double transformedState = (state-domainMin_+1)/(domainMax_-domainMin_+2);
+  auto mu = params[1];
+  auto sigma = params[2];
+  double pi = 2 * acos(0.0);
+  double expr_1 = 1/(sigma*sqrt(2 * pi));
+  double expr_2 = 1/(transformedState*(1-transformedState));
+  double logit_expr = log(transformedState/(1-transformedState));
+  double expr_3 = std::exp(-(pow(logit_expr-mu, 2)/(2*pow(sigma, 2))));
+  auto res = rangeFactor * expr_1 * expr_2 * expr_3;
+  if (res < 0){
+    throw Exception("LogitnormalDependencyFunction::getRate(): Negative rate!!!");
+
+  }
+  return res;
 
 }
 /**************************************************************************************/

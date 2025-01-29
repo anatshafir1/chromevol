@@ -68,6 +68,7 @@
 #include "ChromosomeSubstitutionModel.h"
 #include "TreeUtils.h"
 #include "ChromEvolOptions.h"
+#include "JointPhyloChromosomeBMLikelihood.h"
 
 
 //standard libraries
@@ -104,7 +105,7 @@ namespace bpp{
         static uint getNumberOfParametersPerParamType(int paramType, vector<int> &funcTypes);
 
         static void updateMapsOfParamTypesAndNames(std::map<int, std::map<uint, std::vector<string>>> &typeWithParamNames, std::map<string, std::pair<int, uint>>* paramNameAndType, std::vector<std::string> namesAllParams, std::map<int, std::vector<std::pair<uint, int>>>* sharedParams=0, std::string suffix = "");
-        template<typename T, typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value)>::type* = nullptr>
+        template<typename T, typename std::enable_if<((std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value)) || (std::is_same<T, JointPhyloChromosomeBMLikelihood>::value)>::type* = nullptr>
         static void updateMapsOfParamTypesAndNames(std::map<int, std::map<uint, std::vector<string>>> &typeWithParamNames, std::map<string, std::pair<int, uint>>* paramNameAndType, T* tl, std::map<int, std::vector<std::pair<uint, int>>>* sharedParams = 0, std::string suffix = ""){
           ParameterList substitutionModelParams = tl->getSubstitutionModelParameters();
           std::vector<std::string> namesAllParams = substitutionModelParams.getParameterNames();

@@ -81,6 +81,8 @@
 #include "ChrFasta.h"
 #include <Bpp/Phyl/Simulation/SimpleSubstitutionProcessSequenceSimulator.h>
 #include "ChromosomeTraitOptimizer.h"
+#include "JointChromosomeBMMng.h"
+#include "BrownianMotionSimulator.h"
 
 
 
@@ -155,18 +157,19 @@ namespace bpp{
             void runChromEvol();
             void printStochasticMappingResults(StochasticMapping* stm, Vdouble &dwellingTimesPerState, std::map<pair<size_t, size_t>, double> &numOfOccurencesPerTransition, VVdouble &ratesPerTransition, std::map<int, double> &expectationsTotal, const string &outStMappingPath);
             void runStochasticMapping(ChromosomeNumberOptimizer* chrOptimizer);
-            ChromosomeNumberOptimizer* optimizeLikelihoodMultiStartPoints() const;
+            ChromosomeNumberOptimizer* optimizeLikelihoodMultiStartPoints(bool brownianMotionNull = false) const;
             void runJointTraitChromosomeAnalysis();
+            JointChromosomeBMMng* runJointChromosomeBMModel();
+            void runJointChromosomeContinuousBMAnalysis();
             void getJointMLAncestralReconstruction(ChromosomeNumberOptimizer* optimizer, int* inferredRootState, VectorSiteContainer* vsc, ChromosomeTraitOptimizer* traitOpt=0) const;
-            void getMarginalAncestralReconstruction(ChromosomeNumberOptimizer* chrOptimizer, const string &filePath, ChromosomeTraitOptimizer* traitOpt = 0);
-            // map<int, map<size_t, VVdouble>> getMarginalAncestralReconstruction(DRNonHomogeneousTreeLikelihood* lik) const;
-            void computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, VectorSiteContainer* chromsomeVsc, ChromosomeTraitOptimizer* traitOpt = 0);
+            void getMarginalAncestralReconstruction(ChromosomeNumberOptimizer* chrOptimizer, const string &filePath, ChromosomeTraitOptimizer* traitOpt, JointChromosomeBMMng* bmMng = 0);
+            void computeExpectations(ChromosomeNumberOptimizer* chrOptimizer, int numOfSimulations, VectorSiteContainer* chromsomeVsc, ChromosomeTraitOptimizer* traitOpt, JointChromosomeBMMng* bmMng = 0);
             void simulateData(string &characterPath);
             //whichSimulation parameter is by deault 0, which means that a single type of data should be simulated. However, when a joint trait model is
             // simulated we need to types of data - 1 refers to trait data, and 2 refers to chromosome data.
             void simulateData(bool into_dirs, size_t simNum, size_t &count_failed, SimpleSubstitutionProcessSiteSimulator* simulator, Alphabet* alpha, SiteSimulationResult** simResult, size_t whichSimulation=0);
             void simulateTraitData(SimpleSubstitutionProcessSiteSimulator** simulator, Alphabet** alpha, std::shared_ptr<ParametrizablePhyloTree> parTree, std::shared_ptr<FrequencySet> &rootFrequencies, std::shared_ptr<NonHomogeneousSubstitutionProcess> &subProSim);
-            void simulateChromosomeData(SimpleSubstitutionProcessSiteSimulator** simulator, Alphabet** alpha, std::shared_ptr<ParametrizablePhyloTree> parTree, std::shared_ptr<FrequencySet> &rootFrequencies, std::shared_ptr<NonHomogeneousSubstitutionProcess> &subProSim);
+            bool simulateChromosomeData(SimpleSubstitutionProcessSiteSimulator** simulator, Alphabet** alpha, std::shared_ptr<ParametrizablePhyloTree> parTree, std::shared_ptr<FrequencySet> &rootFrequencies, std::shared_ptr<NonHomogeneousSubstitutionProcess> &subProSim, std::shared_ptr<BrownianMotionSimulator> bmSim = nullptr);
 
             void printSimulatedData(vector<size_t> leavesStates, vector<string> leavesNames, size_t iter, string &countsPath, Alphabet* alpha, string prefix);
             void printTreeWithStates(PhyloTree tree, std::map<uint, std::vector<size_t>> &ancestors, const string &filePath, string prefix, std::map<uint, string>* prevNames = 0) const;
@@ -190,6 +193,13 @@ namespace bpp{
 
 
         protected:
+            void getStatesAndTimes(SiteSimulationResult* simResult, vector<size_t> &states, vector<double> &times, std::shared_ptr<const ParametrizablePhyloTree> parTree, uint nodeId) const;
+            void simulateBMTrait(size_t simNum, size_t &count_failed, std::shared_ptr<BrownianMotionSimulator> bmSim);
+            void printAncestralStatesInBMSimulation(const string &ancestorsPath, const std::shared_ptr<PhyloTree> tree, const std::unordered_map<uint, double> &statesInNodes);
+            void printContinuousTraitFastaFile(const string &countsPath, std::unordered_map<string, double> &statesInLeaves);
+            void printOutputFileJointBMLikelihood(const string &fileName, JointChromosomeBMMng* bmMng, ChromosomeNumberOptimizer* independentChromOpt, std::shared_ptr<BrownianMotionLikelihood> bmIndependentLik, bool &nullRejected) const;
+            void printJointMLAncestralChromosomeReconstruction(std::shared_ptr<LikelihoodCalculationSingleProcess> likAncestralRec, uint &rootId, int* inferredRootState,  std::map<uint, string>* mapOfTraitStates, ChromosomeTraitOptimizer* traitOpt, ParametrizablePhyloTree* parTree) const;
+            void printContinuousTraitBranchStates(const string &fileName, const std::shared_ptr<PhyloTree> tree, const std::unordered_map<uint, double> branchStates);
             
             template<typename T, typename std::enable_if<
                 (std::is_same<T, SingleProcessPhyloLikelihood>::value) || 
@@ -222,12 +232,15 @@ namespace bpp{
             void getMaxParsimonyUpperBound(double* parsimonyScore) const;
             // functions to print the tree with ancestral reconstruction
             void printSimulatedDataAndAncestors(SiteSimulationResult* simResult, string &ancestorsPath, string prefix) const;
-            void printSimulatedEvoPath(const string outPath, SiteSimulationResult* simResult, bool &success, size_t maxStateIndex = 0) const;
+            void printSimulatedEvoPath(const string outPath, SiteSimulationResult* simResult, bool &success, std::shared_ptr<const ParametrizablePhyloTree> parTree, size_t maxStateIndex = 0) const;
             static string printTree(const PhyloTree& tree);
             static string nodeToParenthesis(const uint nodeId, const PhyloTree& tree);
             std::map<int, vector <double>> getVectorToSetModelParams(SingleProcessPhyloLikelihood* lik, size_t modelIndex = 1) const;
             double getOriginalTreeLength(string &path) const;
             double calculateFreqs(std::unordered_map<string, double> &thetas, size_t &idx) const;
+            void setRateChangeTypeToNull() const;
+            std::pair<std::shared_ptr<BrownianMotionLikelihood>, ChromosomeNumberOptimizer*> optimizeNullBMModel(JointChromosomeBMMng* bmMng);
+            void correctModelParameters(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &complexParamsValues) const;
 
 
 

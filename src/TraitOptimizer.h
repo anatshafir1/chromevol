@@ -51,7 +51,7 @@
 #include <Bpp/Numeric/Function/TwoPointsNumericalDerivative.h>
 
 #include <Bpp/Phyl/Likelihood/PhyloLikelihoods/SingleProcessPhyloLikelihood.h>
-#include "LikelihoodUtils.h"
+//#include "LikelihoodUtils.h"
 #include <Bpp/Phyl/Likelihood/PhyloLikelihoods/JointPhyloLikelihood.h>
 #include <Bpp/Phyl/OptimizationTools.h>
 // From Seqlib:

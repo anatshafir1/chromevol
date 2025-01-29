@@ -20,6 +20,11 @@ set (CPP_FILES
   TraitOptimizer.cpp
   JointTraitChromosomeLikelihood.cpp
   ChromosomeTraitOptimizer.cpp
+  BrownianMotionAncestralReconstruction.cpp
+  BrownianMotionLikelihood.cpp
+  JointPhyloChromosomeBMLikelihood.cpp
+  JointChromosomeBMMng.cpp
+  BrownianMotionSimulator.cpp
   )
 
 IF(BUILD_STATIC)

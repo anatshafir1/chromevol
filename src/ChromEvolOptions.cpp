@@ -86,6 +86,9 @@ bool ChromEvolOptions::weightedTraitRootFreqs_;
 string ChromEvolOptions::traitDataForSimulation_;
 bool ChromEvolOptions::simulateJointEvolution_;
 bool ChromEvolOptions::demiOnlyForEven_;
+bool ChromEvolOptions::continuousTrait_;
+double ChromEvolOptions::mu_;
+double ChromEvolOptions::sigma_;
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -163,6 +166,9 @@ void ChromEvolOptions::initDefaultParameters(){
     weightedTraitRootFreqs_ = false;
     simulateJointEvolution_ = false;
     demiOnlyForEven_ = false;
+    continuousTrait_ = false;
+    mu_ = 1;
+    sigma_ = 0.5;
     
     
 
@@ -232,6 +238,10 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     numOfModels_ = ApplicationTools::getIntParameter("_numOfModels", ChromEvol.getParams(), numOfModels_, "", true, 0);
     seed_ = ApplicationTools::getIntParameter("_seed", ChromEvol.getParams(), seed_, "", true, 0);
     demiOnlyForEven_ = ApplicationTools::getBooleanParameter("_demiOnlyForEven", ChromEvol.getParams(), demiOnlyForEven_, "", true, 0);
+    continuousTrait_ = ApplicationTools::getBooleanParameter("_continuousTrait", ChromEvol.getParams(), continuousTrait_, "", true, 0);
+    mu_ = ApplicationTools::getDoubleParameter("_mu", ChromEvol.getParams(), mu_, "", true, 0);
+    sigma_ = ApplicationTools::getDoubleParameter("_sigma", ChromEvol.getParams(), sigma_, "", true, 0);
+
     minBaseNumberBound_ = ApplicationTools::getIntParameter("_minBaseNumberBound", ChromEvol.getParams(), minBaseNumberBound_, "", true, 0);
     simulateData_ = ApplicationTools::getBooleanParameter("_simulateData", ChromEvol.getParams(), simulateData_, "", true, 0);
     if (simulateData_){
@@ -417,7 +427,7 @@ void ChromEvolOptions::setModelParameters(BppApplication& ChromEvol){
     vector<ChromosomeSubstitutionModel::paramType> modelTypeParams = {ChromosomeSubstitutionModel::GAIN, ChromosomeSubstitutionModel::LOSS, ChromosomeSubstitutionModel::DUPL, ChromosomeSubstitutionModel::DEMIDUPL, ChromosomeSubstitutionModel::BASENUM, ChromosomeSubstitutionModel::BASENUMR};
     vector<string> modelStringParams = {"_gain", "_loss", "_dupl", "_demiPloidyR", "_baseNum", "_baseNumR"};
     uint numOfModels;
-    if (ChromEvolOptions::simulateJointEvolution_){
+    if ((ChromEvolOptions::simulateJointEvolution_) && (!ChromEvolOptions::continuousTrait_)){
         numOfModels = static_cast<uint>(numberOfTraitStates_);
     }else{
         numOfModels = static_cast<uint>(numOfModels_);
@@ -638,7 +648,7 @@ int ChromEvolOptions::getFunctionFromString(string funcStr){
 /*************************************************************************/
 void ChromEvolOptions::getInitialValuesForComplexParams(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &mapOfParams){
     uint numOfModels;
-    if (ChromEvolOptions::simulateJointEvolution_){
+    if ((ChromEvolOptions::simulateJointEvolution_) && (!ChromEvolOptions::continuousTrait_)){
         numOfModels = static_cast<uint>(ChromEvolOptions::numberOfTraitStates_);
 
     }else{

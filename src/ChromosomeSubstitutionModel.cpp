@@ -267,7 +267,7 @@ void ChromosomeSubstitutionModel::defineFunctionsNames(vector<int> &rateChangeTy
 
 }
 /******************************************************************************/
-ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
+void ChromosomeSubstitutionModel::setRandomModel(
   const ChromosomeAlphabet* alpha,
   int &baseNumber,
   map<int, vector<double>> initParams,
@@ -276,11 +276,24 @@ ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
   vector<int> rateChangeType,
   vector<int>& fixedParams,
   bool demiOnlyForEven,
-  double parsimonyBound)
+  double parsimonyBound,
+  std::map<int, vector<double>> &mapRandomParams,
+  int &newBaseNumber,
+  bool brownianModel,
+  double minDomain,
+  double maxDomain)
 {
-  std::map<int, vector<double>> mapRandomParams;
-  int newBaseNumber = baseNumber;
+  newBaseNumber = baseNumber;
   size_t startCompositeParams = getNumberOfNonCompositeParams();
+  double minFuncDomain;
+  double maxFuncDomain;
+  if (brownianModel){
+    minFuncDomain = minDomain;
+    maxFuncDomain = maxDomain;
+  }else{
+    minFuncDomain = static_cast<double>(alpha->getMin());
+    maxFuncDomain = static_cast<double>(alpha->getMax());
+  }
 
   for (int i = 0; i < ChromosomeSubstitutionModel::paramType::NUM_OF_CHR_PARAMS; i++){
     if (std::find(fixedParams.begin(), fixedParams.end(), i) != fixedParams.end()){
@@ -302,16 +315,15 @@ ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
         continue;
 
       }else{
-        //int compositeParamType = compositeParameter::getCompositeRateType(i);
         if (initParams[i].size() != 0){
           ChromosomeNumberDependencyFunction::FunctionType funcType = static_cast<ChromosomeNumberDependencyFunction::FunctionType>(rateChangeType[i-startCompositeParams]);
-          ChromosomeNumberDependencyFunction* functionOp = compositeParameter::setDependencyFunction(funcType);
-          functionOp->setDomainsIfNeeded(alpha->getMin(), alpha->getMax());
+          ChromosomeNumberDependencyFunction* functionOp = compositeParameter::setDependencyFunction(funcType, brownianModel);
+          functionOp->setDomainsIfNeeded(minFuncDomain, maxFuncDomain);
 
           auto numOfParameters = functionOp->getNumOfParameters();
           for (size_t j = 0; j < numOfParameters; j++){
-            functionOp->getBoundsForInitialParams(j, paramValues, &lowerBound, &upperBound, alpha->getMax());
-            double upperBoundCandidate = functionOp->getParsimonyBound(paramValues, parsimonyBound, j, alpha->getMin(), alpha->getMax());
+            functionOp->getBoundsForInitialParams(j, paramValues, &lowerBound, &upperBound, maxFuncDomain);
+            double upperBoundCandidate = functionOp->getParsimonyBound(paramValues, parsimonyBound, j, minFuncDomain, maxFuncDomain);
             //compositeParameter::getBoundsForInitialParams(func, j, paramValues, &lowerBound, &upperBound, alpha->getMax(), true);
             if (parsimonyBound > 0){
               if (upperBoundCandidate >= lowerBound){
@@ -330,6 +342,25 @@ ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
 
     }
   }
+
+}
+
+/******************************************************************************/
+ChromosomeSubstitutionModel* ChromosomeSubstitutionModel::initRandomModel(
+  const ChromosomeAlphabet* alpha,
+  int &baseNumber,
+  map<int, vector<double>> initParams,
+  unsigned int chrRange,
+  rootFreqType rootFrequenciesType,
+  vector<int> rateChangeType,
+  vector<int>& fixedParams,
+  bool demiOnlyForEven,
+  double parsimonyBound)
+{
+  std::map<int, vector<double>> mapRandomParams;
+  int newBaseNumber;
+  setRandomModel(alpha, baseNumber, initParams, chrRange, rootFrequenciesType, rateChangeType, fixedParams, demiOnlyForEven, parsimonyBound, mapRandomParams, newBaseNumber, false);
+
 
   ChromosomeSubstitutionModel* model = new ChromosomeSubstitutionModel(alpha, mapRandomParams, newBaseNumber, chrRange, rootFrequenciesType, rateChangeType, demiOnlyForEven);//, useExtendedFloat);
   return model;
@@ -381,7 +412,7 @@ void ChromosomeSubstitutionModel::addCompositeParameter(std::vector<Parameter*> 
 }
 
 /******************************************************************************/
-void ChromosomeSubstitutionModel::updateParameters(vector<double> &gain, vector<double> &loss, vector<double> &dupl, vector<double> &demi, vector<double> &baseNumR){
+void ChromosomeSubstitutionModel::updateParameters(vector<double> &gain, vector<double> &loss, vector<double> &dupl, vector<double> &demi, vector<double> &baseNumR, bool continuous){
   if (baseNum_ != IgnoreParam){
     std::shared_ptr<IntervalConstraint> interval_baseNum = make_shared<IntervalConstraint>(lowerLimitBaseNumber, (int)maxChrRange_, true, true);
     addParameter_(new Parameter("Chromosome.baseNum", baseNum_, interval_baseNum));
@@ -423,20 +454,20 @@ void ChromosomeSubstitutionModel::updateParameters(vector<double> &gain, vector<
     addParameter_(demiParams[i]);
   }
   if (gainFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
-    gain_ = new compositeParameter(gainFunc_, "gain", gainParams);
+    gain_ = new compositeParameter(gainFunc_, "gain", gainParams, continuous);
 
   }
   if (lossFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
-    loss_ = new compositeParameter(lossFunc_, "loss", lossParams);
+    loss_ = new compositeParameter(lossFunc_, "loss", lossParams, continuous);
   }
   if (duplFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
-    dupl_ = new compositeParameter(duplFunc_, "dupl", duplParams);
+    dupl_ = new compositeParameter(duplFunc_, "dupl", duplParams, continuous);
   }
   if (demiFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
-    demiploidy_ = new compositeParameter(demiFunc_, "demi", demiParams);
+    demiploidy_ = new compositeParameter(demiFunc_, "demi", demiParams, continuous);
   }
   if (baseNumRFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
-    baseNumR_ = new compositeParameter(baseNumRFunc_, "baseNumR", baseNumParams);
+    baseNumR_ = new compositeParameter(baseNumRFunc_, "baseNumR", baseNumParams, continuous);
   }
   setAllFunctionsDomains();
 
@@ -1415,6 +1446,8 @@ ChromosomeBMSubstitutionModel::ChromosomeBMSubstitutionModel(double mu,
   double state,
   double minTraitState,
   double maxTraitState,
+  double minTraitStateInData,
+  double maxTraitStateInData,
   const ChromosomeAlphabet* alpha, 
   vector<double> gain, 
   vector<double> loss, 
@@ -1435,8 +1468,15 @@ ChromosomeBMSubstitutionModel::ChromosomeBMSubstitutionModel(double mu,
   minTraitState_(minTraitState),
   maxTraitState_(maxTraitState){
     defineFunctionsNames(rateChangeType);
-    updateBMParameters();
-    updateParameters(gain, loss, dupl, demi, baseNumR); 
+    if (simulated){
+      if (mu > maxTraitStateInData){
+        maxTraitStateInData = mu; 
+      }else if (mu < minTraitStateInData){
+        minTraitStateInData = mu;
+      }
+    }
+    updateBMParameters(minTraitStateInData, maxTraitStateInData);
+    updateParameters(gain, loss, dupl, demi, baseNumR, true); 
     computeFrequencies(false);
     isScalable_ = false;    //in ChromEvol the matrix should be not normalized
     updateMatrices();
@@ -1448,6 +1488,8 @@ ChromosomeBMSubstitutionModel::ChromosomeBMSubstitutionModel(double mu,
   double state,
   double minTraitState,
   double maxTraitState,
+  double minTraitStateInData,
+  double maxTraitStateInData,
   const ChromosomeAlphabet* alpha, 
   std::map<int, vector<double>> mapOfParamValues,
   int baseNum,
@@ -1464,12 +1506,19 @@ ChromosomeBMSubstitutionModel::ChromosomeBMSubstitutionModel(double mu,
   minTraitState_(minTraitState),
   maxTraitState_(maxTraitState){
     defineFunctionsNames(rateChangeType);
-    updateBMParameters();
+    if (simulated){
+      if (mu > maxTraitStateInData){
+        maxTraitStateInData = mu; 
+      }else if (mu < minTraitStateInData){
+        minTraitStateInData = mu;
+      }
+    }
+    updateBMParameters(minTraitStateInData, maxTraitStateInData);
     updateParameters(mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::GAIN)], 
       mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::LOSS)], 
       mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::DUPL)],
       mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::DEMIDUPL)],
-      mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::BASENUMR)]);
+      mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::BASENUMR)], true);
     computeFrequencies(false);
     isScalable_ = false;    //in ChromEvol the matrix should be not normalized
     updateMatrices();
@@ -1480,6 +1529,58 @@ void ChromosomeBMSubstitutionModel::setAllFunctionsDomains(){
   dupl_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
   demiploidy_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
   baseNumR_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
+
+}
+/******************************************************************************/
+bool ChromosomeBMSubstitutionModel::areRatesNegative(double minTraitState, double maxTraitState, map<int, vector<double>> &params, vector<int> &rateChangeType){
+  vector<double> paramValues;
+  for (size_t i = 1; i < ChromosomeSubstitutionModel::paramType::NUM_OF_CHR_PARAMS; i++){
+    switch (i)
+    {
+      case ChromosomeSubstitutionModel::BASENUM:
+        break;
+      case ChromosomeSubstitutionModel::GAIN:
+        paramValues = params[ChromosomeSubstitutionModel::GAIN];
+        break;
+      case ChromosomeSubstitutionModel::LOSS:
+        paramValues = params[ChromosomeSubstitutionModel::LOSS];
+        break;
+      case ChromosomeSubstitutionModel::DUPL:
+        paramValues = params[ChromosomeSubstitutionModel::DUPL];
+        break;
+      case ChromosomeSubstitutionModel::DEMIDUPL:
+        paramValues = params[ChromosomeSubstitutionModel::DEMIDUPL];
+        break;
+      case ChromosomeSubstitutionModel::BASENUMR:
+        paramValues = params[ChromosomeSubstitutionModel::BASENUMR];
+        break;
+   
+      default:
+        throw Exception("ChromEvolOptions::setFunctions: parameter not found !!!");
+    }
+    size_t startNonComposite = getNumberOfNonCompositeParams();
+    auto funcType = static_cast<ChromosomeNumberDependencyFunction::FunctionType>(rateChangeType[i-startNonComposite]);
+    ChromosomeNumberDependencyFunction* func = compositeParameter::setDependencyFunction(funcType, true);
+    func->setDomainsIfNeeded(minTraitState, maxTraitState);
+    double rateMin;
+    double rateMax;
+    try {
+      rateMin = func->getRate(paramValues, minTraitState+1);
+    } catch (const std::exception& e) {
+      delete func;
+      return true;
+    }
+    try{
+      rateMax = func->getRate(paramValues, maxTraitState+1);
+    }catch (const std::exception& e) {
+      delete func;
+      return true;
+    }
+    delete func;
+    
+
+  }
+  return false;
 
 }
 /******************************************************************************/
@@ -1696,11 +1797,41 @@ void ChromosomeBMSubstitutionModel::getParametersValues(){
     //checkParametersBounds();
 }
 /*******************************************************************************/
-void ChromosomeBMSubstitutionModel::updateBMParameters(){
-  addParameter_(new Parameter("Chromosome.sigma", sigma_, Parameter::R_PLUS_STAR));
-  std::shared_ptr<IntervalConstraint> interval_mu = make_shared<IntervalConstraint>(-1000, 1000, false, true); // don't really know what bound should I put here
+void ChromosomeBMSubstitutionModel::updateBMParameters(double minTraitState, double maxTraitState){
+  std::shared_ptr<IntervalConstraint> interval_sigma = make_shared<IntervalConstraint>(0.001, 10000, false, true);
+  addParameter_(new Parameter("Chromosome.sigma", sigma_, interval_sigma));
+  std::shared_ptr<IntervalConstraint> interval_mu = make_shared<IntervalConstraint>(minTraitState, maxTraitState, true, true); // don't really know what bound should I put here
   addParameter_(new Parameter("Chromosome.mu", mu_, interval_mu));
-  std::shared_ptr<IntervalConstraint> interval_state = make_shared<IntervalConstraint>(-1000, 1000, false, true);
+  std::shared_ptr<IntervalConstraint> interval_state = make_shared<IntervalConstraint>(-1000000, 1000000, false, true);
   addParameter_(new Parameter("Chromosome.state", state_, interval_state));
+
+}
+
+/******************************************************************************/
+ChromosomeBMSubstitutionModel* ChromosomeBMSubstitutionModel::initBMRandomModel(
+  const ChromosomeAlphabet* alpha,
+  int &baseNumber,
+  map<int, vector<double>> initParams,
+  unsigned int chrRange,
+  rootFreqType rootFrequenciesType,
+  vector<int> rateChangeType,
+  vector<int>& fixedParams,
+  bool demiOnlyForEven,
+  double parsimonyBound,
+  double minTraitState,
+  double maxTraitState,
+  double minTraitStateInData,
+  double maxTraitStateInData,
+  double sigmaRoughEstimator)
+{
+  std::map<int, vector<double>> mapRandomParams;
+  int newBaseNumber;
+  double mu =  RandomTools::giveRandomNumberBetweenTwoPoints(minTraitStateInData + 0.001, maxTraitStateInData-0.001);
+  double sigma = RandomTools::giveRandomNumberBetweenTwoPoints(0, sigmaRoughEstimator);
+  setRandomModel(alpha, baseNumber, initParams, chrRange, rootFrequenciesType, rateChangeType, fixedParams, demiOnlyForEven, parsimonyBound, mapRandomParams, newBaseNumber, true, minTraitState, maxTraitState);
+
+
+  ChromosomeBMSubstitutionModel* model = new ChromosomeBMSubstitutionModel(mu, sigma, 0, minTraitState, maxTraitState, minTraitStateInData, maxTraitStateInData, alpha, mapRandomParams, newBaseNumber, chrRange, rootFrequenciesType, rateChangeType, demiOnlyForEven);//, useExtendedFloat);
+  return model;
 
 }

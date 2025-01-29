@@ -167,6 +167,7 @@ namespace bpp
             ComputeChromosomeTransitionsExp* clone() const { return new ComputeChromosomeTransitionsExp(*this); }
             virtual ~ComputeChromosomeTransitionsExp(){};
             void init();
+            void initBMModel();
             void computeExpectationOfChangePerBranch(uint nodeId, VVdouble &jointProbFatherNode, int transitionType);
             //ChromosomeSubstitutionModel::typeOfTransition getTypeOfTransition(int startState, int endState);
             //more sophisticated function: if there is an overlap between different transition types-> the chosen state is sampled according to probabilities

@@ -117,14 +117,14 @@ namespace bpp
   
 
 
-    compositeParameter(ChromosomeNumberDependencyFunction::FunctionType func, std::string paramName, vector<Parameter*> &params):
+    compositeParameter(ChromosomeNumberDependencyFunction::FunctionType func, std::string paramName, vector<Parameter*> &params, bool continuous = false):
       params_(), func_(0), name_(paramName)
     {
       for (size_t i = 0; i < params.size(); i++){
         params_.push_back(params[i]);
       }
       //getParamUpdateFunction(func);
-      func_ = setDependencyFunction(func);
+      func_ = setDependencyFunction(func, continuous);
     }
 
 
@@ -323,6 +323,22 @@ public:
     bool demiOnlyForEven,
     double parsimonyBound = 0);
 
+  static void setRandomModel(
+    const ChromosomeAlphabet* alpha,
+    int &baseNumber,
+    map<int, vector<double>> initParams,
+    unsigned int chrRange,
+    rootFreqType rootFrequenciesType,
+    vector<int> rateChangeType,
+    vector<int>& fixedParams,
+    bool demiOnlyForEven,
+    double parsimonyBound,
+    std::map<int, vector<double>> &mapRandomParams,
+    int &newBaseNumber,
+    bool brownianModel,
+    double minDomain = 0,
+    double maxDomain = 0);
+
 
 
 
@@ -376,6 +392,8 @@ public:
 
 
 protected:
+  virtual const double getMinDomain(){return static_cast<double>(getMin());}
+  virtual const double getMaxDomain(){return static_cast<double>(getMax());}
   virtual void setAllFunctionsDomains();
   void defineFunctionsNames(vector<int> &rateChangeType);
   void addCompositeParameter(std::vector<Parameter*> parameters);
@@ -383,7 +401,7 @@ protected:
   void calculatePijtUsingEigenValues(double t) const;
   //static void getRandomParameter(paramType type, double initParamValue, vector<double>& randomParams, double upperBound, double upperBoundLinear, double upperBoundExp, rateChangeFunc rateFunc, int maxChrNum, unsigned int chrRange, map<int, double>& setOfFixedParameters);
   //void updateParameters();
-  void updateParameters(vector<double> &gain, vector<double> &loss, vector<double> &dupl, vector<double> &demi, vector<double> &baseNumR);
+  void updateParameters(vector<double> &gain, vector<double> &loss, vector<double> &dupl, vector<double> &demi, vector<double> &baseNumR, bool continuous=false);
   //void updateLinearParameters();
   //void updateExpParameters();
   //void updateBaseNumParameters(std::shared_ptr<IntervalConstraint> interval);
@@ -423,6 +441,8 @@ public:
     double state,
     double minTraitState,
     double maxTraitState,
+    double minTraitStateInData,
+    double maxTraitStateInData,
     const ChromosomeAlphabet* alpha, 
     vector<double> gain, 
     vector<double> loss, 
@@ -442,6 +462,8 @@ public:
     double state,
     double minTraitState,
     double maxTraitState,
+    double minTraitStateInData,
+    double maxTraitStateInData,
     const ChromosomeAlphabet* alpha, 
     std::map<int, vector<double>> mapOfParamValues,
     int baseNum,
@@ -466,11 +488,30 @@ public:
   {
     
   }
-
-
+  const double getMinTraitState() const{return minTraitState_;}
+  const double getMaxTraitState() const{return maxTraitState_;}
   ChromosomeBMSubstitutionModel* clone() const { return new ChromosomeBMSubstitutionModel(*this);}
   void correctBaseNumForSimulation(int maxChrNum);
+  static ChromosomeBMSubstitutionModel* initBMRandomModel(
+    const ChromosomeAlphabet* alpha,
+    int &baseNumber,
+    map<int, vector<double>> initParams,
+    unsigned int chrRange,
+    rootFreqType rootFrequenciesType,
+    vector<int> rateChangeType,
+    vector<int>& fixedParams,
+    bool demiOnlyForEven,
+    double parsimonyBound,
+    double minTraitState,
+    double maxTraitState,
+    double minTraitStateInData,
+    double maxTraitStateInData,
+    double sigmaRoughEstimator);
+  static bool areRatesNegative(double minTraitState, double maxTraitState, map<int, vector<double>> &params, vector<int> &rateChangeType);
+
   protected:
+    const double getMinDomain() override {return getMinTraitState();}
+    const double getMaxDomain() override {return getMaxTraitState();}
     void setAllFunctionsDomains();
     std::vector<Parameter*> createCompositeParameter(ChromosomeNumberDependencyFunction::FunctionType &func, std::string paramName, vector<double> &vectorOfValues);
     void updateQWithBaseNumParameters(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
@@ -478,8 +519,9 @@ public:
     void updateQWithLoss(size_t currChrNum, size_t minChrNum);
     void updateQWithDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum = 0);
     void updateQWithDemiDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
-    void updateBMParameters();
+    void updateBMParameters(double minTraitState, double maxTraitState);
     void getParametersValues();
+    
 
 
 

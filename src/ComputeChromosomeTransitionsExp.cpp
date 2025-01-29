@@ -366,9 +366,9 @@ PhyloTree* ComputeChromosomeTransitionsExp::getResultTree(const PhyloTree* origi
             if (i == ChromosomeSubstitutionModel::NUMTYPES - 1){
 
                 
-                expected = expected + to_string(expectedNumOfChangesPerBranch) + "]";
+                expected = expected + std::to_string(expectedNumOfChangesPerBranch) + "]";
             }else{
-                expected = expected + to_string(expectedNumOfChangesPerBranch)+ "\\";
+                expected = expected + std::to_string(expectedNumOfChangesPerBranch)+ "\\";
             }            
 
         }
@@ -386,7 +386,37 @@ PhyloTree* ComputeChromosomeTransitionsExp::getResultTree(const PhyloTree* origi
 
 }
 // //****************************************************************************************/
+void ComputeChromosomeTransitionsExp::initBMModel(){
+    size_t numOfModels = model_->getNumberOfModels();
+    for (size_t m = 0; m < numOfModels; m++){
+        std::vector<Branch> branchesPerModel;
+        vector<std::shared_ptr<PhyloNode>> modelNodes;
+        uint nodeId = model_->getNodesWithModel(m+1)[0];
+        modelNodes.push_back(tree_->getNode(nodeId));
+        auto branchPtr = tree_->getIncomingEdges(modelNodes[0])[0];
+        PhyloBranch branch = *branchPtr;
+        uint branchIndex = tree_->getEdgeIndex(branchPtr);
+        Branch edgeInfo(branchIndex, branch);
+        branchesPerModel.push_back(edgeInfo);
+        branchTransitionsExp_[nodeId] = std::map<pair<int, int>, pair<int, Vdouble>>();
+        for (int i = 0; i < ChromosomeSubstitutionModel::NUMTYPES; i ++){
+            expNumOfChangesPerBranch_[nodeId][i] = 0;
+        }
+        branchOrder_.push_back(branchesPerModel);
+    }
+    for (int i = 0; i < ChromosomeSubstitutionModel::NUMTYPES; i ++){
+        expNumOfChanges_[i] = 0;
+    }
+
+
+}
+// //****************************************************************************************/
 void ComputeChromosomeTransitionsExp::init(){
+    auto model = model_->getModel(1);
+    if (std::dynamic_pointer_cast<const ChromosomeBMSubstitutionModel>(model)){
+        initBMModel();
+        return;
+    }
     size_t numOfModels = model_->getNumberOfModels();
     uint rootId = tree_->getRootIndex();
     vector<uint> rootSons = tree_->getSons(rootId);

@@ -72,6 +72,7 @@
 #include <Bpp/Phyl/Likelihood/PhyloLikelihoods/JointPhyloLikelihood.h>
 #include "BaseNumberOptimizer.h"
 #include <Bpp/Phyl/OptimizationTools.h>
+#include "JointPhyloChromosomeBMLikelihood.h"
 // From Seqlib:
 #include <vector>
 #include <map>
@@ -176,6 +177,37 @@ namespace bpp
                     probsForMixedOptimization_(),
                     fixedParams_(fixedParams),
                     sharedParams_(sharedParams),
+                    numOfShiftsForward_(),
+                    backwardPhaseStarted_(),
+                    prevModelsPartitions_(),
+                    prevModelParams_(),
+                    prevModelsAICcLikValues_(),
+                    prevModelsRootFrequencies_()
+            {}
+            ChromosomeNumberOptimizer(
+                const JointPhyloChromosomeBMLikelihood* jointLik,
+                const ChromosomeAlphabet* alpha,
+                const VectorSiteContainer* vsc,
+                std::map<uint, uint> &baseNumberUpperBound,
+                std::map<uint, vector<int>> &fixedParams):
+                    BaseNumberOptimizer(vsc, baseNumberUpperBound),
+                    vectorOfLikelohoods_(),
+                    singleLikelihood_(0),
+                    //vectorOfContexts_(),
+                    tree_(0), // do we need a tree here
+                    alphabet_(alpha),
+                    vsc_(0), // is it needed?
+                    numOfPoints_(),
+                    numOfIterations_(),
+                    numOfPointsNextRounds_(),
+                    numOfIterationsNextRounds_(),
+                    typeOfOptimizer_(),  
+                    tolerance_(),
+                    standardOptimization_(),
+                    BrentBracketing_(),
+                    probsForMixedOptimization_(),
+                    fixedParams_(fixedParams),
+                    sharedParams_(),
                     numOfShiftsForward_(),
                     backwardPhaseStarted_(),
                     prevModelsPartitions_(),
@@ -396,7 +428,7 @@ namespace bpp
           // functions related to both joint model and single likelihood objects
 
             template <typename T>
-            typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value),void>::type
+            typename std::enable_if<((std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value)) || (std::is_same<T, JointPhyloChromosomeBMLikelihood>::value),void>::type
             printLikParameters(T* lik, unsigned int optimized, string* textToPrint, const string filePath = "none") const{
                 ofstream outFile;
                 if (filePath != "none"){
@@ -464,9 +496,16 @@ namespace bpp
             getNumberOfModelsInLikObject(T* likObject) const{
                 return static_cast<uint>(likObject->getPhylo2()->getSubstitutionProcess().getNumberOfModels());
             }
+            template <typename T>
+            typename std::enable_if<(std::is_same<T, JointPhyloChromosomeBMLikelihood>::value), uint>::type
+            getNumberOfModelsInLikObject(T* likObject) const{
+                auto singlePhylLik = dynamic_cast<SingleProcessPhyloLikelihood*>(likObject->getAbstractPhyloLikelihood(likObject->getNumbersOfPhyloLikelihoods()[0]));
+                return static_cast<uint>(singlePhylLik->getSubstitutionProcess().getNumberOfModels());
+            }
+            
 
             template <typename T>
-            typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value),vector<string>>::type
+            typename std::enable_if<((std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value)) || (std::is_same<T, JointPhyloChromosomeBMLikelihood>::value),vector<string>>::type
             getNonFixedParams(T* tl, ParameterList &allParams, std::map<uint, vector<int>>* fixedParams, vector<string>* chromosomeParamNames) const{
                 std::map<int, std::map<uint, std::vector<string>>> typeWithParamNames;//parameter type, num of model, related parameters
                 std::map<string, std::pair<int, uint>> paramNameAndType; // parameter name, its type and number of model
@@ -476,17 +515,7 @@ namespace bpp
                     
                     LikelihoodUtils::updateMapsOfParamTypesAndNames<T>(typeWithParamNames, &paramNameAndType, tl);
                 }
-                uint numOfModels = getNumberOfModelsInLikObject<T>(tl);
-                // if constexpr (std::is_same_v<T, SingleProcessPhyloLikelihood>){
-                //     numOfModels = static_cast<uint>(tl->getSubstitutionProcess().getNumberOfModels());
-
-                // }else if constexpr (std::is_same_v<T, JointPhyloLikelihood>){
-                //     numOfModels = static_cast<uint>(tl->getPhylo2()->getSubstitutionProcess().getNumberOfModels());
-
-                // }else{
-                //     throw Exception("ERROR!!!! ChromosomeNumberOptimizer::getNonFixedParams(): Type that substitute T is not correct!!!");
-                // }
-                
+                uint numOfModels = getNumberOfModelsInLikObject<T>(tl);                
                 vector<string> nonFixed;
                 for (int i = 0; i < ChromosomeSubstitutionModel::NUM_OF_CHR_PARAMS; i++){
                     auto it = typeWithParamNames.find(i);
@@ -496,12 +525,22 @@ namespace bpp
                     int type = it->first;
                     auto modelAndParameterNames = typeWithParamNames[type];
                     for(uint j = 1; j <= numOfModels; j ++){
-                        if (!(std::count((*fixedParams)[j].begin(), (*fixedParams)[j].end(), type))){
+                        if (fixedParams->size() < j){
                             vector<string> parameterNames = modelAndParameterNames[j];
                             for (size_t k = 0; k < parameterNames.size(); k++){
                                 nonFixed.push_back(parameterNames[k]);
                             }
+                            
+                        }else{
+                            if (!(std::count((*fixedParams)[j].begin(), (*fixedParams)[j].end(), type))){
+                                vector<string> parameterNames = modelAndParameterNames[j];
+                                for (size_t k = 0; k < parameterNames.size(); k++){
+                                    nonFixed.push_back(parameterNames[k]);
+                                }
+                            }
+
                         }
+
 
                     }
         
@@ -511,7 +550,30 @@ namespace bpp
 
         public:
             template <typename T>
-            typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value),unsigned int>::type
+            typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value), double>::type
+            getMaxFuncDomain(T* tl){
+                return alphabet_->getMax();
+            }
+            template <typename T>
+            typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value), double>::type
+            getMinFuncDomain(T* tl){
+                return alphabet_->getMin();
+            }
+
+            template <typename T>
+            typename std::enable_if<std::is_same<T, JointPhyloChromosomeBMLikelihood>::value, double>::type
+            getMaxFuncDomain(T* tl){
+                return tl->getMaxTraitState();
+            }
+            template <typename T>
+            typename std::enable_if<std::is_same<T, JointPhyloChromosomeBMLikelihood>::value, double>::type
+            getMinFuncDomain(T* tl){
+                return tl->getMinTraitState();
+            }
+
+
+            template <typename T>
+            typename std::enable_if<((std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value)) || (std::is_same<T, JointPhyloChromosomeBMLikelihood>::value),unsigned int>::type
             optimizeMultiDimensions(T* tl, double tol, unsigned int maxNumOfIterations, std::map<int, std::vector<std::pair<uint, int>>>* sharedParams, std::map<uint, vector<int>>* fixedParams, string* textToPrint, std::map<uint, uint> &baseNumberUpperBounds, std::vector<string>* chromosomeParamNames, bool mixed=false, unsigned int currentIterNum=0){
                 DerivableSecondOrder* f = tl;
                 unique_ptr<AbstractNumericalDerivative> fnum;
@@ -564,21 +626,35 @@ namespace bpp
                     for (size_t j = 0; j < params.size(); j++){
                         std::string nameOfParam = params[j].getName();
                         rateParamType = paramNameAndType[nameOfParam].first;
-                        /////////////////////////////////////////////////////
                         std::vector<string> paramsNames = typeWithParamNames[rateParamType][paramNameAndType[nameOfParam].second];
                         auto it = std::find(paramsNames.begin(), paramsNames.end(), nameOfParam);
                         if (it == paramsNames.end()){
                             throw Exception("ChromosomeNumberOptimizer::optimizeModelParametersOneDimension(): index out of range!");
                         }
                         size_t index = it - paramsNames.begin();
-                        ////////////////////////////////////////////////////////
                         if (rateParamType != ChromosomeSubstitutionModel::BASENUM){
                             ChromosomeNumberDependencyFunction::FunctionType funcType = static_cast<ChromosomeNumberDependencyFunction::FunctionType>(ChromEvolOptions::rateChangeType_[rateParamType-startCompositeParams]);
-                            ChromosomeNumberDependencyFunction* functionOp = compositeParameter::setDependencyFunction(funcType);
-                            functionOp->setDomainsIfNeeded(alphabet_->getMin(), alphabet_->getMax());
-                            functionOp->updateBounds(params, paramsNames, index, &lowerBound, &upperBound, alphabet_->getMax());
+                            ChromosomeNumberDependencyFunction* functionOp;
+                            bool brownian = false;
+                            if (std::is_same<decltype(tl), JointPhyloChromosomeBMLikelihood*>::value){
+                                brownian = true;
+                                functionOp = compositeParameter::setDependencyFunction(funcType, true);
+
+
+
+                            }else{
+                                functionOp = compositeParameter::setDependencyFunction(funcType);
+
+                            }
+                            double minDomain = getMinFuncDomain(tl);
+                            double maxDomain = getMaxFuncDomain(tl);
+                            functionOp->setDomainsIfNeeded(minDomain, maxDomain);
+                            functionOp->updateBounds(params, paramsNames, index, &lowerBound, &upperBound, maxDomain);
                             std::shared_ptr<IntervalConstraint> interval = dynamic_pointer_cast<IntervalConstraint>(params.getParameter(nameOfParam).getConstraint());
                             interval->setLowerBound(lowerBound, interval->strictLowerBound());
+                            if (brownian){
+                               interval->setUpperBound(upperBound, interval->strictUpperBound()); 
+                            }
                             functionOp->updateBounds(f, nameOfParam, lowerBound, upperBound);
                             delete functionOp;
 
@@ -619,7 +695,7 @@ namespace bpp
 
             /********************************************************************************************************************************************************/
             template <typename T>
-            typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value),unsigned int>::type
+            typename std::enable_if<((std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value)) || (std::is_same<T, JointPhyloChromosomeBMLikelihood>::value),unsigned int>::type
             optimizeModelParametersOneDimension(T* tl, double tol, unsigned int maxNumOfIterations, std::vector <unsigned int> &baseNumCandidates, std::map<int, vector<std::pair<uint, int>>>* sharedParams, std::map<uint, vector<int>>* fixedParams, string* textToPrint, std::map<uint, uint> &baseNumberBounds, std::vector<string>* chromosomeParamNames, bool mixed=false, unsigned curentIterNum=0){
 
             // Initialize optimizer
@@ -677,9 +753,7 @@ namespace bpp
                     }else{
                         text = "Iteration #" +std::to_string(i) + "\n";
                     }
-
                 }
-
                 printLog(textToPrint, text);
                 //ParameterList params = tl->getParameters();// = tl->getParameters();
                 //ParameterList substitutionModelParams = tl->getSubstitutionModelParameters();
@@ -712,13 +786,26 @@ namespace bpp
                     size_t index = it - paramsNames.begin();
                     if (rateParamType != static_cast<int>(ChromosomeSubstitutionModel::BASENUM)){
                         ChromosomeNumberDependencyFunction::FunctionType funcType = static_cast<ChromosomeNumberDependencyFunction::FunctionType>(ChromEvolOptions::rateChangeType_[rateParamType-startCompositeParams]);
-                        ChromosomeNumberDependencyFunction* functionOp = compositeParameter::setDependencyFunction(funcType);
-                        functionOp->setDomainsIfNeeded(alphabet_->getMin(), alphabet_->getMax());
-                        functionOp->updateBounds(params, paramsNames, index, &lowerBound, &upperBound, alphabet_->getMax());
+                        ChromosomeNumberDependencyFunction* functionOp;
+                        double minDomain = getMinFuncDomain(tl);
+                        double maxDomain = getMaxFuncDomain(tl);
+
+                        if (std::is_same<decltype(tl), JointPhyloChromosomeBMLikelihood*>::value){
+                            functionOp = compositeParameter::setDependencyFunction(funcType, true);
+
+                        }else{
+                            functionOp = compositeParameter::setDependencyFunction(funcType);
+
+
+                        }
+                        functionOp->setDomainsIfNeeded(minDomain, maxDomain);
+                        functionOp->updateBounds(params, paramsNames, index, &lowerBound, &upperBound, maxDomain);
+                        
                         functionOp->updateBounds(f, nameOfParam, lowerBound, upperBound);
+
                         delete functionOp;
-                        std::shared_ptr<IntervalConstraint> intervalFuncUpdated = dynamic_pointer_cast<IntervalConstraint>(params.getParameter(nameOfParam).getConstraint());
-                        std::shared_ptr<IntervalConstraint> intervalFuncUpdatedTL = dynamic_pointer_cast<IntervalConstraint>(tl->getParameter(nameOfParam).getConstraint());
+                        //std::shared_ptr<IntervalConstraint> intervalFuncUpdated = dynamic_pointer_cast<IntervalConstraint>(params.getParameter(nameOfParam).getConstraint());
+                        //std::shared_ptr<IntervalConstraint> intervalFuncUpdatedTL = dynamic_pointer_cast<IntervalConstraint>(tl->getParameter(nameOfParam).getConstraint());
 
                     }else{
                         // baseNumber parameter
@@ -770,7 +857,7 @@ namespace bpp
         }
         /**********************************************************************************************************************************************************/
         template <typename T>
-        typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value),unsigned int>::type
+        typename std::enable_if<((std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value)) || (std::is_same<T, JointPhyloChromosomeBMLikelihood>::value),unsigned int>::type
         useMixedOptimizers(T* tl, double tol, unsigned int maxNumOfIterations, vector <unsigned int> &baseNumCandidates, std::map<int, std::vector<std::pair<uint, int>>>* sharedParams, std::map<uint, vector<int>>* fixedParams, string* textToPrint, std::map<uint, uint> &baseNumberUpperBounds, std::vector<string>* chromosomeParamNames){
             std::vector<size_t> optimization = RandomTools::randMultinomial(maxNumOfIterations, probsForMixedOptimization_);
             unsigned int numOfEvaluations = 0;
@@ -801,7 +888,7 @@ namespace bpp
 
 
         template <typename T>
-        typename std::enable_if<(std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value),unsigned int>::type
+        typename std::enable_if<((std::is_same<T, SingleProcessPhyloLikelihood>::value) || (std::is_same<T, JointPhyloLikelihood>::value)) || (std::is_same<T, JointPhyloChromosomeBMLikelihood>::value) ,unsigned int>::type
         optimizeModelParameters(T* tl, double tol, unsigned int maxNumOfIterations, std::vector <unsigned int> &baseNumCandidates, std::map<int, std::vector<std::pair<uint, int>>>* sharedParams, std::map<uint, vector<int>>* fixedParams, string* textToPrint, std::map<uint, uint> &baseNumberUpperBounds, std::vector<string>* chromosomeParamNames=0){
             unsigned int numOfEvaluations = 0;
  
