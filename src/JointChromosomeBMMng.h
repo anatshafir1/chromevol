@@ -161,6 +161,8 @@ class JointChromosomeBMMng:
         std::unordered_map<uint, double> getBranchStatesForEachNode();
         const std::shared_ptr<PhyloTree> getTree(){return tree_;}
         static std::shared_ptr<NonHomogeneousSubstitutionProcess> setHeterogeneousTraitDependentModel(std::shared_ptr<ChromosomeBMSubstitutionModel> chrModel, std::shared_ptr<ParametrizablePhyloTree> parTree, const std::unordered_map<uint, double> &statesInBranches, const PhyloTree* tree, std::shared_ptr<FrequencySet> &freqs);
+        static std::unordered_map<string, double> getTraitData(const std::string& filePath);
+
 
 
 
