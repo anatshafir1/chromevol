@@ -333,6 +333,10 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     useMLReconstruction_ = ApplicationTools::getBooleanParameter("_useMLReconstruction", ChromEvol.getParams(), useMLReconstruction_, "", true, 0);
     
     if (numberOfTraitStates_ == 0){
+        if (ChromEvolOptions::continuousTrait_){
+            runOnlyJointModel_ = ApplicationTools::getBooleanParameter("_runOnlyJointModel", ChromEvol.getParams(), runOnlyJointModel_, "", true, 0);
+            runOnlyIndependentModelWithTrait_ = ApplicationTools::getBooleanParameter("_runOnlyIndependentModelWithTrait", ChromEvol.getParams(), runOnlyIndependentModelWithTrait_, "", true, 0);
+        }
         return;
     }
     fixedTraitRootFreqs_ = ApplicationTools::getBooleanParameter("_fixedTraitRootFreqs", ChromEvol.getParams(), fixedTraitRootFreqs_, "", true, 0);

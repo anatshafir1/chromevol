@@ -385,6 +385,11 @@ void ChromosomeNumberMng::runJointChromosomeContinuousBMAnalysis(){
     bool nullRejected = false;
     JointChromosomeBMMng* bmMng = 0;
     vector<int> rateChangeTypesBM;
+    const std::unordered_map<string, double> traitData = JointChromosomeBMMng::getTraitData(ChromEvolOptions::traitFilePath_);
+    std::shared_ptr<const std::unordered_map<string, double>> traitDataPtr = nullptr;
+    if (ChromEvolOptions::runOnlyIndependentModelWithTrait_){
+        traitDataPtr = std::make_shared<const std::unordered_map<string, double>>(traitData);
+    }
     std::pair<std::shared_ptr<BrownianMotionLikelihood>, ChromosomeNumberOptimizer*> nullModelComponents;
     ChromosomeNumberOptimizer* nullModelOptimizer = 0;
     std::shared_ptr<BrownianMotionLikelihood> nullModelBM = nullptr;
@@ -393,7 +398,7 @@ void ChromosomeNumberMng::runJointChromosomeContinuousBMAnalysis(){
         rateChangeTypesBM = ChromEvolOptions::rateChangeType_;
     }
     if (!ChromEvolOptions::runOnlyJointModel_){
-        nullModelComponents = optimizeNullBMModel(bmMng);
+        nullModelComponents = optimizeNullBMModel(bmMng, traitDataPtr);
         nullModelOptimizer = nullModelComponents.second;
         nullModelBM = nullModelComponents.first;
 
@@ -407,7 +412,7 @@ void ChromosomeNumberMng::runJointChromosomeContinuousBMAnalysis(){
     }
     
     const string outFilePathAncestorsProbs = ChromEvolOptions::resultsPathDir_ +"//"+ "ancestorsProbs.txt";
-    if ((!nullRejected) || (ChromEvolOptions::runOnlyIndependentModelWithTrait_)){
+    if (!(ChromEvolOptions::runOnlyJointModel_) && ((!nullRejected) || (ChromEvolOptions::runOnlyIndependentModelWithTrait_))){
         auto chrOptimizer = nullModelComponents.second;
         // get joint ML ancestral reconstruction
         int inferredRootState;
@@ -1422,11 +1427,20 @@ void ChromosomeNumberMng::runChromEvol(){
 
 }
 /************************************************************************************ */
-std::pair<std::shared_ptr<BrownianMotionLikelihood>, ChromosomeNumberOptimizer*> ChromosomeNumberMng::optimizeNullBMModel(JointChromosomeBMMng* bmMng){
-    setRateChangeTypeToNull();
+std::pair<std::shared_ptr<BrownianMotionLikelihood>, ChromosomeNumberOptimizer*> ChromosomeNumberMng::optimizeNullBMModel(JointChromosomeBMMng* bmMng, std::shared_ptr<const std::unordered_map<string, double>> traitDataPtr){
+    if (!ChromEvolOptions::runOnlyIndependentModelWithTrait_){
+        setRateChangeTypeToNull();
+    }
     ChromosomeNumberOptimizer* chrOptimizer = optimizeLikelihoodMultiStartPoints(true);
-    auto bmLik = bmMng->getBestLikelihoodObject()->getBMLikelihoodObject();
-    auto bmLikMLE = std::shared_ptr<BrownianMotionLikelihood>(bmLik->clone());
+    std::shared_ptr<BrownianMotionLikelihood> bmLikMLE;
+    if (ChromEvolOptions::runOnlyIndependentModelWithTrait_){
+        bmLikMLE = std::make_shared<BrownianMotionLikelihood>(std::shared_ptr<PhyloTree>(tree_->clone()), *traitDataPtr);
+
+    }else{
+        auto bmLik = bmMng->getBestLikelihoodObject()->getBMLikelihoodObject();
+        bmLikMLE = std::shared_ptr<BrownianMotionLikelihood>(bmLik->clone());
+    }
+    
     double mu = bmLikMLE->getMuMLE();
     double sigma = bmLikMLE->getSigmaMLE();
     bmLikMLE->calculateLikelihood(mu, sigma);
@@ -2125,7 +2139,7 @@ void ChromosomeNumberMng::computeExpectations(ChromosomeNumberOptimizer* chrOpti
     }else if (bmMng){
         auto jointBMLik = bmMng->getBestLikelihoodObject();
         ntl = const_cast<SingleProcessPhyloLikelihood*>(dynamic_cast<const SingleProcessPhyloLikelihood*>(jointBMLik->getAbstractPhyloLikelihood(jointBMLik->getNumbersOfPhyloLikelihoods()[0])));
-        sharedParams = chrOptimizer->getSharedParams(); // don't care about shared params here
+        //sharedParams = chrOptimizer->getSharedParams(); // don't care about shared params here
     }else{
         vector<SingleProcessPhyloLikelihood*> vectorOfLikelihoods = chrOptimizer->getVectorOfLikelihoods();
         // get the best likelihood

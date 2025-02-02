@@ -239,7 +239,7 @@ namespace bpp{
             double getOriginalTreeLength(string &path) const;
             double calculateFreqs(std::unordered_map<string, double> &thetas, size_t &idx) const;
             void setRateChangeTypeToNull() const;
-            std::pair<std::shared_ptr<BrownianMotionLikelihood>, ChromosomeNumberOptimizer*> optimizeNullBMModel(JointChromosomeBMMng* bmMng);
+            std::pair<std::shared_ptr<BrownianMotionLikelihood>, ChromosomeNumberOptimizer*> optimizeNullBMModel(JointChromosomeBMMng* bmMng, std::shared_ptr<const std::unordered_map<string, double>> traitData);
             void correctModelParameters(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &complexParamsValues) const;
 
 

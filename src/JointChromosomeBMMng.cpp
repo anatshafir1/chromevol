@@ -38,6 +38,33 @@ void JointChromosomeBMMng::setTraitData(const std::string& filePath) {
     inputFile.close();
 }
 /******************************************************************************/
+std::unordered_map<string, double> JointChromosomeBMMng::getTraitData(const std::string& filePath){
+    std::ifstream inputFile(filePath);
+    std::unordered_map<string, double> traitData;
+    if (!inputFile.is_open()) {
+        throw std::runtime_error("Error: Unable to open file.");
+    }
+
+    std::string line;
+    std::string currentSpecies;
+    while (std::getline(inputFile, line)) {
+        // Check if the line starts with '>'
+        if (!line.empty() && line[0] == '>') {
+            currentSpecies = line.substr(1); // Remove the '>' character
+        } else if (!line.empty()) {
+            // Convert the line to a double and map it to the current species
+            try {
+                double traitValue = std::stod(line);
+                traitData[currentSpecies] = traitValue;
+            } catch (const std::invalid_argument& e) {
+                throw std::runtime_error("Error: Invalid trait value in file.");
+            }
+        }
+    }
+    inputFile.close();
+    return traitData;
+}
+/******************************************************************************/
 void JointChromosomeBMMng::determineMinMaxStates(){
     minTraitValue_ = minTraitStateInData_;
     maxTraitValue_ = maxTraitStateInData_;
