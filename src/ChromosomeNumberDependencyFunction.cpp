@@ -128,19 +128,19 @@ void LinearDependencyFunction::updateBounds(Function* f, const std::string &para
 /**************************************************************************************/
 void LinearDependencyFunction::getBoundsForInitialParams(size_t index, vector<double> paramValues, double* lowerBound, double* upperBound, double maxChrNumber){
   if (index == 0){
-    if (continuous_){
+    //if (continuous_){
       //*lowerBound = std::max(std::max(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_)), lowerBoundOfRateParam);
-      if (domainMin_ > 0){
-        *lowerBound = std::min(std::min(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_)), lowerBoundOfRateParam);
+      // if (domainMin_ > 0){
+      //   *lowerBound = std::min(std::min(-upperBoundLinearRateParam*(domainMax_), -upperBoundLinearRateParam*(domainMin_)), lowerBoundOfRateParam);
 
-      }else{
-        *lowerBound = lowerBoundOfRateParam;
-      }
+      // }else{
+        //*lowerBound = lowerBoundOfRateParam;
+      //}
       
       
-    }else{
-      *lowerBound = lowerBoundOfRateParam;
-    }
+    //}else{
+    *lowerBound = lowerBoundOfRateParam;
+    //}
     *upperBound = upperBoundOfRateParam;
 
     

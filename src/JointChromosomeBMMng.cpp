@@ -407,7 +407,7 @@ void JointChromosomeBMMng::optimizeTraitModel(JointPhyloChromosomeBMLikelihood* 
     optimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO);
     optimizer->setMaximumNumberOfEvaluations(100);
     // setting bracketing for Brent optimization
-    optimizer->setBracketing(BrentOneDimension::BRACKET_INWARD);
+    optimizer->setBracketing(BrentOneDimension::BRACKET_SIMPLE);
     ParameterList params;
     double currentLikelihood = lik->getValue();
     double prevLikelihood;
