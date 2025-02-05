@@ -1559,6 +1559,9 @@ bool ChromosomeBMSubstitutionModel::areRatesNegative(double minTraitState, doubl
         throw Exception("ChromEvolOptions::setFunctions: parameter not found !!!");
     }
     size_t startNonComposite = getNumberOfNonCompositeParams();
+    if (rateChangeType[i-startNonComposite] == ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+      continue;
+    }
     auto funcType = static_cast<ChromosomeNumberDependencyFunction::FunctionType>(rateChangeType[i-startNonComposite]);
     ChromosomeNumberDependencyFunction* func = compositeParameter::setDependencyFunction(funcType, true);
     func->setDomainsIfNeeded(minTraitState, maxTraitState);

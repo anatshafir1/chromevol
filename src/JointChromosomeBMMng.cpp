@@ -357,9 +357,21 @@ void JointChromosomeBMMng::initMultipleLikelihoodPoints(ChromosomeAlphabet* alph
             }
           }
         }          
+      }
+      if (numOfPoints_.size() > 1){
+        removeUnnecessaryLikObject(vectorOfJointLikelohoods_, numOfPoints_[1]);
       }   
     }
-    sort(vectorOfJointLikelohoods_.begin(), vectorOfJointLikelohoods_.end(), compareJointLikValues);
+    //sort(vectorOfJointLikelohoods_.begin(), vectorOfJointLikelohoods_.end(), compareJointLikValues);
+}
+/******************************************************************************/
+void JointChromosomeBMMng::removeUnnecessaryLikObject(vector<JointPhyloChromosomeBMLikelihood*> &vectorOLikelihoods, size_t numberOfBestPoints){
+    if (vectorOLikelihoods.size() <= numberOfBestPoints){
+        return;
+    }
+    sort(vectorOLikelihoods.begin(), vectorOLikelihoods.end(), compareJointLikValues);
+    clearVectorOfLikelihoods(vectorOLikelihoods, numberOfBestPoints);
+
 }
 
 /******************************************************************************/

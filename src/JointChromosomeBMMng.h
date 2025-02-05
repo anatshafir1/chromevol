@@ -57,6 +57,7 @@ class JointChromosomeBMMng:
     void printLikelihoodParameters(JointPhyloChromosomeBMLikelihood* lik, unsigned int optimized, vector<string> paramsNames) const;
     void determineMinMaxStates();
     string getParamWithoutSuffixAndPrefix(string &paramName);
+    void removeUnnecessaryLikObject(vector<JointPhyloChromosomeBMLikelihood*> &vectorOLikelihoods, size_t numberOfBestPoints);
 
 
 
