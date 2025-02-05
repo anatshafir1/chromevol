@@ -1524,11 +1524,21 @@ ChromosomeBMSubstitutionModel::ChromosomeBMSubstitutionModel(double mu,
     updateMatrices();
 }
 void ChromosomeBMSubstitutionModel::setAllFunctionsDomains(){
-  gain_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
-  loss_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
-  dupl_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
-  demiploidy_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
-  baseNumR_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
+  if (gainFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    gain_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
+  }
+  if (lossFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    loss_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
+  }
+  if (duplFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    dupl_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
+  }
+  if (demiFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    demiploidy_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
+  }
+  if(baseNumRFunc_ != ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+    baseNumR_->func_->setDomainsIfNeeded(minTraitState_, maxTraitState_);
+  }
 
 }
 /******************************************************************************/
