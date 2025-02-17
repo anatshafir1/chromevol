@@ -315,7 +315,7 @@ void JointChromosomeBMMng::initJointPhyloChromosomeBMLikelihood(ChromosomeAlphab
 void JointChromosomeBMMng::initMultipleLikelihoodPoints(ChromosomeAlphabet* alphabet, pair<int, std::map<int, std::vector<double>>> &modelsParams, ChromosomeSubstitutionModel::rootFreqType freqType,
     vector<int> &rateChangeType,
     bool demiOnlyForEven,
-    double sigma, double mu, double parsimonyBound)
+    double sigma, double mu, double parsimonyBound, int &seed)
 {
     double estimatedSigma = getRoughSigmaEstimator();
     std::cout << "******************************************************" << std::endl;
@@ -328,6 +328,7 @@ void JointChromosomeBMMng::initMultipleLikelihoodPoints(ChromosomeAlphabet* alph
     cout << "*********  cycle 0  **************"<<endl;
     int count_num_of_trials; 
     int max_trials = 10;
+    RandomTools::setSeed(static_cast<long>(seed));
     for (size_t n = 0; n < numOfPoints_[0]; n++){
       count_num_of_trials = 0;
         

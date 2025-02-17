@@ -453,7 +453,7 @@ JointChromosomeBMMng* ChromosomeNumberMng::runJointChromosomeBMModel(){
     bmMng->initMultipleLikelihoodPoints(alphabet_, complexParamsValues[1], ChromosomeSubstitutionModel::ROOT_LL,
         ChromEvolOptions::rateChangeType_,
         ChromEvolOptions::demiOnlyForEven_,
-        ChromEvolOptions::sigma_, ChromEvolOptions::mu_, parsimonyBound);
+        ChromEvolOptions::sigma_, ChromEvolOptions::mu_, parsimonyBound, ChromEvolOptions::seed_);
     bmMng->optimizeJointLikelihood();
     double finalLikVal = bmMng->getFinalLikelihood();
     std::cout << "final likelihood is " << finalLikVal << std::endl;

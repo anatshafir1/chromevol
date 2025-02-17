@@ -97,7 +97,8 @@ class JointChromosomeBMMng:
             bool demiOnlyForEven,
             double sigma,
             double mu,
-            double parsimonyBound);
+            double parsimonyBound,
+            int &seed);
 
 
         JointChromosomeBMMng(const JointChromosomeBMMng &bm):
