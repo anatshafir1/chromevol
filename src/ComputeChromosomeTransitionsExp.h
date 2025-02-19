@@ -59,6 +59,7 @@
 #include <map>
 #include <utility>
 #include <string>
+#include <unordered_map>
 
 
 using namespace std;
@@ -101,6 +102,8 @@ namespace bpp
             // where the key is the type of transition, and the value is the probability that the given transition corresponds to that
             // type of transition.
             map <pair<int, int>, map<int, double>> stateJumpTypeProb_;
+            bool continuous_; // if the rates should be dependent on a continuous trait
+            std::unordered_map<size_t, double> statesPerBMModel_;
 
             /***********************************/
             // Internal functions
@@ -130,7 +133,7 @@ namespace bpp
             //waitingTimes_(), jumpProbs_(), 
             branchOrder_(), 
             //ancestralTerminalsCounts_(), 
-            branchTransitionsExp_(), expNumOfChangesPerBranch_(), expNumOfChanges_(), jumpTypeMethod_(method), stateJumpTypeProb_(){}
+            branchTransitionsExp_(), expNumOfChangesPerBranch_(), expNumOfChanges_(), jumpTypeMethod_(method), stateJumpTypeProb_(), continuous_(), statesPerBMModel_(){}
 
             ComputeChromosomeTransitionsExp(const ComputeChromosomeTransitionsExp& exp):
                 jointProbabilitiesFatherSon_(exp.jointProbabilitiesFatherSon_),
@@ -145,7 +148,9 @@ namespace bpp
                 expNumOfChangesPerBranch_ (exp.expNumOfChangesPerBranch_),
                 expNumOfChanges_ (exp.expNumOfChanges_),
                 jumpTypeMethod_(exp.jumpTypeMethod_),
-                stateJumpTypeProb_(exp.stateJumpTypeProb_)
+                stateJumpTypeProb_(exp.stateJumpTypeProb_),
+                continuous_(exp.continuous_),
+                statesPerBMModel_(exp.statesPerBMModel_)
 
             {}
             ComputeChromosomeTransitionsExp& operator=(const ComputeChromosomeTransitionsExp& exp){
@@ -162,6 +167,8 @@ namespace bpp
                 expNumOfChanges_ = exp.expNumOfChanges_;
                 jumpTypeMethod_ = exp.jumpTypeMethod_;
                 stateJumpTypeProb_ = exp.stateJumpTypeProb_;
+                continuous_ = exp.continuous_;
+                statesPerBMModel_ = exp.statesPerBMModel_;
                 return *this;
             }
             ComputeChromosomeTransitionsExp* clone() const { return new ComputeChromosomeTransitionsExp(*this); }
@@ -184,7 +191,7 @@ namespace bpp
             static bool compareBranches(Branch& edge1, Branch& edge2);//sorting function to sort the branches in ascending order of length
             int getRandomState(int currentState, std::shared_ptr<const ChromosomeSubstitutionModel> model);
             double getExpectation(uint nodeId, int startAncestral, int endAncestral, int typeOfChange);
-            void updateMapOfJumps(int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model);
+            void updateMapOfJumps(int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model, size_t* modelNum = 0);
             void updateExpectationsPerBranch(uint nodeId, pair<int, int> ancestralTerminals, pair<int, int> jumpStates);
             void runHeuristics(const string FilePath = "none");
             

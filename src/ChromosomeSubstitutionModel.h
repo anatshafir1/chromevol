@@ -490,6 +490,7 @@ public:
   }
   const double getMinTraitState() const{return minTraitState_;}
   const double getMaxTraitState() const{return maxTraitState_;}
+  const double getModelTraitState() const{return state_;}
   ChromosomeBMSubstitutionModel* clone() const { return new ChromosomeBMSubstitutionModel(*this);}
   void correctBaseNumForSimulation(int maxChrNum);
   static ChromosomeBMSubstitutionModel* initBMRandomModel(

@@ -392,6 +392,8 @@ void ComputeChromosomeTransitionsExp::initBMModel(){
         std::vector<Branch> branchesPerModel;
         vector<std::shared_ptr<PhyloNode>> modelNodes;
         uint nodeId = model_->getNodesWithModel(m+1)[0];
+        auto currBMModel = std::dynamic_pointer_cast<const ChromosomeBMSubstitutionModel>(model_->getModel(m+1));
+        statesPerBMModel_[m+1] = currBMModel->getModelTraitState();
         modelNodes.push_back(tree_->getNode(nodeId));
         auto branchPtr = tree_->getIncomingEdges(modelNodes[0])[0];
         PhyloBranch branch = *branchPtr;
@@ -414,6 +416,7 @@ void ComputeChromosomeTransitionsExp::initBMModel(){
 void ComputeChromosomeTransitionsExp::init(){
     auto model = model_->getModel(1);
     if (std::dynamic_pointer_cast<const ChromosomeBMSubstitutionModel>(model)){
+        continuous_ = true;
         initBMModel();
         return;
     }
@@ -512,6 +515,7 @@ void ComputeChromosomeTransitionsExp::runSimulations(int numOfSimulations){
 // /*************************************************************************************/
 void ComputeChromosomeTransitionsExp::runIteration(int beginState, size_t modelIndex, map <uint, vector<pair<int,int>>>* unAccountedNodesAndTerminals){
     auto model = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(model_->getModel(modelIndex+1));
+    size_t modelNum = modelIndex+1; // for brownian motion model
     double totalTimeTillJump = 0;
     double maxBranch = branchOrder_[modelIndex][branchOrder_[modelIndex].size()-1].second.getLength();
     int currentState = beginState;
@@ -563,7 +567,12 @@ void ComputeChromosomeTransitionsExp::runIteration(int beginState, size_t modelI
         combOcurredStates.first = currentState;
         combOcurredStates.second = nextState;
         jumpsUntilNow.push_back(combOcurredStates);
-        updateMapOfJumps(currentState, nextState, model);
+        if (continuous_){
+            updateMapOfJumps(currentState, nextState, model, &modelNum);
+        }else{
+            updateMapOfJumps(currentState, nextState, model);
+
+        }
         currentState = nextState;
     }
 
@@ -619,7 +628,7 @@ bool ComputeChromosomeTransitionsExp::isMaxStateValid(int prevState, std::shared
     
 }
 // /********************************************************************************/
-void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model){
+void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endState, std::shared_ptr<const ChromosomeSubstitutionModel> model, size_t* modelNum){
     bool legalMove = false;
     pair <int, int> jumpStates;
     jumpStates.first = startState;
@@ -627,6 +636,13 @@ void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endSt
 
     // convert from state index to real chromsome number
     int chrStart = startState + alphabet_->getMin();
+    double stateOfDependency;
+    if (modelNum){
+        stateOfDependency = statesPerBMModel_[*modelNum] + 1;
+
+    }else{
+        stateOfDependency = chrStart;
+    }
     int chrEnd = endState + alphabet_->getMin();
     double sumOfRates = 0; //for normalization of weights
 
@@ -638,7 +654,7 @@ void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endSt
                     stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::GAIN_T] = 1;
                     return;
                 }else{
-                    double gainRate = model->getGain()->getRate(chrStart);
+                    double gainRate = model->getGain()->getRate(stateOfDependency);
                     stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::GAIN_T] = gainRate;
                     sumOfRates += gainRate;
                     legalMove = true;
@@ -659,8 +675,8 @@ void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endSt
             if (chrEnd > chrStart){
                 if (((chrEnd - chrStart) % baseNumber == 0) && ((chrEnd - chrStart) <= (int)(model->getMaxChrRange()))){
                     legalMove = true;
-                    stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::BASENUM_T] = model->getBaseNumR()->getRate(chrStart);
-                    sumOfRates += model->getBaseNumR()->getRate(chrStart);                              
+                    stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::BASENUM_T] = model->getBaseNumR()->getRate(stateOfDependency);
+                    sumOfRates += model->getBaseNumR()->getRate(stateOfDependency);                              
                 }
             }        
         }
@@ -668,7 +684,7 @@ void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endSt
         if (chrEnd == 2 * chrStart){
             if (!(model->isIgnoredDupl())){
                 legalMove = true;
-                double duplRate = model->getDupl()->getRate(chrStart);
+                double duplRate = model->getDupl()->getRate(stateOfDependency);
                 stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::DUPL_T] = duplRate;
                 sumOfRates += duplRate;
             }
@@ -679,8 +695,8 @@ void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endSt
             if (chrStart % 2 == 0){
                 if (chrEnd == chrStart * 1.5){
                     legalMove = true;
-                    stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::DEMIDUPL_T] = model->getDemiDupl()->getRate(chrStart);
-                    sumOfRates += model->getDemiDupl()->getRate(chrStart);
+                    stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::DEMIDUPL_T] = model->getDemiDupl()->getRate(stateOfDependency);
+                    sumOfRates += model->getDemiDupl()->getRate(stateOfDependency);
                 }
             }else{
                 if (!ChromEvolOptions::demiOnlyForEven_){
@@ -688,9 +704,9 @@ void ComputeChromosomeTransitionsExp::updateMapOfJumps(int startState, int endSt
                         legalMove = true;
                         double demiDupRate;
                         if (chrStart == 1){
-                            demiDupRate =  model->getDemiDupl()->getRate(chrStart);
+                            demiDupRate =  model->getDemiDupl()->getRate(stateOfDependency);
                         }else{
-                            demiDupRate = model->getDemiDupl()->getRate(chrStart)/2;
+                            demiDupRate = model->getDemiDupl()->getRate(stateOfDependency)/2;
                         }
                         stateJumpTypeProb_[jumpStates][ChromosomeSubstitutionModel::DEMIDUPL_T] = demiDupRate;
                         sumOfRates += demiDupRate;
@@ -877,13 +893,20 @@ void ComputeChromosomeTransitionsExp::runHeuristics(const string FilePath){
 // /*************************************************************************************/
 void ComputeChromosomeTransitionsExp::updateBranchLengths(int initState, int iteration, size_t modelIndex, map <int, double>* ratesPerState){
     auto model = std::dynamic_pointer_cast<const ChromosomeSubstitutionModel>(model_->getModel(modelIndex+1));
+    double dependencyState;
+    if (continuous_){
+        dependencyState = statesPerBMModel_[modelIndex+1] + 1;
+
+    }else{
+        dependencyState = initState;
+    }
     double sumOfRates = 0;
     if (iteration == 0){
         vector<double> rates;
         //dupl
-        (model->isIgnoredDupl()) ? (rates.push_back(IgnoreParam)) : (rates.push_back(model->getDupl()->getRate(initState)));
+        (model->isIgnoredDupl()) ? (rates.push_back(IgnoreParam)) : (rates.push_back(model->getDupl()->getRate(dependencyState)));
         //demi-dupl
-        (model->isIgnoredDemiDupl()) ? (rates.push_back(IgnoreParam)) : (rates.push_back(model->getDemiDupl()->getRate(initState)));
+        (model->isIgnoredDemiDupl()) ? (rates.push_back(IgnoreParam)) : (rates.push_back(model->getDemiDupl()->getRate(dependencyState)));
         //base number
         double baseNumRate = 0;
         int baseNumber = model->getBaseNumber();
@@ -893,15 +916,15 @@ void ComputeChromosomeTransitionsExp::updateBranchLengths(int initState, int ite
                 if ((i - initState) > (int)(model->getMaxChrRange())){
                     break;
                 }
-                baseNumRate += model->getBaseNumR()->getRate(initState);
+                baseNumRate += model->getBaseNumR()->getRate(dependencyState);
 
             }
         }
         (baseNumber == IgnoreParam) ? (rates.push_back(IgnoreParam)) : (rates.push_back(baseNumRate));
         //gain
-        (model->isIgnoredGain()) ? (rates.push_back(IgnoreParam)) : (rates.push_back(model->getGain()->getRate(initState)));
+        (model->isIgnoredGain()) ? (rates.push_back(IgnoreParam)) : (rates.push_back(model->getGain()->getRate(dependencyState)));
         //loss
-        rates.push_back(model->getLoss()->getRate(initState));
+        rates.push_back(model->getLoss()->getRate(dependencyState));
         for (size_t i = 0; i < rates.size(); i++){
             if (rates[i] == IgnoreParam){
                 continue;
