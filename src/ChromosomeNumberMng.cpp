@@ -1245,7 +1245,8 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
             simulateData(simulateToDirs, i, counter, simulator, alpha, &simResult, whichSimulation);
 
         }else{
-            bmSim = std::make_shared<BrownianMotionSimulator>(std::shared_ptr<PhyloTree>(tree_->clone()), ChromEvolOptions::mu_, ChromEvolOptions::sigma_, ChromEvolOptions::seed_ + i);
+            int newSeed = RandomTools::giveIntRandomNumberBetweenZeroAndEntry(std::numeric_limits<int>::max());
+            bmSim = std::make_shared<BrownianMotionSimulator>(std::shared_ptr<PhyloTree>(tree_->clone()), ChromEvolOptions::mu_, ChromEvolOptions::sigma_, newSeed);
             bmSim->simulate();
             if (!ChromEvolOptions::simulateJointEvolution_){
                 simulateBMTrait(i, counter, bmSim);
@@ -1280,7 +1281,8 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
             while ((!generatedRatesAreNonNegative) && (ChromEvolOptions::continuousTrait_)){
                 j++;
                 bmSim.reset();
-                bmSim = std::make_shared<BrownianMotionSimulator>(std::shared_ptr<PhyloTree>(tree_->clone()), ChromEvolOptions::mu_, ChromEvolOptions::sigma_, ChromEvolOptions::seed_ + i + j);
+                int newSeed = RandomTools::giveIntRandomNumberBetweenZeroAndEntry(std::numeric_limits<int>::max());
+                bmSim = std::make_shared<BrownianMotionSimulator>(std::shared_ptr<PhyloTree>(tree_->clone()), ChromEvolOptions::mu_, ChromEvolOptions::sigma_, newSeed);
                 bmSim->simulate();
                 generatedRatesAreNonNegative = simulateChromosomeData(&simulatorChr, &alphaChr, parTreeChr, rootFrequenciesChr, subProSimChr, bmSim);
             }
