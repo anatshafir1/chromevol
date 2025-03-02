@@ -70,6 +70,10 @@ class BrownianMotionAncestralReconstruction
         void reconstructAncestralStatesPostOrder(uint rootId);
         void reconstructAncestralStatesPreOrder(uint rootId);
         void addLeavesToAncestralStates();
+        void correctMLStatesAccordingToMu();
+        void claculateNodeDepthsRec(std::unordered_map<uint, double> &nodeDepths, uint nodeId, uint sonId);
+        void claculateNodeDepths(std::unordered_map<uint, double> &nodeDepths);
+        //void revertLeafStates();
 
 
 

@@ -48,8 +48,60 @@ void BrownianMotionAncestralReconstruction::reconstructAncestralStates(){
     uint rootId = tree_->getRootIndex();
     reconstructAncestralStatesPostOrder(rootId);
     reconstructAncestralStatesPreOrder(rootId);
+    //revertLeafStates();
+    correctMLStatesAccordingToMu();
     
 }
+void BrownianMotionAncestralReconstruction::claculateNodeDepthsRec(std::unordered_map<uint, double> &nodeDepths, uint nodeId, uint sonId){
+    
+    if (nodeDepths[nodeId] < 0){
+        nodeDepths[nodeId] = nodeDepths[sonId];
+        auto branch = tree_->getEdgeToFather(sonId);
+        nodeDepths[nodeId] = nodeDepths[sonId] + branch->getLength();
+    }else{
+        return;
+    }
+    if (nodeId == tree_->getRootIndex()){
+        return;
+    }
+    auto fatherNode = tree_->getFatherOfNode(tree_->getNode(nodeId));
+    uint fatherIndex = tree_->getNodeIndex(fatherNode);
+    claculateNodeDepthsRec(nodeDepths, fatherIndex, nodeId);
+
+}
+void BrownianMotionAncestralReconstruction::claculateNodeDepths(std::unordered_map<uint, double> &nodeDepths){
+    auto nodes = tree_->getAllNodes();
+    for (auto &node : nodes){
+        nodeDepths[tree_->getNodeIndex(node)] = -1;
+    }
+    auto leafNodes = tree_->getLeavesUnderNode(tree_->getNode(tree_->getRootIndex()));
+    for (auto &leaf : leafNodes){
+        uint nodeId = tree_->getNodeIndex(leaf);
+        nodeDepths[nodeId] = 0;
+        auto fatherNode = tree_->getFatherOfNode(tree_->getNode(nodeId));
+        uint fatherIndex = tree_->getNodeIndex(fatherNode);
+        claculateNodeDepthsRec(nodeDepths, fatherIndex, nodeId);
+    }
+
+}
+void BrownianMotionAncestralReconstruction::correctMLStatesAccordingToMu(){
+    if (mu_ == muMLE_){
+        return;
+    }
+    std::unordered_map<uint, double> nodeDepths;
+    claculateNodeDepths(nodeDepths);
+    double rootDepth = nodeDepths[tree_->getRootIndex()];
+    auto nodeIds = tree_->getNodeIndexes(tree_->getAllNodes());
+    for (auto &nodeId : nodeIds){
+        ancestralTraitStates_[nodeId] += (mu_ - muMLE_) * (nodeDepths[nodeId] / rootDepth);
+
+    }
+}
+
+// void BrownianMotionAncestralReconstruction::revertLeafStates(){
+//     addLeavesToAncestralStates();
+
+// }
 void BrownianMotionAncestralReconstruction::addLeavesToAncestralStates(){
     auto leafNodes = tree_->getLeavesUnderNode(tree_->getNode(tree_->getRootIndex()));
     for (auto &leaf : leafNodes){
@@ -64,7 +116,7 @@ void BrownianMotionAncestralReconstruction::reconstructAncestralStatesPostOrder(
         auto branch = tree_->getEdgeToFather(nodeId);
         double branchLength = branch->getLength();
         p_[nodeId] = 1/branchLength;
-        ancestralTraitStates_[nodeId] -= (muMLE_ - mu_); 
+        //ancestralTraitStates_[nodeId] -= (muMLE_ - mu_); 
 
     }else{
         double p_A = 0;
