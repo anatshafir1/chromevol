@@ -58,6 +58,7 @@ class JointChromosomeBMMng:
     void determineMinMaxStates();
     string getParamWithoutSuffixAndPrefix(string &paramName);
     void removeUnnecessaryLikObject(vector<JointPhyloChromosomeBMLikelihood*> &vectorOLikelihoods, size_t numberOfBestPoints);
+    std::map<string, vector<double>> fillParamNamesAndNewValues(vector<string> &allParams, const JointPhyloChromosomeBMLikelihood* lik);
 
 
 

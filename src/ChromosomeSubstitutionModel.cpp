@@ -1596,6 +1596,97 @@ bool ChromosomeBMSubstitutionModel::areRatesNegative(double minTraitState, doubl
   return false;
 
 }
+/**************************************************************************** */
+void ChromosomeBMSubstitutionModel::getRandomState(std::map<int, vector<double>> &params, vector<int> &rateChangeType, double &state){
+  vector<double> paramValues;
+  state = 0;
+  for (size_t i = 1; i < ChromosomeSubstitutionModel::paramType::NUM_OF_CHR_PARAMS; i++){
+    switch (i)
+    {
+      case ChromosomeSubstitutionModel::BASENUM:
+        break;
+      case ChromosomeSubstitutionModel::GAIN:
+        paramValues = params[ChromosomeSubstitutionModel::GAIN];
+        break;
+      case ChromosomeSubstitutionModel::LOSS:
+        paramValues = params[ChromosomeSubstitutionModel::LOSS];
+        break;
+      case ChromosomeSubstitutionModel::DUPL:
+        paramValues = params[ChromosomeSubstitutionModel::DUPL];
+        break;
+      case ChromosomeSubstitutionModel::DEMIDUPL:
+        paramValues = params[ChromosomeSubstitutionModel::DEMIDUPL];
+        break;
+      case ChromosomeSubstitutionModel::BASENUMR:
+        paramValues = params[ChromosomeSubstitutionModel::BASENUMR];
+        break;
+   
+      default:
+        throw Exception("ChromEvolOptions::setFunctions: parameter not found !!!");
+    }
+    size_t startNonComposite = getNumberOfNonCompositeParams();
+    if (rateChangeType[i-startNonComposite] == ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+      continue;
+    }
+    auto funcType = static_cast<ChromosomeNumberDependencyFunction::FunctionType>(rateChangeType[i-startNonComposite]);
+    if (funcType == ChromosomeNumberDependencyFunction::FunctionType::LINEAR){
+      double rootPoint = -paramValues[0]/paramValues[1];
+      if (rootPoint > state){
+        state = rootPoint;
+      }
+
+    }
+  }
+ 
+}
+/******************************************************************************/
+void ChromosomeBMSubstitutionModel::fixInitialStates(std::map<string, vector<double>> &newParamValues){
+  const compositeParameter* demiToUpdate = getDemiDupl();
+  const compositeParameter* gainToUpdate = getGain();
+  const compositeParameter* lossToUpdate = getLoss();
+  const compositeParameter* duplToUpdate = getDupl();
+  const compositeParameter* baseNumToUpdate = getBaseNumR();
+  if (demiToUpdate != 0){
+    fixInitialStates(demiToUpdate->getParameterValues(), newParamValues["demi"], demiToUpdate);
+  }
+  if (gainToUpdate != 0){
+    fixInitialStates(gainToUpdate->getParameterValues(), newParamValues["gain"], gainToUpdate);
+  }
+  if (lossToUpdate != 0){
+    fixInitialStates(lossToUpdate->getParameterValues(), newParamValues["loss"], lossToUpdate);
+  }
+  if(duplToUpdate != 0){
+    fixInitialStates(duplToUpdate->getParameterValues(), newParamValues["dupl"], duplToUpdate);
+  }
+  if (baseNumToUpdate != 0){
+    fixInitialStates(baseNumToUpdate->getParameterValues(), newParamValues["baseNumR"], baseNumToUpdate);
+  }
+
+
+}
+/******************************************************************************/
+void ChromosomeBMSubstitutionModel::fixInitialStates(const vector<double> &oldParamValues, vector<double> &newParamValues, const compositeParameter* paramToUpdate){
+  if (paramToUpdate->getFunction()->getName() == ChromosomeNumberDependencyFunction::FunctionType::LINEAR){
+    double rootPoint1 = 0;
+    double rootPoint2 = 0;
+    double rootPoint3 = 0;
+    if (oldParamValues[1] != 0){
+      rootPoint2 = -newParamValues[0]/oldParamValues[1];
+      
+    }
+    if (newParamValues[1] != 0){
+      rootPoint1= -oldParamValues[0]/newParamValues[1];
+      rootPoint3 = -newParamValues[0]/newParamValues[1];
+      
+    }
+    
+    double rootPoint = std::max(std::max(rootPoint1, rootPoint2), rootPoint3);
+    if (rootPoint > state_){
+      state_ = rootPoint;
+    }
+  }
+
+}
 /******************************************************************************/
 std::vector<Parameter*> ChromosomeBMSubstitutionModel::createCompositeParameter(ChromosomeNumberDependencyFunction::FunctionType &func, std::string paramName, vector<double> &vectorOfValues){
   std::vector<Parameter*> params;
@@ -1840,7 +1931,7 @@ ChromosomeBMSubstitutionModel* ChromosomeBMSubstitutionModel::initBMRandomModel(
   std::map<int, vector<double>> mapRandomParams;
   int newBaseNumber;
   double mu =  RandomTools::giveRandomNumberBetweenTwoPoints(minTraitStateInData + 0.001, maxTraitStateInData-0.001);
-  double sigma = RandomTools::giveRandomNumberBetweenTwoPoints(0, sigmaRoughEstimator);
+  double sigma = RandomTools::giveRandomNumberBetweenTwoPoints(0.001, sigmaRoughEstimator);
   setRandomModel(alpha, baseNumber, initParams, chrRange, rootFrequenciesType, rateChangeType, fixedParams, demiOnlyForEven, parsimonyBound, mapRandomParams, newBaseNumber, true, minTraitState, maxTraitState);
 
 

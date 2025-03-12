@@ -283,6 +283,7 @@ void JointChromosomeBMMng::initJointPhyloChromosomeBMLikelihood(ChromosomeAlphab
     bool demiOnlyForEven,
     double sigma, double mu, double estimatedSigma, double parsimonyBound, bool random)
 {
+    double initialState;
     std::shared_ptr<ChromosomeBMSubstitutionModel> chrModel;
     if (random){
         vector<int> fixedParams;
@@ -290,7 +291,9 @@ void JointChromosomeBMMng::initJointPhyloChromosomeBMLikelihood(ChromosomeAlphab
          rateChangeType, fixedParams, demiOnlyForEven, parsimonyBound, minTraitValue_, maxTraitValue_, minTraitStateInData_, maxTraitStateInData_, estimatedSigma));
 
     }else{
-        chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu, sigma, 0, minTraitValue_, maxTraitValue_, minTraitStateInData_, maxTraitStateInData_, alphabet, modelsParams.second, modelsParams.first, baseNumberUpperBound_[1], freqType, rateChangeType, demiOnlyForEven);
+        
+        ChromosomeBMSubstitutionModel::getRandomState(modelsParams.second, rateChangeType, initialState);
+        chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu, sigma, initialState, minTraitValue_, maxTraitValue_, minTraitStateInData_, maxTraitStateInData_, alphabet, modelsParams.second, modelsParams.first, baseNumberUpperBound_[1], freqType, rateChangeType, demiOnlyForEven);
 
     }
     auto parTree =  std::make_shared<ParametrizablePhyloTree>(*tree_);
@@ -508,6 +511,39 @@ string JointChromosomeBMMng::getParamWithoutSuffixAndPrefix(string &paramName){
     return paramNameCorrected;
 
 }
+/***************************************************************************** */
+std::map<string, vector<double>> JointChromosomeBMMng::fillParamNamesAndNewValues(vector<string> &allParams, const JointPhyloChromosomeBMLikelihood* lik){
+    vector<string> basicParamNames = {"gain", "loss", "dupl", "demi", "baseNumR"};
+    std::map<string, vector<double>> paramNamesAndNewValues;
+    std::map<string,std::map<size_t, double>> mapParamNamesAndNewValues;
+    for (auto &paramName : allParams){
+        string shortParamName = getParamWithoutSuffixAndPrefix(paramName);
+        if (shortParamName == "baseNum"){
+            continue;
+        }
+        for (size_t i = 0; i < basicParamNames.size(); i++){
+            if (shortParamName.compare(0, basicParamNames[i].size(), basicParamNames[i]) == 0) {  
+                std::string indexStr = shortParamName.substr(basicParamNames[i].size()); 
+                size_t index = (size_t)(std::stoi(indexStr));
+                mapParamNamesAndNewValues[basicParamNames[i]][index] = lik->getParameter(paramName).getValue();
+                break;
+            }                  
+        }     
+    }
+    auto it = mapParamNamesAndNewValues.begin();
+    while (it != mapParamNamesAndNewValues.end()){
+        auto paramName = it->first;
+        auto mapOfValues = it->second;
+        for (size_t i = 0; i < mapOfValues.size(); i++){
+            paramNamesAndNewValues[paramName].push_back(mapOfValues[i]);
+
+        }
+        it++;
+    }
+    return paramNamesAndNewValues;
+
+
+}
 /******************************************************************************/
 std::shared_ptr<NonHomogeneousSubstitutionProcess> JointChromosomeBMMng::setSubstitutionProcess(ValueRef <Eigen::RowVectorXd> rootFreqs, SingleProcessPhyloLikelihood* chromosomeLik, const JointPhyloChromosomeBMLikelihood* lik, std::shared_ptr<ParametrizablePhyloTree> parTree){
     if (parTree == nullptr){
@@ -526,9 +562,12 @@ std::shared_ptr<NonHomogeneousSubstitutionProcess> JointChromosomeBMMng::setSubs
     unsigned int rootId = tree_->getRootIndex();
     nodesIds.erase(std::remove(nodesIds.begin(), nodesIds.end(), rootId), nodesIds.end());
     std::sort(nodesIds.begin(), nodesIds.end());
+    std::map<string, vector<double>> paramNamesAndNewValues = fillParamNamesAndNewValues(chromosomeParamNames_, lik);
     for (size_t i = 0; i < nodesIds.size(); i++){
         auto modelToDuplicate = std::dynamic_pointer_cast<const ChromosomeBMSubstitutionModel>(chromosomeLik->getSubstitutionProcess().getModel(i+1));
         auto duplicatedModel = std::shared_ptr<ChromosomeBMSubstitutionModel>(modelToDuplicate->clone());
+        duplicatedModel->fixInitialStates(paramNamesAndNewValues);
+        
         for (auto &paramName: chromosomeParamNames_){
             string modelSpecificParamName = getParamWithoutSuffixAndPrefix(paramName);
             duplicatedModel->setParameterValue(modelSpecificParamName, lik->getParameter(paramName).getValue());

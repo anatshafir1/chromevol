@@ -389,6 +389,7 @@ public:
   void checkParametersBounds() const;
   // this function is needed, because a large range of base number tends to lead to very high chromosome numbers in the simulation
   virtual void correctBaseNumForSimulation(int maxChrNum);
+  
 
 
 protected:
@@ -509,6 +510,9 @@ public:
     double maxTraitStateInData,
     double sigmaRoughEstimator);
   static bool areRatesNegative(double minTraitState, double maxTraitState, map<int, vector<double>> &params, vector<int> &rateChangeType);
+  static void getRandomState(std::map<int, vector<double>> &params, vector<int> &rateChangeType, double &state);
+  void fixInitialStates(std::map<string, vector<double>> &paramValues);
+  void fixInitialStates(const vector<double> &oldParamValues, vector<double> &newParamValues, const compositeParameter* paramToUpdate);
 
   protected:
     const double getMinDomain() override {return getMinTraitState();}
