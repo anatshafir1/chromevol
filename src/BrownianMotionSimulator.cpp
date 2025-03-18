@@ -18,7 +18,8 @@ void BrownianMotionSimulator::simulate_(uint &nodeId, std::default_random_engine
     if (tree_->isLeaf(nodeId)){
         if (traitStatesInNodes_.at(nodeId) > maxStateInLeaves_){
             maxStateInLeaves_ = traitStatesInNodes_.at(nodeId);
-        }else if (traitStatesInNodes_.at(nodeId) < minStateInLeaves_){
+        }
+        if (traitStatesInNodes_.at(nodeId) < minStateInLeaves_){
             minStateInLeaves_ = traitStatesInNodes_.at(nodeId);
         }
         return;

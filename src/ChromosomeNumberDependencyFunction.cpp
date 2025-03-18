@@ -28,7 +28,7 @@ double ConstantDependencyFunction::getRate(std::vector<double> params, double st
 /**************************************************************************************/
 double LinearDependencyFunction::getRate(std::vector<Parameter*> params, double state) const{
   double func_res = params[0]->getValue() + ((state-1)*params[1]->getValue());
-  if ((func_res < 0) && (std::abs(func_res) > 1e-6)){  //check it - I don't remember why it is here - shoudn't be negative anyway...
+  if ((func_res < 0) && (std::abs(func_res) > epsilon_neg_rate)){
     std::shared_ptr<IntervalConstraint> interval0 = dynamic_pointer_cast<IntervalConstraint>(params[0]->getConstraint());
     std::shared_ptr<IntervalConstraint> interval1 = dynamic_pointer_cast<IntervalConstraint>(params[1]->getConstraint());
     std::cout << "Intervals of param0 are " << interval0->getLowerBound() << " " << interval0->getUpperBound() << std::endl;
@@ -43,7 +43,7 @@ double LinearDependencyFunction::getRate(std::vector<Parameter*> params, double 
     //return 0;
 
     throw Exception("LinearDependencyFunction::getRate(): Negative rate!!! Parameters are " + paramName + "\n");
-  }else if (std::abs(func_res) < 1e-6){
+  }else if (std::abs(func_res) < epsilon_neg_rate){
     return 0;
   }
   return func_res;
@@ -52,9 +52,9 @@ double LinearDependencyFunction::getRate(std::vector<Parameter*> params, double 
 /**************************************************************************************/
 double LinearDependencyFunction::getRate(std::vector<double> params, double state) const{
   double func_res = params[0] + ((state-1)*params[1]);
-  if ((func_res < 0) && (std::abs(func_res) > 1e-6)){
+  if ((func_res < 0) && (std::abs(func_res) > epsilon_neg_rate)){
     throw Exception("LinearDependencyFunction::getRate(): Negative rate!!!");
-  }else if (std::abs(func_res) < 1e-6){
+  }else if (std::abs(func_res) < epsilon_neg_rate){
     return 0;
   }
   return func_res;

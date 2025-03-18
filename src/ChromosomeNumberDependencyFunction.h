@@ -20,6 +20,7 @@
 #define upperBoundExpParam 4.6
 #define logNormalDomainFactor 4
 #define revSigmoidExpRateParam 2
+#define epsilon_neg_rate 1e-6
 using namespace std;
 namespace bpp
 {
