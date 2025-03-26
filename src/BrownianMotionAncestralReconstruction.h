@@ -64,6 +64,7 @@ class BrownianMotionAncestralReconstruction
 
         void reconstructAncestralStates();
         const std::unordered_map<uint, double> getAncestralStates() const{return ancestralTraitStates_;}
+        void claculateNodeDepths(std::unordered_map<uint, double> &nodeDepths);
 
     protected:
 
@@ -71,8 +72,8 @@ class BrownianMotionAncestralReconstruction
         void reconstructAncestralStatesPreOrder(uint rootId);
         void addLeavesToAncestralStates();
         void correctMLStatesAccordingToMu();
-        void claculateNodeDepthsRec(std::unordered_map<uint, double> &nodeDepths, uint nodeId, uint sonId);
-        void claculateNodeDepths(std::unordered_map<uint, double> &nodeDepths);
+        void claculateNodeDepthsRec(std::unordered_map<uint, double> &nodeDepths, uint nodeId);
+        //void claculateNodeDepths(std::unordered_map<uint, double> &nodeDepths);
         //void revertLeafStates();
 
 

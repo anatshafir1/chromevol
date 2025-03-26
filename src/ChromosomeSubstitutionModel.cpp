@@ -1680,9 +1680,9 @@ void ChromosomeBMSubstitutionModel::fixInitialStates(const vector<double> &oldPa
       
     }
     
-    double rootPoint = std::max(std::max(rootPoint1, rootPoint2), rootPoint3);
+    double rootPoint = std::max(state_, std::max(std::max(rootPoint1, rootPoint2), rootPoint3));
     if (rootPoint > state_){
-      state_ = rootPoint;
+      setParameterValue("state", rootPoint);
     }
   }
 

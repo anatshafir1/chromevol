@@ -52,36 +52,37 @@ void BrownianMotionAncestralReconstruction::reconstructAncestralStates(){
     correctMLStatesAccordingToMu();
     
 }
-void BrownianMotionAncestralReconstruction::claculateNodeDepthsRec(std::unordered_map<uint, double> &nodeDepths, uint nodeId, uint sonId){
+void BrownianMotionAncestralReconstruction::claculateNodeDepthsRec(std::unordered_map<uint, double> &nodeDepths, uint nodeId){
     
-    if (nodeDepths[nodeId] < 0){
-        nodeDepths[nodeId] = nodeDepths[sonId];
+    if (nodeDepths[nodeId] >= 0){
+        return;
+    }
+    auto sons = tree_->getSons(nodeId);
+    double sumOfWeigths = 0;
+    double nodeDepth = 0;
+    for (auto &sonId : sons){
+        claculateNodeDepthsRec(nodeDepths, sonId);
         auto branch = tree_->getEdgeToFather(sonId);
-        nodeDepths[nodeId] = nodeDepths[sonId] + branch->getLength();
-    }else{
-        return;
+        auto branchLength = branch->getLength();
+        double nodeWeight = 1/branchLength;
+        sumOfWeigths += nodeWeight;
+        nodeDepth += (nodeDepths[sonId] + branchLength) * nodeWeight;
     }
-    if (nodeId == tree_->getRootIndex()){
-        return;
-    }
-    auto fatherNode = tree_->getFatherOfNode(tree_->getNode(nodeId));
-    uint fatherIndex = tree_->getNodeIndex(fatherNode);
-    claculateNodeDepthsRec(nodeDepths, fatherIndex, nodeId);
+    nodeDepth /= sumOfWeigths;
+    nodeDepths[nodeId] = nodeDepth;
 
 }
 void BrownianMotionAncestralReconstruction::claculateNodeDepths(std::unordered_map<uint, double> &nodeDepths){
     auto nodes = tree_->getAllNodes();
     for (auto &node : nodes){
-        nodeDepths[tree_->getNodeIndex(node)] = -1;
+        if (tree_->isLeaf(node)){
+            nodeDepths[tree_->getNodeIndex(node)] = 0;
+        }else{
+            nodeDepths[tree_->getNodeIndex(node)] = -1;
+        }
     }
-    auto leafNodes = tree_->getLeavesUnderNode(tree_->getNode(tree_->getRootIndex()));
-    for (auto &leaf : leafNodes){
-        uint nodeId = tree_->getNodeIndex(leaf);
-        nodeDepths[nodeId] = 0;
-        auto fatherNode = tree_->getFatherOfNode(tree_->getNode(nodeId));
-        uint fatherIndex = tree_->getNodeIndex(fatherNode);
-        claculateNodeDepthsRec(nodeDepths, fatherIndex, nodeId);
-    }
+    claculateNodeDepthsRec(nodeDepths, tree_->getRootIndex());
+
 
 }
 void BrownianMotionAncestralReconstruction::correctMLStatesAccordingToMu(){
