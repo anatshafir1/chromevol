@@ -1673,6 +1673,9 @@ void ChromosomeBMSubstitutionModel::fixInitialStates(const vector<double> &oldPa
     if (oldParamValues[1] != 0){
       rootPoint2 = -newParamValues[0]/oldParamValues[1];
       
+    }else{
+      string paramName = paramToUpdate->getName() + std::to_string(1);
+      setParameterValue(paramName, newParamValues[1]);
     }
     if (newParamValues[1] != 0){
       rootPoint1= -oldParamValues[0]/newParamValues[1];
