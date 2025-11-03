@@ -9,4 +9,4 @@ The installation instructions and usage guidelines are detailed in
 
 
 
-[ChromEvol_manual.pdf](https://github.com/user-attachments/files/17328736/ChromEvol_manual.pdf)
+[ChromEvol_manual.pdf](https://github.com/user-attachments/files/23318913/ChromEvol_manual.pdf)
