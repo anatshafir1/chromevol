@@ -453,7 +453,7 @@ JointChromosomeBMMng* ChromosomeNumberMng::runJointChromosomeBMModel(){
     bmMng->initMultipleLikelihoodPoints(alphabet_, complexParamsValues[1], ChromosomeSubstitutionModel::ROOT_LL,
         ChromEvolOptions::rateChangeType_,
         ChromEvolOptions::demiOnlyForEven_,
-        ChromEvolOptions::sigma_, ChromEvolOptions::mu_, parsimonyBound, ChromEvolOptions::seed_);
+        ChromEvolOptions::sigma_[0], ChromEvolOptions::mu_, parsimonyBound, ChromEvolOptions::seed_);
     bmMng->optimizeJointLikelihood();
     double finalLikVal = bmMng->getFinalLikelihood();
     std::cout << "final likelihood is " << finalLikVal << std::endl;
@@ -1051,7 +1051,7 @@ bool ChromosomeNumberMng::simulateChromosomeData(SimpleSubstitutionProcessSiteSi
             return false;
         }
         // note: state is set here to mu, because it doesn't matter which state is put here (the states will be assigned afterwards)
-        chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(ChromEvolOptions::mu_, ChromEvolOptions::sigma_, bmSim->getMinStateInData() +0.0001, bmSim->getMinStateAbsolute(), bmSim->getMaxStateAbsolute(), bmSim->getMinStateInData(), bmSim->getMaxStateInData(), alphabet_, complexParamsValues[1].second, complexParamsValues[1].first, maxBaseNumTransition[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true);
+        chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(ChromEvolOptions::mu_, ChromEvolOptions::sigma_[0], bmSim->getMinStateInData() +0.0001, bmSim->getMinStateAbsolute(), bmSim->getMaxStateAbsolute(), bmSim->getMinStateInData(), bmSim->getMaxStateInData(), alphabet_, complexParamsValues[1].second, complexParamsValues[1].first, maxBaseNumTransition[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true);
 
     }else{
         chrModel = std::make_shared<ChromosomeSubstitutionModel>(alphabet_, complexParamsValues[1].second, complexParamsValues[1].first, maxBaseNumTransition[1], ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true);
@@ -1183,6 +1183,28 @@ void ChromosomeNumberMng::simulateTraitData(SimpleSubstitutionProcessSiteSimulat
 
 }
 /***********************************************************************************/
+void ChromosomeNumberMng::simulateJointContinuousTraitAndChromosomeData(){
+    RandomTools::setSeed(static_cast<long>(ChromEvolOptions::seed_));
+    string chromDataPath = ChromEvolOptions::resultsPathDir_ + "//simulated_chromosome_data.fasta";
+    string traitDataPath = ChromEvolOptions::resultsPathDir_ + "//simulated_trait_data.txt";
+    std::shared_ptr<ContinuousTraitModel> traitModel = std::make_shared<BrownianMotionModel>(ChromEvolOptions::mu_, ChromEvolOptions::sigma_, ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_, ChromEvolOptions::traitDependencyFunctions_["sigma"]);
+    alphabet_ = new ChromosomeAlphabet(ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_);
+    uint maxBaseNumTransition = ChromEvolOptions::maxBaseNumTransition_[1];
+    std::map<uint, std::pair<int, std::map<int, vector<double>>>> mapOfParams;
+    ChromEvolOptions::getInitialValuesForComplexParamsForJointTraitModel(mapOfParams, 1);
+    auto chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(ChromEvolOptions::mu_, ChromEvolOptions::sigma_[0], ChromEvolOptions::mu_,ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, alphabet_, mapOfParams[1].second, mapOfParams[1].first, maxBaseNumTransition, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true);
+    vector<double> chromRootFrequencies = LikelihoodUtils::setFixedRootFrequencies(ChromEvolOptions::fixedFrequenciesFilePath_, chrModel);
+    auto jointSim = std::make_shared<JointEvolutionSimulator>(tree_, chrModel, traitModel, chromRootFrequencies, ChromEvolOptions::seed_, ChromEvolOptions::deltaT_);
+    jointSim->simulateEvolution();
+    if (jointSim->isSuccessfulSimulation()){
+        jointSim->writeAsFasta(chromDataPath, jointSim->getSimulatedLeafChromosomeStates());
+        jointSim->writeAsFasta(traitDataPath, jointSim->getSimulatedLeafTraitStates());
+    }else{
+        throw Exception("ChromosomeNumberMng::simulateJointContinuousTraitAndChromosomeData(): Simulation reached max state!!!");
+    }
+
+}
+/***********************************************************************************/
 void ChromosomeNumberMng::simulateData(string &chracterFilePath){
     RandomTools::setSeed(static_cast<long>(ChromEvolOptions::seed_));
     bool dataFileExists = false;
@@ -1246,7 +1268,7 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
 
         }else{
             int newSeed = RandomTools::giveIntRandomNumberBetweenZeroAndEntry(std::numeric_limits<int>::max());
-            bmSim = std::make_shared<BrownianMotionSimulator>(std::shared_ptr<PhyloTree>(tree_->clone()), ChromEvolOptions::mu_, ChromEvolOptions::sigma_, newSeed);
+            bmSim = std::make_shared<BrownianMotionSimulator>(std::shared_ptr<PhyloTree>(tree_->clone()), ChromEvolOptions::mu_, ChromEvolOptions::sigma_[0], newSeed);
             bmSim->simulate();
             if (!ChromEvolOptions::simulateJointEvolution_){
                 simulateBMTrait(i, counter, bmSim);
@@ -1282,7 +1304,7 @@ void ChromosomeNumberMng::simulateData(string &chracterFilePath){
                 j++;
                 bmSim.reset();
                 int newSeed = RandomTools::giveIntRandomNumberBetweenZeroAndEntry(std::numeric_limits<int>::max());
-                bmSim = std::make_shared<BrownianMotionSimulator>(std::shared_ptr<PhyloTree>(tree_->clone()), ChromEvolOptions::mu_, ChromEvolOptions::sigma_, newSeed);
+                bmSim = std::make_shared<BrownianMotionSimulator>(std::shared_ptr<PhyloTree>(tree_->clone()), ChromEvolOptions::mu_, ChromEvolOptions::sigma_[0], newSeed);
                 bmSim->simulate();
                 generatedRatesAreNonNegative = simulateChromosomeData(&simulatorChr, &alphaChr, parTreeChr, rootFrequenciesChr, subProSimChr, bmSim);
             }
@@ -1390,6 +1412,12 @@ void ChromosomeNumberMng::runChromEvol(){
         std::cout <<"**** **** Total running time of the simulation procedure is: "<< (t2-t1) <<endl;
         return;
 
+    }
+    std::cout << "ABCSimulator_: " << ChromEvolOptions::ABCSimulator_ << std::endl;
+    if (ChromEvolOptions::ABCSimulator_){
+        std::cout << "ABCSimulator_: " << ChromEvolOptions::ABCSimulator_ << std::endl;
+        simulateJointContinuousTraitAndChromosomeData();
+        return;
     }
     if (ChromEvolOptions::simulateTrait_){
         simulateData(ChromEvolOptions::traitFilePath_);
@@ -2006,6 +2034,7 @@ void ChromosomeNumberMng::simulateData(bool into_dirs, size_t simNum, size_t &co
     auto leaves = simulator->getTree()->getAllLeaves();
     for (auto &leaf : leaves){
         uint leafId = simulator->getTree()->getNodeIndex(leaf);
+        std::cout << "Leaf name: " << leaf->getName() << " Leaf node id: " << leafId << std::endl;
         leavesNamesAndStates[leaf->getName()] = (*simResult)->getAncestralState(leafId);
     }
     vector<string> leavesNames = simulator->getTree()->getAllLeavesNames();

@@ -88,7 +88,32 @@ bool ChromEvolOptions::simulateJointEvolution_;
 bool ChromEvolOptions::demiOnlyForEven_;
 bool ChromEvolOptions::continuousTrait_;
 double ChromEvolOptions::mu_;
-double ChromEvolOptions::sigma_;
+vector<double> ChromEvolOptions::sigma_;
+string ChromEvolOptions::continuousModelType_;
+// string ChromEvolOptions::chromRootFrequenciesPrior_;
+// string ChromEvolOptions::muDistributionType_;
+// vector<string> ChromEvolOptions::sigmaDistributionType_;
+// vector<string> ChromEvolOptions::gainDistributionType_;
+// vector<string> ChromEvolOptions::lossDistributionType_;
+// vector<string> ChromEvolOptions::duplDistributionType_;
+// vector<string> ChromEvolOptions::demiDuplDistributionType_;
+// vector<string> ChromEvolOptions::baseNumRDistributionType_;
+// vector<string> ChromEvolOptions::baseNumDistributionType_;
+// vector<double> ChromEvolOptions::muPriorMeans_;
+// vector<double> ChromEvolOptions::sigmaPriorMeans_;
+// vector<double> ChromEvolOptions::gainPriorMeans_;
+// vector<double> ChromEvolOptions::lossPriorMeans_;
+// vector<double> ChromEvolOptions::duplPriorMeans_;
+// vector<double> ChromEvolOptions::demiDuplPriorMeans_;
+// vector<double> ChromEvolOptions::baseNumRPriorMeans_;
+// vector<double> ChromEvolOptions::baseNumPriorMeans_;
+// string ChromEvolOptions::delta_t_type_;
+bool ChromEvolOptions::ABCSimulator_;
+std::map<string, ChromosomeNumberDependencyFunction::FunctionType> ChromEvolOptions::traitDependencyFunctions_;
+double ChromEvolOptions::minContinousTraitValue_;
+double ChromEvolOptions::maxContinousTraitValue_;
+double ChromEvolOptions::deltaT_;
+
 /*************************************************************************/
 // std::string getParameterNameWithoutNamespace(const std::string& name)
 // {
@@ -100,7 +125,69 @@ double ChromEvolOptions::sigma_;
 //     return name;
         
 // }
+/*************************************************************************/
+// std::map<string, std::pair<vector<string>, vector<double>>> ChromEvolOptions::getPriorDistributionParameters(){
+//     std::map<string, std::pair<vector<string>, vector<double>>> priorDistParams;
+//     priorDistParams["mu"] = std::make_pair(std::vector<string>{muDistributionType_}, muPriorMeans_);
+//     priorDistParams["sigma"] = std::make_pair(sigmaDistributionType_, sigmaPriorMeans_);
+//     priorDistParams["gain"] = std::make_pair(gainDistributionType_, gainPriorMeans_);
+//     priorDistParams["loss"] = std::make_pair(lossDistributionType_, lossPriorMeans_);
+//     priorDistParams["dupl"] = std::make_pair(duplDistributionType_, duplPriorMeans_);
+//     priorDistParams["demiDupl"] = std::make_pair(demiDuplDistributionType_, demiDuplPriorMeans_);
+//     priorDistParams["baseNumR"] = std::make_pair(baseNumRDistributionType_, baseNumRPriorMeans_);
+//     priorDistParams["baseNum"] = std::make_pair(baseNumDistributionType_, baseNumPriorMeans_);
+//     priorDistParams["chromRootFrequencies"] = std::make_pair(std::vector<string>{rootFreqs_}, std::vector<double>{});
+//     return priorDistParams;
+// }
 
+/*************************************************************************/
+// void ChromEvolOptions::initABCSimulationsParameters(BppApplication& ChromEvol){
+//     ChromEvolOptions::initDefaultABCSimulationsParameters(ChromEvol);
+//     muDistributionType_ = ApplicationTools::getStringParameter<string>("_muDistributionType", ChromEvol.getParams(),  muDistributionType_, "", true, 0);
+//     sigmaDistributionType_ = ApplicationTools::getVectorParameter<string>("_sigmaDistributionType", ChromEvol.getParams(), ',', sigmaDistributionType_, "", true, 0);
+//     gainDistributionType_ = ApplicationTools::getVectorParameter<string>("_gainDistributionType", ChromEvol.getParams(), ',', gainDistributionType_, "", true, 0);
+//     lossDistributionType_ = ApplicationTools::getVectorParameter<string>("_lossDistributionType", ChromEvol.getParams(), ',', lossDistributionType_, "", true, 0);
+//     duplDistributionType_ = ApplicationTools::getVectorParameter<string>("_duplDistributionType", ChromEvol.getParams(), ',', duplDistributionType_, "", true, 0);
+//     demiDuplDistributionType_ = ApplicationTools::getVectorParameter<string>("_demiDuplDistributionType", ChromEvol.getParams(), ',', demiDuplDistributionType_, "", true, 0);
+//     baseNumRDistributionType_ = ApplicationTools::getVectorParameter<string>("_baseNumRDistributionType", ChromEvol.getParams(), ',', baseNumRDistributionType_, "", true, 0);
+//     baseNumDistributionType_ = ApplicationTools::getVectorParameter<string>("_baseNumDistributionType", ChromEvol.getParams(), ',', baseNumDistributionType_, "", true, 0);
+//     muPriorMeans_ = ApplicationTools::getVectorParameter<double>("_muPriorMeans", ChromEvol.getParams(), ',', muPriorMeans_, "", true, 0);
+//     sigmaPriorMeans_ = ApplicationTools::getVectorParameter<double>("_sigmaPriorMeans", ChromEvol.getParams(), ',', sigmaPriorMeans_, "", true, 0);
+//     gainPriorMeans_ = ApplicationTools::getVectorParameter<double>("_gainPriorMeans", ChromEvol.getParams(), ',', gainPriorMeans_, "", true, 0);
+//     lossPriorMeans_ = ApplicationTools::getVectorParameter<double>("_lossPriorMeans", ChromEvol.getParams(), ',', lossPriorMeans_, "", true, 0);
+//     duplPriorMeans_ = ApplicationTools::getVectorParameter<double>("_duplPriorMeans", ChromEvol.getParams(), ',', duplPriorMeans_, "", true, 0);
+//     demiDuplPriorMeans_ = ApplicationTools::getVectorParameter<double>("_demiDuplPriorMeans", ChromEvol.getParams(), ',', demiDuplPriorMeans_, "", true, 0);
+//     baseNumRPriorMeans_ = ApplicationTools::getVectorParameter<double>("_baseNumRPriorMeans", ChromEvol.getParams(), ',', baseNumRPriorMeans_, "", true, 0);
+//     baseNumPriorMeans_ = ApplicationTools::getVectorParameter<double>("_baseNumPriorMeans", ChromEvol.getParams(), ',', baseNumPriorMeans_, "", true, 0);
+//     rootFreqs_ = ApplicationTools::getStringParameter("_chromRootFrequenciesPriorDist", ChromEvol.getParams(), chromRootFrequenciesPrior_, "", true, 0);
+//     delta_t_type_ = ApplicationTools::getStringParameter("_delta_t_type", ChromEvol.getParams(), delta_t_type_, "", true, 0);
+//     std::string gainFunc = ApplicationTools::getStringParameter("_gainFunc", ChromEvol.getParams(), "None", "", true, 0);
+//     std::string lossFunc = ApplicationTools::getStringParameter("_lossFunc", ChromEvol.getParams(), "None", "", true, 0);
+//     std::string duplFunc = ApplicationTools::getStringParameter("_duplFunc", ChromEvol.getParams(), "None", "", true, 0);
+//     std::string demiDuplFunc = ApplicationTools::getStringParameter("_demiDuplFunc", ChromEvol.getParams(), "None", "", true, 0);
+//     std::string baseNumRFunc = ApplicationTools::getStringParameter("_baseNumRFunc", ChromEvol.getParams(), "None", "", true, 0);
+//     setFunction("_sigmaFunc", "sigma", traitDependencyFunctions_);
+
+    
+//     if ((!simulateTrait_) || (simulateJointEvolution_)){
+//         setFunctions(gainFunc, lossFunc, duplFunc, demiDuplFunc, baseNumRFunc);
+//     }
+
+// }
+
+/*************************************************************************/
+// void ChromEvolOptions::initDefaultABCSimulationsParameters(){
+//     initDefaultParameters();
+//     minChrNum_ = 1;
+//     maxChrNum_ = 200;
+//     maxChrInferred_ = maxChrNum_;
+//     rootFreqs_ = "Uniform";
+
+
+
+
+    
+// }
 
 /*************************************************************************/
 void ChromEvolOptions::initAllParameters(BppApplication& ChromEvol){
@@ -168,10 +255,12 @@ void ChromEvolOptions::initDefaultParameters(){
     demiOnlyForEven_ = false;
     continuousTrait_ = false;
     mu_ = 1;
-    sigma_ = 0.5;
-    
-    
-
+    sigma_ = {0.5};
+    continuousModelType_ = "BrownianMotion";
+    ABCSimulator_ = false;
+    minContinousTraitValue_ = -100;
+    maxContinousTraitValue_ = 100;
+    deltaT_ = 0.01;
 
     
 
@@ -234,13 +323,15 @@ std::vector<int> ChromEvolOptions::translateStringParamsToInt(std::vector<string
 /*************************************************************************/
 void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     maxChrNum_ = ApplicationTools::getIntParameter("_maxChrNum", ChromEvol.getParams(), maxChrNum_, "", true, 0);
+    std::cout << "maxChrNum_: " << maxChrNum_ << std::endl;
     minChrNum_ = ApplicationTools::getIntParameter("_minChrNum", ChromEvol.getParams(), minChrNum_, "", true, 0);
     numOfModels_ = ApplicationTools::getIntParameter("_numOfModels", ChromEvol.getParams(), numOfModels_, "", true, 0);
     seed_ = ApplicationTools::getIntParameter("_seed", ChromEvol.getParams(), seed_, "", true, 0);
     demiOnlyForEven_ = ApplicationTools::getBooleanParameter("_demiOnlyForEven", ChromEvol.getParams(), demiOnlyForEven_, "", true, 0);
     continuousTrait_ = ApplicationTools::getBooleanParameter("_continuousTrait", ChromEvol.getParams(), continuousTrait_, "", true, 0);
     mu_ = ApplicationTools::getDoubleParameter("_mu", ChromEvol.getParams(), mu_, "", true, 0);
-    sigma_ = ApplicationTools::getDoubleParameter("_sigma", ChromEvol.getParams(), sigma_, "", true, 0);
+    //ApplicationTools::getVectorParameter<double>("_probsForMixedOptimization", ChromEvol.getParams(), ',', defaultValForProbsForMixedOpt, "", true, 0);
+    sigma_ = ApplicationTools::getVectorParameter<double>("_sigma", ChromEvol.getParams(), ',', "0.5", "", true, 0);
 
     minBaseNumberBound_ = ApplicationTools::getIntParameter("_minBaseNumberBound", ChromEvol.getParams(), minBaseNumberBound_, "", true, 0);
     simulateData_ = ApplicationTools::getBooleanParameter("_simulateData", ChromEvol.getParams(), simulateData_, "", true, 0);
@@ -331,14 +422,28 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
     traitStateModel_ = ApplicationTools::getStringParameter("_traitStateModel", ChromEvol.getParams(), traitStateModel_, "", true, 0);
 
     useMLReconstruction_ = ApplicationTools::getBooleanParameter("_useMLReconstruction", ChromEvol.getParams(), useMLReconstruction_, "", true, 0);
-    
-    if (numberOfTraitStates_ == 0){
+    ABCSimulator_ = ApplicationTools::getBooleanParameter("_ABCSimulator", ChromEvol.getParams(), ABCSimulator_, "", true, 0);
+    if ((numberOfTraitStates_ == 0) && (!ABCSimulator_)){
         if (ChromEvolOptions::continuousTrait_){
             runOnlyJointModel_ = ApplicationTools::getBooleanParameter("_runOnlyJointModel", ChromEvol.getParams(), runOnlyJointModel_, "", true, 0);
             runOnlyIndependentModelWithTrait_ = ApplicationTools::getBooleanParameter("_runOnlyIndependentModelWithTrait", ChromEvol.getParams(), runOnlyIndependentModelWithTrait_, "", true, 0);
         }
         return;
     }
+    if (ABCSimulator_){
+        continuousModelType_ = ApplicationTools::getStringParameter("_continuousModelType", ChromEvol.getParams(), continuousModelType_, "", true, 0);
+        if ((continuousModelType_ == "BrownianMotion") && (ABCSimulator_)){
+            setFunction("_sigmaFunc", "sigma", traitDependencyFunctions_, ChromEvol);
+        }
+        minContinousTraitValue_ = ApplicationTools::getDoubleParameter("_minContinousTraitValue", ChromEvol.getParams(), minContinousTraitValue_, "", true, 0);
+        maxContinousTraitValue_ = ApplicationTools::getDoubleParameter("_maxContinousTraitValue", ChromEvol.getParams(), maxContinousTraitValue_, "", true, 0);
+        deltaT_ = ApplicationTools::getDoubleParameter("_deltaT", ChromEvol.getParams(), deltaT_, "", true, 0);
+        std::cout << "ABCSimulator_: " << ABCSimulator_ << std::endl;
+        return;
+
+    }
+    
+
     fixedTraitRootFreqs_ = ApplicationTools::getBooleanParameter("_fixedTraitRootFreqs", ChromEvol.getParams(), fixedTraitRootFreqs_, "", true, 0);
     for (size_t i = 0; i < static_cast<size_t>(numberOfTraitStates_); i++){
         //if (equalTraitFreqs_){
@@ -395,6 +500,12 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
 
     runOnlyJointModel_ = ApplicationTools::getBooleanParameter("_runOnlyJointModel", ChromEvol.getParams(), runOnlyJointModel_, "", true, 0);
     runOnlyIndependentModelWithTrait_ = ApplicationTools::getBooleanParameter("_runOnlyIndependentModelWithTrait", ChromEvol.getParams(), runOnlyIndependentModelWithTrait_, "", true, 0);
+
+    fixedRootTraitState_ = ApplicationTools::getIntParameter("_fixedRootTraitState", ChromEvol.getParams(), fixedRootTraitState_, "", true, 0);
+    weightedTraitRootFreqs_ = ApplicationTools::getBooleanParameter("_weightedTraitRootFreqs", ChromEvol.getParams(), weightedTraitRootFreqs_, "", true, 0);
+    traitDataForSimulation_ = ApplicationTools::getAFilePath("_traitDataForSimulation", ChromEvol.getParams(), false, true, "", true, "none", 0);
+    
+
     if (numOfTraitConstraints_){
         
         for (size_t i = 0; i < numOfTraitConstraints_; i++){
@@ -417,9 +528,6 @@ void ChromEvolOptions::initParametersFromFile(BppApplication& ChromEvol){
             }
         }
     }
-    fixedRootTraitState_ = ApplicationTools::getIntParameter("_fixedRootTraitState", ChromEvol.getParams(), fixedRootTraitState_, "", true, 0);
-    weightedTraitRootFreqs_ = ApplicationTools::getBooleanParameter("_weightedTraitRootFreqs", ChromEvol.getParams(), weightedTraitRootFreqs_, "", true, 0);
-    traitDataForSimulation_ = ApplicationTools::getAFilePath("_traitDataForSimulation", ChromEvol.getParams(), false, true, "", true, "none", 0);
     
     
 }
@@ -589,6 +697,11 @@ void ChromEvolOptions::setSharedParametersPerModel(std::map<uint, std::map<int, 
     //     paramNumIt ++;
     // }
 
+}
+/************************************************************************/
+void ChromEvolOptions::setFunction(const string param, const string paramType, map<string, ChromosomeNumberDependencyFunction::FunctionType> &mapFuncType, BppApplication& ChromEvol){
+    std::string paramFunc = ApplicationTools::getStringParameter(param, ChromEvol.getParams(), "None", "", true, 0);
+    mapFuncType[paramType] = static_cast<bpp::ChromosomeNumberDependencyFunction::FunctionType>(getFunctionFromString(paramFunc));
 }
 
 /************************************************************************/

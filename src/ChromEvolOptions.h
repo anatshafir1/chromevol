@@ -39,6 +39,9 @@ public:
     static void initAllParameters(BppApplication& ChromEvol);
     static void getInitialValuesForComplexParams(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &mapOfParams);
     static void getInitialValuesForComplexParamsForJointTraitModel(std::map<uint, std::pair<int, std::map<int, vector<double>>>> &mapOfParams, uint numOfModels);
+    static void initABCSimulationsParameters(BppApplication& ChromEvol);
+    static void initDefaultABCSimulationsParameters();
+    static std::map<string, std::pair<vector<string>, vector<double>>> getPriorDistributionParameters();
     //static void initVectorOfChrNumParameters(vector<double>& paramVector);
     virtual ~ChromEvolOptions(){};
     
@@ -129,11 +132,35 @@ public:
     static bool demiOnlyForEven_;
     static bool continuousTrait_;
     static double mu_;
-    static double sigma_;
-
+    static vector<double> sigma_;
+    static string continuousModelType_;
+    static bool ABCSimulator_;
+    static double minContinousTraitValue_;
+    static double maxContinousTraitValue_;
+    static double deltaT_;
+    // static string chromRootFrequenciesPrior_;
+    // static string ChromEvolOptions::muDistributionType_;
+    // static vector<string> ChromEvolOptions::sigmaDistributionType_;
+    // static vector<string> ChromEvolOptions::gainDistributionType_;
+    // static vector<string> ChromEvolOptions::lossDistributionType_;
+    // static vector<string> ChromEvolOptions::duplDistributionType_;
+    // static vector<string> ChromEvolOptions::demiDuplDistributionType_;
+    // static vector<string> ChromEvolOptions::baseNumRDistributionType_;
+    // static vector<string> ChromEvolOptions::baseNumDistributionType_;
+    // static vector<double> ChromEvolOptions::muPriorMeans_;
+    // static vector<double> ChromEvolOptions::sigmaPriorMeans_;
+    // static vector<double> ChromEvolOptions::gainPriorMeans_;
+    // static vector<double> ChromEvolOptions::lossPriorMeans_;
+    // static vector<double> ChromEvolOptions::duplPriorMeans_;
+    // static vector<double> ChromEvolOptions::demiDuplPriorMeans_;
+    // static vector<double> ChromEvolOptions::baseNumRPriorMeans_;
+    // static vector<double> ChromEvolOptions::baseNumPriorMeans_;
+    // static string ChromEvolOptions::delta_t_type_;
+    static std::map<string, ChromosomeNumberDependencyFunction::FunctionType> traitDependencyFunctions_;
     // public functions
     static std::vector<int> translateStringParamsToInt(std::vector<string> &strParams);
     static std::shared_ptr<PhyloNode> getMRCA(PhyloTree* tree, std::vector<shared_ptr<PhyloNode>> nodes);
+    static int getFunctionFromString(string funcStr);
     //static std::string getParamName(int type);
 
 private:
@@ -142,7 +169,7 @@ private:
     //static void setFixedParams(std::vector<unsigned int> fixedParams);
     
     static void setFunctions(std::string gainFunc, std::string lossFunc, std::string duplFunc, std::string demiDuplFunc, std::string baseNumRFunc);
-    static int getFunctionFromString(string funcStr);
+    static void setFunction(const string param, const string paramType, map<string, ChromosomeNumberDependencyFunction::FunctionType> &mapFuncType, BppApplication& ChromEvol);
     static void setModelParameters(BppApplication& ChromEvol);
     //static void setSharedParametersInterModels();
     static void setSharedParametersPerModel(std::map<uint, std::map<int, std::pair<int, vector<double>>>> mapModelTypeValues, std::map<uint, std::pair<int, int>> mapModelBaseNumTypeAndVal, std::map<int, size_t> paramNumFreqs);

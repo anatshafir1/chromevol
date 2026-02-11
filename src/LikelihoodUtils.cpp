@@ -249,8 +249,8 @@ string LikelihoodUtils::getStringParamName(int type){
     }
     return strName;
 }
-// /****************************************************************************/
-vector <double> LikelihoodUtils::setFixedRootFrequencies(const std::string &path, std::shared_ptr<ChromosomeSubstitutionModel> chrModel){
+/****************************************************************************/
+vector <double> LikelihoodUtils::setFixedRootFrequencies(const std::string &path, size_t numberOfStates){
     ifstream stream;
     stream.open(path.c_str());
     vector <double> freqs;
@@ -262,7 +262,7 @@ vector <double> LikelihoodUtils::setFixedRootFrequencies(const std::string &path
             continue;
         }
         double freq_i = TextTools::toDouble(freq_i_str);
-        if (static_cast<unsigned int>(freqs.size()) >= chrModel->getNumberOfStates()){
+        if (static_cast<unsigned int>(freqs.size()) >= numberOfStates){
             if (freq_i > 0){
                 throw Exception("Invalid fixed frequencies file!");
             }
@@ -272,16 +272,28 @@ vector <double> LikelihoodUtils::setFixedRootFrequencies(const std::string &path
         }
         
     }
-    size_t nbStates = chrModel->getNumberOfStates();
-    if (freqs.size() < nbStates){
-        for (size_t s = freqs.size(); s < nbStates; s++){
+    if (freqs.size() < numberOfStates){
+        for (size_t s = freqs.size(); s < numberOfStates; s++){
             freqs.push_back(0);
         }
         
     }
-    if (nbStates != freqs.size()){
+    if (numberOfStates != freqs.size()){
         throw Exception("Invalid fixed frequencies file!");
     }
+    return freqs;
+}
+
+// /****************************************************************************/
+vector <double> LikelihoodUtils::setFixedRootFrequencies(const std::string &path, std::shared_ptr<ChromosomeSubstitutionModel> chrModel){
+    size_t nbStates = chrModel->getNumberOfStates();
+    auto rootFreqs = setFixedRootFrequencies(path, nbStates);
+    return rootFreqs;
+}
+// /****************************************************************************/
+vector <double> LikelihoodUtils::setFixedRootFrequencies(const std::string &path, uint minState, uint maxState){
+    size_t numberOfStates = static_cast<size_t>(maxState - minState + 1);
+    auto freqs = setFixedRootFrequencies(path, numberOfStates);
     return freqs;
 }
 /**************************************************************************************/

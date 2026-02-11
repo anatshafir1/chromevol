@@ -11,6 +11,8 @@
 #include <Bpp/Numeric/Random/RandomTools.h>
 #include <Bpp/Numeric/Function/BrentOneDimension.h>
 #include "BrownianMotionAncestralReconstruction.h"
+#include "ContinuousTraitModel.h"
+#include "JointEvolutionSimulator.h"
 #include "BrownianMotionLikelihood.h"
 #include <iostream>
 #include <fstream>
@@ -1140,17 +1142,33 @@ void testBMTraitModel(){
 /******************************************************/
 void testBrownianMotionMLAncestralstates(){
   Newick reader;
-  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("((((P:0.21,H:0.21):0.28,M:0.49):0.13,A:0.62):0.38,G:1.0);", false, "", false, false));
+  //shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("((((P:0.21,H:0.21):0.28,M:0.49):0.13,A:0.62):0.38,G:1.0);", false, "", false, false));
+  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("(((S1:0.1,S2:0.1):0.3,S3:0.4):0.2,(S4:0.3,S5:0.3):0.3);", false, "", false, false));
   std::unordered_map<string, double> traitData;
-  traitData["G"] = -1.46968;
-  traitData["A"] = 2.02815;
-  traitData["M"] = 2.37024;
-  traitData["P"] = 3.61092;
-  traitData["H"] = 4.09434;
-  double muMLE = 1.18372461;
-  double sigmaMLE = 3.153838667703223;
+  traitData["S1"] = -1.46968;
+  traitData["S2"] = 2.02815;
+  traitData["S3"] = 2.37024;
+  traitData["S4"] = 3.61092;
+  traitData["S5"] = 4.09434;
+  BrownianMotionLikelihood* bm = new BrownianMotionLikelihood(pTree, traitData);
+  //bm->calculateContrasts();
+  std::cout << "mu is: " << bm->getMuMLE() << std::endl;
+  std::cout << "sigma is: " << bm->getSigmaMLE() << std::endl;
+  double muMLE = bm->getMuMLE();
+  double sigmaMLE = bm->getSigmaMLE();
+  bm->calculateLikelihood(muMLE, sigmaMLE);
+  std::cout << "likelihood is: " << bm->getLikelihood() << std::endl;
+  double mu = 2;
+  delete bm;
   // test the case where the parameters match the MLE
-  BrownianMotionAncestralReconstruction* bmAncestral = new BrownianMotionAncestralReconstruction(muMLE, sigmaMLE, muMLE, sigmaMLE, traitData, pTree);
+  BrownianMotionAncestralReconstruction* bmAncestral = new BrownianMotionAncestralReconstruction(muMLE, sigmaMLE, mu, sigmaMLE, traitData, pTree);
+  std::unordered_map<uint, double> nodeDepths;
+  bmAncestral->claculateNodeDepths(nodeDepths);
+  auto itDepths = nodeDepths.begin();
+  while (itDepths != nodeDepths.end()){
+    std::cout << "Node id is " << itDepths->first << " depth is " << itDepths->second << std::endl;
+    itDepths ++;
+  }
   bmAncestral->reconstructAncestralStates();
   auto reconstructedStates = bmAncestral->getAncestralStates();
   auto it = reconstructedStates.begin();
@@ -1159,6 +1177,106 @@ void testBrownianMotionMLAncestralstates(){
     it ++;
   }
   delete bmAncestral;
+
+}
+/**************************************************** */
+// std::shared_ptr<NonHomogeneousSubstitutionProcess> JointChromosomeBMMng::setSubstitutionProcess(ValueRef <Eigen::RowVectorXd> rootFreqs, SingleProcessPhyloLikelihood* chromosomeLik, const JointPhyloChromosomeBMLikelihood* lik, std::shared_ptr<ParametrizablePhyloTree> parTree){
+//   if (parTree == nullptr){
+//       parTree =  std::make_shared<ParametrizablePhyloTree>(*tree_);
+
+//   }
+//   auto rootFreqsValues =  rootFreqs->getTargetValue();
+//   Vdouble rootFreqsBpp;
+//   copyEigenToBpp(rootFreqsValues, rootFreqsBpp);
+//   std::shared_ptr<FixedFrequencySet> rootFreqsFixed = std::make_shared<FixedFrequencySet>(std::shared_ptr<const StateMap>(new CanonicalStateMap(chromosomeLik->getSubstitutionProcess().getModel(1)->getStateMap(), false)), rootFreqsBpp);
+//   std::shared_ptr<FrequencySet> rootFrequencies = std::shared_ptr<FrequencySet>(rootFreqsFixed->clone());
+//   auto rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+//   std::shared_ptr<NonHomogeneousSubstitutionProcess> modelSet = std::make_shared<NonHomogeneousSubstitutionProcess>(std::shared_ptr<DiscreteDistribution>(rdist->clone()), parTree, rootFrequencies);
+//   // assigning for each branch a specific model (because of the branch specific state, which is the only parameter that differs between the different models)
+//   vector<unsigned int> nodesIds = tree_->getAllNodesIndexes();
+//   unsigned int rootId = tree_->getRootIndex();
+//   nodesIds.erase(std::remove(nodesIds.begin(), nodesIds.end(), rootId), nodesIds.end());
+//   std::sort(nodesIds.begin(), nodesIds.end());
+//   std::map<string, vector<double>> paramNamesAndNewValues = fillParamNamesAndNewValues(chromosomeParamNames_, lik);
+//   for (size_t i = 0; i < nodesIds.size(); i++){
+//       auto modelToDuplicate = std::dynamic_pointer_cast<const ChromosomeBMSubstitutionModel>(chromosomeLik->getSubstitutionProcess().getModel(i+1));
+//       auto duplicatedModel = std::shared_ptr<ChromosomeBMSubstitutionModel>(modelToDuplicate->clone());
+//       duplicatedModel->fixInitialStates(paramNamesAndNewValues);
+      
+//       for (auto &paramName: chromosomeParamNames_){
+//           string modelSpecificParamName = getParamWithoutSuffixAndPrefix(paramName);
+//           duplicatedModel->setParameterValue(modelSpecificParamName, lik->getParameter(paramName).getValue());
+//       }
+//       for (auto &paramName : traitParamNames_){
+//           string modelSpecificParamName = getParamWithoutSuffixAndPrefix(paramName);
+//           duplicatedModel->setParameterValue(modelSpecificParamName, lik->getParameter(paramName).getValue());
+//       }
+//       duplicatedModel->setParameterValue("state", lik->getParameter("Chromosome.state_" + std::to_string(i+1)).getValue()); 
+//       modelSet->addModel(duplicatedModel, vector<unsigned int>(1, nodesIds[i]));
+//   }
+//   return modelSet;
+
+
+// }
+/***************************************************** */
+void testUpdatingParametersInBMSubstitutionModel(){
+  const ChromosomeAlphabet* alphabetChr = new ChromosomeAlphabet(3,20);
+  std::map<int, std::vector<double>> mapOfParamValues;
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::GAIN)].push_back(2);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::LOSS)].push_back(0.386178);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::LOSS)].push_back(0);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::DUPL)].push_back(3);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::DEMIDUPL)].push_back(1.3);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::BASENUMR)].push_back(0.1);
+  uint chrRange = 15;
+  int baseNumber = 6;
+  std::vector<int> rateChangeType;
+  for (size_t i = 0; i < 5; i++){
+    if (i == 2){
+      rateChangeType.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::LINEAR));
+    }else{
+      rateChangeType.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::CONSTANT));
+    }
+
+  }
+  double mu = 5.7;
+  double sigma = 12.3;
+  double state = 0;
+  double minTraitState = 0.1;
+  double maxTraitState = 10;
+  double minTraitStateInData = 0.3;
+  double maxTraitStateInData = 9.8;
+
+  //  ChromosomeBMSubstitutionModel(double mu,
+  // double sigma,
+  // double state,
+  // double minTraitState,
+  // double maxTraitState,
+  // double minTraitStateInData,
+  // double maxTraitStateInData,
+  // const ChromosomeAlphabet* alpha, 
+  // std::map<int, vector<double>> mapOfParamValues,
+  // int baseNum,
+  // unsigned int maxChrRange, 
+  // rootFreqType freqType,
+  // vector<int> rateChangeType,
+  // bool demiOnlyForEven,
+  // bool simulated = false);
+//bpp::ChromosomeBMSubstitutionModel::ChromosomeBMSubstitutionModel(double&, double&, double&, double&, double&, double&, const bpp::ChromosomeAlphabet*&, std::map<int, std::vector<double, std::allocator<double> > >&, int&, unsigned int&, bpp::ChromosomeSubstitutionModel::rootFreqType, std::vector<int>&, bool, bool)
+
+  std::shared_ptr<ChromosomeBMSubstitutionModel> chrModel1 = std::make_shared<ChromosomeBMSubstitutionModel>(mu, sigma, state, minTraitState, maxTraitState, minTraitStateInData, maxTraitStateInData, alphabetChr, mapOfParamValues, baseNumber, chrRange, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType, false);
+  auto duplicatedModel = std::shared_ptr<ChromosomeBMSubstitutionModel>(chrModel1->clone());
+  std::map<string, vector<double>> paramNamesAndNewValues;
+  paramNamesAndNewValues["gain"] = {1.5};
+  paramNamesAndNewValues["loss"] = {-4.27705, 1.8813};
+  paramNamesAndNewValues["dupl"] = {1.5};
+  paramNamesAndNewValues["demi"] = {1};
+  paramNamesAndNewValues["baseNumR"] = {0.1};
+  duplicatedModel->fixInitialStates(paramNamesAndNewValues);
+  duplicatedModel->setParameterValue("loss0", paramNamesAndNewValues["loss"][0]);
+  duplicatedModel->setParameterValue("loss1", paramNamesAndNewValues["loss"][1]);
+
+
 
 }
 /******************************************************/
@@ -1292,11 +1410,62 @@ void testBrownianMotionLikelihood(){
 
 }
 /******************************************************/
+void testJointModelSimulation(){
+  Newick reader;
+  shared_ptr<PhyloTree> pTree(reader.parenthesisToPhyloTree("(((S1:0.1,S2:0.1):0.3,S3:0.4):0.2,(S4:0.3,S5:0.3):0.3);", false, "", false, false));
+  const ChromosomeAlphabet* alphabetChr = new ChromosomeAlphabet(3,20);
+  auto rdist = std::shared_ptr<DiscreteDistribution>(new GammaDiscreteRateDistribution(1, 1.0));
+  auto parTree =  std::make_shared<ParametrizablePhyloTree>(*pTree);
+  std::map<int, std::vector<double>> mapOfParamValues;
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::GAIN)].push_back(1);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::GAIN)].push_back(0.5);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::LOSS)].push_back(1.5);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::LOSS)].push_back(0.25);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::DUPL)].push_back(1.5);
+  mapOfParamValues[static_cast<int>(ChromosomeSubstitutionModel::DUPL)].push_back(0.75);
+  uint chrRange = 15;
+  std::vector<int> rateChangeType;
+  rateChangeType.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::IGNORE));
+  for (size_t i = 0; i < 3; i++){
+    rateChangeType.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::LINEAR));
+
+  }
+  rateChangeType.push_back(static_cast<int>(ChromosomeNumberDependencyFunction::IGNORE));
+  double state = 5.7;
+  double minTraitState = 0.1;
+  double maxTraitState = 20;
+  double minTraitStateInData = 0.1;
+  double maxTraitStateInData = 20;
+  double mu = 5.7;
+  double sigma = 12.3;
+  vector<double> sigma_vec = {sigma, 0.1};
+  vector<double> chromRootFrequencies;
+  for (size_t i = 3; i <= 20; i++){
+    if (i == 6){
+      chromRootFrequencies.push_back(0.6);
+      continue;
+    }
+    chromRootFrequencies.push_back(0.4/17.0);
+  }
+  std::shared_ptr<ChromosomeBMSubstitutionModel> chrBMModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu, sigma, state, minTraitState, maxTraitState, minTraitStateInData, maxTraitStateInData, alphabetChr, mapOfParamValues, IgnoreParam, chrRange, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType, true);
+  std::shared_ptr<ContinuousTraitModel> traitModel = std::make_shared<BrownianMotionModel>(mu, sigma_vec, 0, 100, ChromosomeNumberDependencyFunction::FunctionType::LINEAR);
+  // JointEvolutionSimulator(PhyloTree* tree, const std::shared_ptr<ChromosomeBMSubstitutionModel> chromosomeModel, const std::shared_ptr<ContinuousTraitModel> traitModel, vector<double> &chromRootFrequencies, int seed, double deltaT
+  auto simulator = JointEvolutionSimulator(pTree.get(), chrBMModel, traitModel, chromRootFrequencies, 1024, 0.01);
+  simulator.simulateEvolution();
+
+
+
+
+
+}
+/******************************************************/
 int main(){
   //testTraitWeighted();
+  //testUpdatingParametersInBMSubstitutionModel();
   //testBrownianMotionMLAncestralstates();
   //testBrownianMotionLikelihood();
-  testChromosomeBMSubstitutionModel();
+  //testChromosomeBMSubstitutionModel();
+  testJointModelSimulation();
 
   return 0;
   // string simulations_path = "/home/anat/Docs/Sida/simulations";

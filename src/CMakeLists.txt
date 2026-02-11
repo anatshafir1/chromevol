@@ -25,6 +25,8 @@ set (CPP_FILES
   JointPhyloChromosomeBMLikelihood.cpp
   JointChromosomeBMMng.cpp
   BrownianMotionSimulator.cpp
+  ContinuousTraitModel.cpp
+  JointEvolutionSimulator.cpp
   )
 
 IF(BUILD_STATIC)

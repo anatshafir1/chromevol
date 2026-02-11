@@ -83,6 +83,8 @@
 #include "ChromosomeTraitOptimizer.h"
 #include "JointChromosomeBMMng.h"
 #include "BrownianMotionSimulator.h"
+#include "ContinuousTraitModel.h"
+#include "JointEvolutionSimulator.h"
 
 
 
@@ -193,6 +195,7 @@ namespace bpp{
 
 
         protected:
+            void simulateJointContinuousTraitAndChromosomeData();
             void getStatesAndTimes(SiteSimulationResult* simResult, vector<size_t> &states, vector<double> &times, std::shared_ptr<const ParametrizablePhyloTree> parTree, uint nodeId) const;
             void simulateBMTrait(size_t simNum, size_t &count_failed, std::shared_ptr<BrownianMotionSimulator> bmSim);
             void printAncestralStatesInBMSimulation(const string &ancestorsPath, const std::shared_ptr<PhyloTree> tree, const std::unordered_map<uint, double> &statesInNodes);

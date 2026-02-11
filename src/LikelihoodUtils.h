@@ -98,6 +98,8 @@ namespace bpp{
         static std::string getFunctionName(int func);
         static std::string getStringParamName(int type);
         static vector <double> setFixedRootFrequencies(const std::string &path, std::shared_ptr<ChromosomeSubstitutionModel> chrModel);
+        static vector <double> setFixedRootFrequencies(const std::string &path, size_t numberOfStates);
+        static vector <double> setFixedRootFrequencies(const std::string &path, uint minState, uint maxState);
         static void updateWithTypeAndCorrespondingName(std::map<std::string, int> &typeGeneralName);
         static int getTypeOfParamFromParamName(string name);
         static uint getModelFromParamName(string name);

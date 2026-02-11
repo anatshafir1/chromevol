@@ -352,6 +352,10 @@ public:
   const Matrix<double>& getPij_t_func3(double d) const;
   const Matrix<double>& getPij_t_func4(double d) const;
   static size_t getNumberOfNonCompositeParams(){return 1;} // currently only base number
+  static vector<string> getModelSimpleParamNames(){
+    return {"baseNum", "baseNumR", "dupl", "loss", "gain", "demiDupl"};
+  }
+
 
 
   std::string getName() const { return "Chromosome"; }
@@ -373,6 +377,16 @@ public:
   const compositeParameter* getLoss() const {return loss_;}
   const compositeParameter* getDupl() const {return dupl_;}
   const compositeParameter* getBaseNumR() const {return baseNumR_;}
+  vector<double> getCompositeParameterValues(const compositeParameter* param){
+    if (param == 0){
+      return vector<double>();
+    }
+    return param->getParameterValues();
+  }
+  bool isDemiOnlyForEven() const {return demiOnlyForEven_;}
+  bool isSimulated() const {return simulated_;}
+  ChromosomeSubstitutionModel::rootFreqType getRootFreqType() const {return freqType_;}
+  vector<int> getRateChangeTypes() const;
   //double getConstDupl () const{return dupl_;}
   //double getChangeRateDupl() const {return duplR_;}
   //double getConstGain() const {return gain_;}
@@ -474,6 +488,9 @@ public:
     bool demiOnlyForEven,
     bool simulated = false);
 
+  ChromosomeBMSubstitutionModel* getModelAccordingToState(const std::shared_ptr<ChromosomeBMSubstitutionModel> model, double state);
+
+
 
   virtual ~ChromosomeBMSubstitutionModel() {
 
@@ -492,6 +509,8 @@ public:
   const double getMinTraitState() const{return minTraitState_;}
   const double getMaxTraitState() const{return maxTraitState_;}
   const double getModelTraitState() const{return state_;}
+  const double getMu() const{return mu_;}
+  const double getSigma() const{return sigma_;}
   ChromosomeBMSubstitutionModel* clone() const { return new ChromosomeBMSubstitutionModel(*this);}
   void correctBaseNumForSimulation(int maxChrNum);
   static ChromosomeBMSubstitutionModel* initBMRandomModel(
@@ -513,6 +532,23 @@ public:
   static void getRandomState(std::map<int, vector<double>> &params, vector<int> &rateChangeType, double &state);
   void fixInitialStates(std::map<string, vector<double>> &paramValues);
   void fixInitialStates(const vector<double> &oldParamValues, vector<double> &newParamValues, const compositeParameter* paramToUpdate);
+  static ChromosomeBMSubstitutionModel::paramType getParamTypeFromName(const string& paramName){
+    if (paramName == "baseNum"){
+      return ChromosomeSubstitutionModel::BASENUM;
+    }else if (paramName == "baseNumR"){
+      return ChromosomeSubstitutionModel::BASENUMR;
+    }else if (paramName == "dupl"){
+      return ChromosomeSubstitutionModel::DUPL;
+    }else if (paramName == "loss"){
+      return ChromosomeSubstitutionModel::LOSS;
+    }else if (paramName == "gain"){
+      return ChromosomeSubstitutionModel::GAIN;
+    }else if (paramName == "demiDupl"){
+      return ChromosomeSubstitutionModel::DEMIDUPL;
+    }else{
+      throw Exception("ChromosomeSubstitutionModel::getParamTypeFromName(): Unknown parameter name: " + paramName);
+    }
+  }
 
   protected:
     const double getMinDomain() override {return getMinTraitState();}
@@ -526,6 +562,7 @@ public:
     void updateQWithDemiDupl(size_t currChrNum, size_t minChrNum, size_t maxChrNum);
     void updateBMParameters(double minTraitState, double maxTraitState);
     void getParametersValues();
+
     
 
 

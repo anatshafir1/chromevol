@@ -538,6 +538,17 @@ void ChromosomeSubstitutionModel::checkParametersBounds() const{
 
   }
 }
+/******************************************************************************* */
+vector<int> ChromosomeSubstitutionModel::getRateChangeTypes() const{
+  vector<int> rateChangeTypes;
+  rateChangeTypes.resize(NUM_OF_CHR_PARAMS - getNumberOfNonCompositeParams());
+  rateChangeTypes[GAIN - getNumberOfNonCompositeParams()] = static_cast<int>(gainFunc_);
+  rateChangeTypes[LOSS - getNumberOfNonCompositeParams()] = static_cast<int>(lossFunc_);
+  rateChangeTypes[DUPL - getNumberOfNonCompositeParams()] = static_cast<int>(duplFunc_);
+  rateChangeTypes[DEMIDUPL - getNumberOfNonCompositeParams()] = static_cast<int>(demiFunc_);
+  rateChangeTypes[BASENUMR - getNumberOfNonCompositeParams()] = static_cast<int>(baseNumRFunc_);
+  return rateChangeTypes;
+}
 /*******************************************************************************/
 void ChromosomeSubstitutionModel::updateMatrices(){
     //update model parameters
@@ -1941,4 +1952,28 @@ ChromosomeBMSubstitutionModel* ChromosomeBMSubstitutionModel::initBMRandomModel(
   ChromosomeBMSubstitutionModel* model = new ChromosomeBMSubstitutionModel(mu, sigma, 0, minTraitState, maxTraitState, minTraitStateInData, maxTraitStateInData, alpha, mapRandomParams, newBaseNumber, chrRange, rootFrequenciesType, rateChangeType, demiOnlyForEven);//, useExtendedFloat);
   return model;
 
+}
+
+ChromosomeBMSubstitutionModel* ChromosomeBMSubstitutionModel::getModelAccordingToState(const std::shared_ptr<ChromosomeBMSubstitutionModel> model, double state){
+  const ChromosomeAlphabet* alphabet = dynamic_cast<const ChromosomeAlphabet*>(model->getAlphabet());
+  ChromosomeBMSubstitutionModel* newModel = new ChromosomeBMSubstitutionModel(model->getMu(),
+    model->getSigma(), 
+    state, 
+    model->getMinTraitState(), 
+    model->getMaxTraitState(), 
+    model->getMinTraitState(), 
+    model->getMaxTraitState(), 
+    alphabet, 
+    model->getCompositeParameterValues(model->getGain()), 
+    model->getCompositeParameterValues(model->getLoss()), 
+    model->getCompositeParameterValues(model->getDupl()),
+    model->getCompositeParameterValues(model->getDemiDupl()),
+    model->getBaseNumber(), 
+    model->getCompositeParameterValues(model->getBaseNumR()),
+    model->getMaxChrRange(),
+    model->getRootFreqType(), 
+    model->getRateChangeTypes(), 
+    model->isDemiOnlyForEven(),
+    model->isSimulated());
+  return newModel;
 }
