@@ -36,7 +36,6 @@ class JointEvolutionSimulator
         std::unordered_map<uint, MutationPath> simulatedEvolutionChromosome_; // map of node id to a pair of (chromosome number, time)
         double traitRootState_;
         size_t chromosomeRootState_;
-        vector<double> cumSumChromosomeRootFrequencies_;
         std::unordered_map<uint, std::pair<double, int>> nodeStates_; // map of node id to a pair of (trait value, chrom number)
         int seed_;
         double deltaT_;
@@ -45,14 +44,12 @@ class JointEvolutionSimulator
 
 
     public:
-        JointEvolutionSimulator(PhyloTree* tree, const std::shared_ptr<ChromosomeBMSubstitutionModel> chromosomeModel, const std::shared_ptr<ContinuousTraitModel> traitModel, vector<double> &chromRootFrequencies, int seed, double deltaT):
+        JointEvolutionSimulator(const PhyloTree* tree, const std::shared_ptr<ChromosomeBMSubstitutionModel> chromosomeModel, const std::shared_ptr<ContinuousTraitModel> traitModel, size_t chromosomeRootState, int seed, double deltaT):
             tree_(std::shared_ptr<PhyloTree>(tree->clone())), chromosomeModel_(chromosomeModel), traitModel_(traitModel), simulatedEvolutionTrait_(), simulatedEvolutionChromosome_(),
-            traitRootState_(traitModel->sampleRootState()), chromosomeRootState_(), cumSumChromosomeRootFrequencies_(), nodeStates_(), seed_(seed), deltaT_(deltaT), successfulSimulation_(true)
+            traitRootState_(traitModel->sampleRootState()), chromosomeRootState_(chromosomeRootState - (size_t)(chromosomeModel->getMin())), nodeStates_(), seed_(seed), deltaT_(deltaT), successfulSimulation_(true)
 
         {
 
-            cumSumChromosomeRootFrequencies_ = VectorTools::cumSum(chromRootFrequencies);
-            chromosomeRootState_ = RandomTools::pickFromCumSum(cumSumChromosomeRootFrequencies_);
             RandomTools::setSeed(static_cast<long>(seed_));
             
 
@@ -66,7 +63,6 @@ class JointEvolutionSimulator
             simulatedEvolutionChromosome_(bm.simulatedEvolutionChromosome_),
             traitRootState_(bm.traitRootState_),
             chromosomeRootState_(bm.chromosomeRootState_),
-            cumSumChromosomeRootFrequencies_(bm.cumSumChromosomeRootFrequencies_),
             nodeStates_(bm.nodeStates_),
             seed_(bm.seed_),
             deltaT_(bm.deltaT_),

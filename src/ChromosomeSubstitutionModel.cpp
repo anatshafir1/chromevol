@@ -1954,10 +1954,10 @@ ChromosomeBMSubstitutionModel* ChromosomeBMSubstitutionModel::initBMRandomModel(
 
 }
 
-ChromosomeBMSubstitutionModel* ChromosomeBMSubstitutionModel::getModelAccordingToState(const std::shared_ptr<ChromosomeBMSubstitutionModel> model, double state){
+ChromosomeBMSubstitutionModel* ChromosomeBMSubstitutionModel::getModelAccordingToState(const std::shared_ptr<ChromosomeBMSubstitutionModel> model, double state, double sigma){
   const ChromosomeAlphabet* alphabet = dynamic_cast<const ChromosomeAlphabet*>(model->getAlphabet());
   ChromosomeBMSubstitutionModel* newModel = new ChromosomeBMSubstitutionModel(model->getMu(),
-    model->getSigma(), 
+    sigma, 
     state, 
     model->getMinTraitState(), 
     model->getMaxTraitState(), 

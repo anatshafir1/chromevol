@@ -1184,24 +1184,9 @@ void ChromosomeNumberMng::simulateTraitData(SimpleSubstitutionProcessSiteSimulat
 }
 /***********************************************************************************/
 void ChromosomeNumberMng::simulateJointContinuousTraitAndChromosomeData(){
-    RandomTools::setSeed(static_cast<long>(ChromEvolOptions::seed_));
-    string chromDataPath = ChromEvolOptions::resultsPathDir_ + "//simulated_chromosome_data.fasta";
-    string traitDataPath = ChromEvolOptions::resultsPathDir_ + "//simulated_trait_data.txt";
-    std::shared_ptr<ContinuousTraitModel> traitModel = std::make_shared<BrownianMotionModel>(ChromEvolOptions::mu_, ChromEvolOptions::sigma_, ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_, ChromEvolOptions::traitDependencyFunctions_["sigma"]);
-    alphabet_ = new ChromosomeAlphabet(ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_);
-    uint maxBaseNumTransition = ChromEvolOptions::maxBaseNumTransition_[1];
-    std::map<uint, std::pair<int, std::map<int, vector<double>>>> mapOfParams;
-    ChromEvolOptions::getInitialValuesForComplexParamsForJointTraitModel(mapOfParams, 1);
-    auto chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(ChromEvolOptions::mu_, ChromEvolOptions::sigma_[0], ChromEvolOptions::mu_,ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, alphabet_, mapOfParams[1].second, mapOfParams[1].first, maxBaseNumTransition, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true);
-    vector<double> chromRootFrequencies = LikelihoodUtils::setFixedRootFrequencies(ChromEvolOptions::fixedFrequenciesFilePath_, chrModel);
-    auto jointSim = std::make_shared<JointEvolutionSimulator>(tree_, chrModel, traitModel, chromRootFrequencies, ChromEvolOptions::seed_, ChromEvolOptions::deltaT_);
-    jointSim->simulateEvolution();
-    if (jointSim->isSuccessfulSimulation()){
-        jointSim->writeAsFasta(chromDataPath, jointSim->getSimulatedLeafChromosomeStates());
-        jointSim->writeAsFasta(traitDataPath, jointSim->getSimulatedLeafTraitStates());
-    }else{
-        throw Exception("ChromosomeNumberMng::simulateJointContinuousTraitAndChromosomeData(): Simulation reached max state!!!");
-    }
+    auto jointSimMng = std::make_shared<JointContinuousTraitChrSimMng>(tree_, ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_, ChromEvolOptions::maxBaseNumTransition_[1]);
+    jointSimMng->simulateEvolutionForAllModels();
+    jointSimMng->writeSimulationsResultsToFile(ChromEvolOptions::resultsPathDir_ +"//"+ "res.csv");
 
 }
 /***********************************************************************************/

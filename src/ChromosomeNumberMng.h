@@ -85,6 +85,7 @@
 #include "BrownianMotionSimulator.h"
 #include "ContinuousTraitModel.h"
 #include "JointEvolutionSimulator.h"
+#include "JointContinuousTraitChrSimMng.h"
 
 
 

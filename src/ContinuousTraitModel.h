@@ -36,6 +36,7 @@ public:
    * @param state The current state of the character.
    */
     virtual double getParamValue(string &paramName, double state) const = 0;
+    virtual string getModelName() const {return AbstractParameterAliasable::getNamespace();}
     void createCompositeParameter(ChromosomeNumberDependencyFunction::FunctionType &func, 
         std::string paramName, 
         vector<double> &vectorOfValues, 

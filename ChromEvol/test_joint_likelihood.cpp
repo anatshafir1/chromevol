@@ -1450,7 +1450,7 @@ void testJointModelSimulation(){
   std::shared_ptr<ChromosomeBMSubstitutionModel> chrBMModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu, sigma, state, minTraitState, maxTraitState, minTraitStateInData, maxTraitStateInData, alphabetChr, mapOfParamValues, IgnoreParam, chrRange, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, rateChangeType, true);
   std::shared_ptr<ContinuousTraitModel> traitModel = std::make_shared<BrownianMotionModel>(mu, sigma_vec, 0, 100, ChromosomeNumberDependencyFunction::FunctionType::LINEAR);
   // JointEvolutionSimulator(PhyloTree* tree, const std::shared_ptr<ChromosomeBMSubstitutionModel> chromosomeModel, const std::shared_ptr<ContinuousTraitModel> traitModel, vector<double> &chromRootFrequencies, int seed, double deltaT
-  auto simulator = JointEvolutionSimulator(pTree.get(), chrBMModel, traitModel, chromRootFrequencies, 1024, 0.01);
+  auto simulator = JointEvolutionSimulator(pTree.get(), chrBMModel, traitModel, 7, 1024, 0.01);
   simulator.simulateEvolution();
 
 

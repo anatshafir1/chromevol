@@ -138,6 +138,8 @@ public:
     static double minContinousTraitValue_;
     static double maxContinousTraitValue_;
     static double deltaT_;
+    static string modelParametersCsv_;
+    static string rootFreqDistributionType_;
     // static string chromRootFrequenciesPrior_;
     // static string ChromEvolOptions::muDistributionType_;
     // static vector<string> ChromEvolOptions::sigmaDistributionType_;
@@ -164,6 +166,7 @@ public:
     //static std::string getParamName(int type);
 
 private:
+    static void initABCSimulationsParameters(BppApplication& ChromEvol, std::string gainFunc, std::string lossFunc, std::string duplFunc, std::string demiDuplFunc, std::string baseNumRFunc);
     static void initDefaultParameters();
     static void initParametersFromFile(BppApplication& ChromEvol);
     //static void setFixedParams(std::vector<unsigned int> fixedParams);

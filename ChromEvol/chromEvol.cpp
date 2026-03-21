@@ -48,7 +48,7 @@ int main(int args, char **argv) {
         BppApplication ChromEvol(args, argv, "ChromEvol");
         ChromEvolOptions::initAllParameters(ChromEvol);
         ChromosomeNumberMng* mng = new ChromosomeNumberMng();
-        if (!ChromEvolOptions::simulateData_){
+        if ((!ChromEvolOptions::simulateData_) &&(!ChromEvolOptions::ABCSimulator_)){
             mng->getCharacterData(ChromEvolOptions::characterFilePath_);
         }
         mng->getTree(ChromEvolOptions::treeFilePath_, ChromEvolOptions::treeLength_);       

@@ -488,7 +488,7 @@ public:
     bool demiOnlyForEven,
     bool simulated = false);
 
-  ChromosomeBMSubstitutionModel* getModelAccordingToState(const std::shared_ptr<ChromosomeBMSubstitutionModel> model, double state);
+  ChromosomeBMSubstitutionModel* getModelAccordingToState(const std::shared_ptr<ChromosomeBMSubstitutionModel> model, double state, double sigma);
 
 
 

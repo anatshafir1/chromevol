@@ -27,6 +27,7 @@ set (CPP_FILES
   BrownianMotionSimulator.cpp
   ContinuousTraitModel.cpp
   JointEvolutionSimulator.cpp
+  JointContinuousTraitChrSimMng.cpp
   )
 
 IF(BUILD_STATIC)
