@@ -13,7 +13,6 @@ void JointEvolutionSimulator::simulateEvolutionRec_(uint &nodeId, size_t initial
     if (tree_->isLeaf(nodeId)){
         return;
     }
-    std::cout << "Simulating evolution for node " << nodeId << std::endl;
     auto sons = tree_->getSons(nodeId);
     for (auto &sonId: sons){
         double currentTraitState = initialTraitState;
@@ -51,7 +50,6 @@ void JointEvolutionSimulator::simulateMutationPath(uint nodeId, double &currentT
     if (timeAccumulated >= delta_time){
         return;
     }
-    std::cout << "Simulating mutation path for node " << nodeId << " with current chrom state " << currentChromState << " and current trait state " << currentTraitState << std::endl;
     std::string pnameSigma = traitModel_->getModelName() + ContinuousTraitModel::getParameterName(ContinuousTraitModel::SIGMA);
     double sigma = traitModel_->getParamValue(pnameSigma, currentChromState + chromosomeModel_->getMin());
     auto chromModel = std::shared_ptr<ChromosomeBMSubstitutionModel>(chromosomeModel_->getModelAccordingToState(chromosomeModel_, currentTraitState, sigma));
