@@ -1185,7 +1185,7 @@ void ChromosomeNumberMng::simulateTraitData(SimpleSubstitutionProcessSiteSimulat
 /***********************************************************************************/
 void ChromosomeNumberMng::simulateJointContinuousTraitAndChromosomeData(){
     auto jointSimMng = std::make_shared<JointContinuousTraitChrSimMng>(tree_, ChromEvolOptions::minChrNum_, ChromEvolOptions::maxChrNum_, ChromEvolOptions::maxBaseNumTransition_[1]);
-    jointSimMng->simulateEvolutionForAllModels();
+    jointSimMng->simulateEvolutionForAllModels(ChromEvolOptions::continuousModelType_);
     jointSimMng->writeSimulationsResultsToFile(ChromEvolOptions::resultsPathDir_ +"//"+ "res.csv");
 
 }

@@ -327,7 +327,7 @@ void ChromEvolOptions::initABCSimulationsParameters(BppApplication& ChromEvol, s
     modelParametersCsv_ = ApplicationTools::getAFilePath("_modelParametersCsv", ChromEvol.getParams(), true, true, "", true, "none", 1);
     setFunctions(gainFunc, lossFunc, duplFunc, demiDuplFunc, baseNumRFunc);
     continuousModelType_ = ApplicationTools::getStringParameter("_continuousModelType", ChromEvol.getParams(), continuousModelType_, "", true, 0);
-    if (continuousModelType_ == "BrownianMotion"){
+    if ((continuousModelType_ == "BrownianMotion") || (continuousModelType_ == "GenomeSizeModel")){
         setFunction("_sigmaFunc", "sigma", traitDependencyFunctions_, ChromEvol);
     }
     minContinousTraitValue_ = ApplicationTools::getDoubleParameter("_minContinousTraitValue", ChromEvol.getParams(), minContinousTraitValue_, "", true, 0);

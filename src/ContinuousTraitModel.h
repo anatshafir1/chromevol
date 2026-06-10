@@ -21,7 +21,7 @@ namespace bpp
  */ 
 
 class ContinuousTraitModel:
-    public virtual AbstractParameterAliasable
+    public AbstractParameterAliasable
 {
 public:
     enum ParameterType {MU, SIGMA, ALPHA, THETA};
@@ -55,6 +55,9 @@ public:
    */
     virtual double simulate(double time, double startState, double dependencyState) = 0;//, std::default_random_engine &generator) = 0;
     virtual double sampleRootState() const = 0;
+    virtual void updateState(double &currentTraitState, double &prevChromState, double &currentChromState){
+        return;
+    };
     static string getParameterName(ParameterType paramType){
         string paramName;
         switch(paramType){
@@ -110,8 +113,8 @@ public:
 
 };
 class BrownianMotionModel:
-  public virtual ContinuousTraitModel,
-  public virtual AbstractParameterAliasable{
+  public ContinuousTraitModel{//,
+  //public virtual AbstractParameterAliasable{
     protected:
         double mu_;
         compositeParameter* sigma_;
@@ -123,8 +126,8 @@ class BrownianMotionModel:
             double minDomain, 
             double maxDomain,
             ChromosomeNumberDependencyFunction::FunctionType sigmaFuncType):
-            AbstractParameterAliasable("BrownianMotion."),
-            ContinuousTraitModel("BrownianMotion."),
+            //AbstractParameterAliasable("BrownianMotion."),
+            ContinuousTraitModel("BrownianMotion"),
             mu_(mu),sigma_(0),sigmaFuncType_(sigmaFuncType) {
                 string paramPrefix = "BrownianMotion.";
                 createCompositeParameter(sigmaFuncType_, "sigma", sigma, paramPrefix, minDomain, maxDomain, &sigma_);
@@ -133,7 +136,7 @@ class BrownianMotionModel:
         virtual ~BrownianMotionModel(){}
 
         BrownianMotionModel(const BrownianMotionModel& model):
-            AbstractParameterAliasable(model),
+            //AbstractParameterAliasable(model),
             ContinuousTraitModel(model),
             mu_(model.mu_),
             sigma_(model.sigma_){}
@@ -146,6 +149,25 @@ class BrownianMotionModel:
         double sampleRootState() const override{return mu_;};
 
   };
+class GenomeSizeModel :
+    public BrownianMotionModel{
+        public:
+        GenomeSizeModel(double mu,
+                vector<double> sigma,
+                double minDomain,
+                double maxDomain,
+                ChromosomeNumberDependencyFunction::FunctionType sigmaFuncType)
+                : BrownianMotionModel(mu, sigma, minDomain, maxDomain, sigmaFuncType)
+        {}
+        void updateState(double &currentTraitState, double &prevChromState, double &currentChromState) override;
+        virtual ~GenomeSizeModel() = default;
+        GenomeSizeModel(const GenomeSizeModel& model):
+            BrownianMotionModel(model)
+        {}
+        GenomeSizeModel* clone() const { return new GenomeSizeModel(*this);}
+
+    };
+
 
 }
 #endif // CHROMEVOL_CONTINUOUSTRAITMODEL_H

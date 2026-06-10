@@ -57,3 +57,10 @@ double BrownianMotionModel::simulate(double time, double startState, double depe
     double newState = x + startState;
     return newState;
 }
+
+void GenomeSizeModel::updateState(double &currentTraitState, double &prevChromState, double &currentChromState){
+    if (std::abs(currentChromState - prevChromState) > 1){
+        currentTraitState = currentTraitState * (currentChromState/prevChromState);
+    }
+    return;
+}

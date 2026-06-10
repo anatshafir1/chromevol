@@ -17,7 +17,7 @@ void JointEvolutionSimulator::simulateEvolutionRec_(uint &nodeId, size_t initial
     for (auto &sonId: sons){
         double currentTraitState = initialTraitState;
         size_t currentChromState = initialChromState;
-        size_t prevState = initialChromState;
+        //size_t prevChromState = initialChromState;
         auto branch = tree_->getEdgeToFather(sonId);
         double branchLength = branch->getLength();
         MutationPath mutationPathChrom = MutationPath(chromosomeModel_->getAlphabet(), initialChromState, branchLength);
@@ -33,7 +33,7 @@ void JointEvolutionSimulator::simulateEvolutionRec_(uint &nodeId, size_t initial
                 delta_time = remainingTime;          
             }
             double timeAccumulated = 0.0;
-            simulateMutationPath(sonId, currentTraitState, currentChromState, delta_time, mutationPathChrom, timeAccumulated, prevState);
+            simulateMutationPath(sonId, currentTraitState, currentChromState, delta_time, mutationPathChrom, timeAccumulated);
 
         }
         nodeStates_[sonId] = std::make_pair(currentTraitState, static_cast<int>(currentChromState) + chromosomeModel_->getMin());
@@ -46,7 +46,7 @@ void JointEvolutionSimulator::simulateEvolutionRec_(uint &nodeId, size_t initial
 
 
 }
-void JointEvolutionSimulator::simulateMutationPath(uint nodeId, double &currentTraitState, size_t &currentChromState, double delta_time, MutationPath &mutationPathChrom, double timeAccumulated, size_t &prevState){
+void JointEvolutionSimulator::simulateMutationPath(uint nodeId, double &currentTraitState, size_t &currentChromState, double delta_time, MutationPath &mutationPathChrom, double timeAccumulated){
     if (timeAccumulated >= delta_time){
         return;
     }
@@ -57,39 +57,30 @@ void JointEvolutionSimulator::simulateMutationPath(uint nodeId, double &currentT
     MutationPath mutationPath = simulator.detailedEvolve(currentChromState, delta_time-timeAccumulated);
     vector<double> times = mutationPath.getTimes();
     vector<size_t> states = mutationPath.getStates();
-    bool polyploidy = false;
-
-            
-    for (size_t i = 0; i < times.size(); i++){
-        if (states[i] == chromosomeModel_->getMax() - chromosomeModel_->getMin()){
+    
+    // add each time only the first mutation - the next one will be determined by a new trait state
+    if (states.size() > 0){
+        if (states[0] == chromosomeModel_->getMax() - chromosomeModel_->getMin()){
             successfulSimulation_ = false;
             return;
         }
-        mutationPathChrom.addEvent(states[i], times[i]);
-        currentChromState = states[i];
-        timeAccumulated += times[i];
-        polyploidy = isPolyploidyEvent(prevState, states[i]);
-        currentTraitState = traitModel_->simulate(times[i], currentTraitState, static_cast<double>(prevState) + chromosomeModel_->getMin());
-        simulatedEvolutionTrait_[nodeId].push_back(std::make_pair(currentTraitState, times[i]));
-        if (polyploidy){
-            currentTraitState = updateTraitStateAfterPolyploidy(prevState, states[i], currentTraitState);
-        }
-        prevState = states[i];
-        if (polyploidy){
-            break;
-        }
-    }
-    if (polyploidy){
-        simulateMutationPath(nodeId, currentTraitState, currentChromState, delta_time, mutationPathChrom, timeAccumulated, prevState);
-    }
-    if (timeAccumulated >= delta_time){
-        return;
-    }
+        mutationPathChrom.addEvent(states[0], times[0]);
+        
+        timeAccumulated += times[0];
+        //polyploidy = isPolyploidyEvent(prevChromState, states[0]);
+        currentTraitState = traitModel_->simulate(times[0], currentTraitState, static_cast<double>(currentChromState) + chromosomeModel_->getMin());
+        double prevChromStateAsNum = currentChromState + chromosomeModel_->getMin();
+        double currentChromStateAsNum = states[0] + chromosomeModel_->getMin();
+        traitModel_->updateState(currentTraitState, prevChromStateAsNum, currentChromStateAsNum);
+        simulatedEvolutionTrait_[nodeId].push_back(std::make_pair(currentTraitState, times[0]));
+        currentChromState = states[0];
+        simulateMutationPath(nodeId, currentTraitState, currentChromState, delta_time, mutationPathChrom, timeAccumulated);
 
-    currentTraitState = traitModel_->simulate(delta_time-timeAccumulated, currentTraitState, static_cast<double>(currentChromState) + chromosomeModel_->getMin());
-    simulatedEvolutionTrait_[nodeId].push_back(std::make_pair(currentTraitState, delta_time-timeAccumulated));
+    }else{
+        currentTraitState = traitModel_->simulate(delta_time-timeAccumulated, currentTraitState, static_cast<double>(currentChromState) + chromosomeModel_->getMin());
+        simulatedEvolutionTrait_[nodeId].push_back(std::make_pair(currentTraitState, delta_time-timeAccumulated));
 
-
+    }
 }
 
 

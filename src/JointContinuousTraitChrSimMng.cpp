@@ -83,11 +83,20 @@ void JointContinuousTraitChrSimMng::updateModelParameters(std::unordered_map<str
         targetVector[i] = static_cast<uint>(modelParameters[paramName][i]);
     }
 }
-void JointContinuousTraitChrSimMng::simulateEvolutionForAllModels()
+std::shared_ptr<ContinuousTraitModel> JointContinuousTraitChrSimMng::createTraitModel(const string& modelName, double mu, vector<double> sigma, uint minChrNum, uint maxChrNum, ChromosomeNumberDependencyFunction::FunctionType sigmaFuncType){
+    if (modelName == "BrownianMotion"){
+        return std::make_shared<BrownianMotionModel>(mu, sigma, minChrNum, maxChrNum, sigmaFuncType);
+    }else if (modelName == "GenomeSizeModel"){
+        return std::make_shared<GenomeSizeModel>(mu, sigma, minChrNum, maxChrNum, sigmaFuncType);
+    }else{
+        throw Exception("JointContinuousTraitChrSimMng::createTraitModel: Unsupported continuous trait model type: " + modelName);
+    }
+}
+void JointContinuousTraitChrSimMng::simulateEvolutionForAllModels(const string &modelName)
 {
     RandomTools::setSeed(static_cast<long>(ChromEvolOptions::seed_));
     for (size_t i = 0; i < numOfSimulations_; i++){
-        std::shared_ptr<ContinuousTraitModel> traitModel = std::make_shared<BrownianMotionModel>(mu_[i], sigma_[i], minChrNum_, maxChrNum_, ChromEvolOptions::traitDependencyFunctions_["sigma"]);
+        std::shared_ptr<ContinuousTraitModel> traitModel = createTraitModel(modelName, mu_[i], sigma_[i], minChrNum_, maxChrNum_, ChromEvolOptions::traitDependencyFunctions_["sigma"]);
         std::shared_ptr<ChromosomeAlphabet> alphabet = std::make_shared<ChromosomeAlphabet>(minChrNum_, maxChrNum_);
         std::pair<int, std::map<int, vector<double>>> mapOfParams;
         mapOfParams.first = baseNum_[i];
@@ -97,7 +106,7 @@ void JointContinuousTraitChrSimMng::simulateEvolutionForAllModels()
         mapOfParams.second[static_cast<int>(ChromosomeSubstitutionModel::DEMIDUPL)] = demi_[i];
         mapOfParams.second[static_cast<int>(ChromosomeSubstitutionModel::BASENUMR)] = baseNumR_[i];
         auto chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu_[i], 0.01, mu_[i], ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, alphabet.get(), mapOfParams.second, mapOfParams.first, maxBaseNumTransition_, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true); // any sigma will work here, because it immediately gets updated according to the trait model in the simulator
-        auto jointSim = std::make_shared<JointEvolutionSimulator>(tree_, chrModel, traitModel, rootChromState_[i], ChromEvolOptions::seed_, ChromEvolOptions::deltaT_);
+        auto jointSim = std::make_shared<JointEvolutionSimulator>(tree_, chrModel, traitModel, rootChromState_[i], ChromEvolOptions::seed_ + i, ChromEvolOptions::deltaT_);
         jointSim->simulateEvolution();
         std::unordered_map<string, int> leafChromosomeStates = jointSim->getSimulatedLeafChromosomeStates();
         std::unordered_map<string, double> leafTraitStates = jointSim->getSimulatedLeafTraitStates();

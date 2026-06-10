@@ -108,7 +108,7 @@ class JointEvolutionSimulator
         void simulateEvolutionRec_(uint &nodeId, size_t initialChromState, double initialTraitState, bool reminderStep);
         bool isPolyploidyEvent(size_t prevState, size_t currentState) const;
         double updateTraitStateAfterPolyploidy(size_t prevState, size_t currentState, double traitState) const;
-        void simulateMutationPath(uint nodeId, double &currentTraitState, size_t &currentChromState, double delta_time, MutationPath &mutationPathChrom, double timeAccumulated, size_t &prevState);
+        void simulateMutationPath(uint nodeId, double &currentTraitState, size_t &currentChromState, double delta_time, MutationPath &mutationPathChrom, double timeAccumulated);
 
 
 

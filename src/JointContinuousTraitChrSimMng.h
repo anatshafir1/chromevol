@@ -81,7 +81,8 @@ namespace bpp{
         }
 
         void init();
-        void simulateEvolutionForAllModels();
+        void simulateEvolutionForAllModels(const string &modelName);
+        std::shared_ptr<ContinuousTraitModel> createTraitModel(const string& modelName, double mu, vector<double> sigma, uint minChrNum, uint maxChrNum, ChromosomeNumberDependencyFunction::FunctionType sigmaFuncType);
         void writeSimulationsResultsToFile(const string& outputFilePath);
 
         protected:
