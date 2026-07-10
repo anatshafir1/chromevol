@@ -62,6 +62,9 @@ std::vector<string> JointContinuousTraitChrSimMng::getMatchingParamNames(const s
 void JointContinuousTraitChrSimMng::updateModelParameters(std::unordered_map<string, vector<double>>& modelParameters, const string& paramName, vector<vector<double>>& targetVector, size_t &numOfSimulations) {
     std::vector<std::string> matchingParamNames = getMatchingParamNames(modelParameters, paramName);
     targetVector.resize(numOfSimulations);
+    if (matchingParamNames.empty()) {
+        return; // No matching parameter names found, exit the function
+    }
     for (size_t i = 0; i < numOfSimulations; ++i) {
         for (size_t j = 0; j < matchingParamNames.size(); ++j) {
             string specificParamName =  paramName + std::to_string(j);
@@ -71,6 +74,9 @@ void JointContinuousTraitChrSimMng::updateModelParameters(std::unordered_map<str
 }
 
 void JointContinuousTraitChrSimMng::updateModelParameters(std::unordered_map<string, vector<double>>& modelParameters, const string& paramName, vector<double>& targetVector, size_t &numOfSimulations) {
+    if (modelParameters.find(paramName) == modelParameters.end()) {
+        return; // Parameter name not found, exit the function
+    }
     targetVector.resize(numOfSimulations);
     for (size_t i = 0; i < numOfSimulations; ++i) {
         targetVector[i] = modelParameters[paramName][i];       
@@ -78,6 +84,9 @@ void JointContinuousTraitChrSimMng::updateModelParameters(std::unordered_map<str
 }
 
 void JointContinuousTraitChrSimMng::updateModelParameters(std::unordered_map<string, vector<double>>& modelParameters, const string& paramName, vector<uint>& targetVector, size_t &numOfSimulations) {
+    if (modelParameters.find(paramName) == modelParameters.end()) {
+        return; // Parameter name not found, exit the function
+    }
     targetVector.resize(numOfSimulations);
     for (size_t i = 0; i < numOfSimulations; ++i) {
         targetVector[i] = static_cast<uint>(modelParameters[paramName][i]);
@@ -96,21 +105,47 @@ void JointContinuousTraitChrSimMng::simulateEvolutionForAllModels(const string &
 {
     RandomTools::setSeed(static_cast<long>(ChromEvolOptions::seed_));
     for (size_t i = 0; i < numOfSimulations_; i++){
-        std::shared_ptr<ContinuousTraitModel> traitModel = createTraitModel(modelName, mu_[i], sigma_[i], minChrNum_, maxChrNum_, ChromEvolOptions::traitDependencyFunctions_["sigma"]);
+        bool successfulModel = true;
+        std::shared_ptr<ContinuousTraitModel> traitModel;
+        try{
+            traitModel = createTraitModel(modelName, mu_[i], sigma_[i], minChrNum_, maxChrNum_, ChromEvolOptions::traitDependencyFunctions_["sigma"]);
+
+        }catch (const std::exception& e){
+            successfulModel = false;
+        }
+        
         std::shared_ptr<ChromosomeAlphabet> alphabet = std::make_shared<ChromosomeAlphabet>(minChrNum_, maxChrNum_);
         std::pair<int, std::map<int, vector<double>>> mapOfParams;
-        mapOfParams.first = baseNum_[i];
+        auto baseNumFunc = ChromosomeSubstitutionModel::getFunctionType(ChromEvolOptions::rateChangeType_, ChromosomeSubstitutionModel::paramType::BASENUMR);
+        if (baseNumFunc == ChromosomeNumberDependencyFunction::FunctionType::IGNORE){
+            mapOfParams.first = IgnoreParam;
+        }else{
+            mapOfParams.first = baseNum_[i];
+        }
         mapOfParams.second[static_cast<int>(ChromosomeSubstitutionModel::GAIN)] = gain_[i];
         mapOfParams.second[static_cast<int>(ChromosomeSubstitutionModel::LOSS)] = loss_[i];
         mapOfParams.second[static_cast<int>(ChromosomeSubstitutionModel::DUPL)] = dupl_[i];
         mapOfParams.second[static_cast<int>(ChromosomeSubstitutionModel::DEMIDUPL)] = demi_[i];
         mapOfParams.second[static_cast<int>(ChromosomeSubstitutionModel::BASENUMR)] = baseNumR_[i];
-        auto chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu_[i], 0.01, mu_[i], ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, alphabet.get(), mapOfParams.second, mapOfParams.first, maxBaseNumTransition_, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true); // any sigma will work here, because it immediately gets updated according to the trait model in the simulator
+        std::shared_ptr<ChromosomeBMSubstitutionModel> chrModel;
+        try{
+            chrModel = std::make_shared<ChromosomeBMSubstitutionModel>(mu_[i], 0.01, mu_[i], ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, ChromEvolOptions::minContinousTraitValue_, ChromEvolOptions::maxContinousTraitValue_, alphabet.get(), mapOfParams.second, mapOfParams.first, maxBaseNumTransition_, ChromosomeSubstitutionModel::rootFreqType::ROOT_LL, ChromEvolOptions::rateChangeType_, ChromEvolOptions::demiOnlyForEven_, true); // any sigma will work here, because it immediately gets updated according to the trait model in the simulator
+
+        }catch (const std::exception& e){
+            successfulModel = false;
+        }
+        vector<double> results;
+        if (!successfulModel){
+            results = vector<double>(speciesNames_.size()*2, std::numeric_limits<double>::quiet_NaN());
+            simulationsResults_[i] = results;
+            continue;
+        }
+
         auto jointSim = std::make_shared<JointEvolutionSimulator>(tree_, chrModel, traitModel, rootChromState_[i], ChromEvolOptions::seed_ + i, ChromEvolOptions::deltaT_);
-        jointSim->simulateEvolution();
+        jointSim->simulateEvolution();   
         std::unordered_map<string, int> leafChromosomeStates = jointSim->getSimulatedLeafChromosomeStates();
         std::unordered_map<string, double> leafTraitStates = jointSim->getSimulatedLeafTraitStates();
-        vector<double> results;
+        
         if (jointSim->isSuccessfulSimulation()){
             for (const string& speciesName : speciesNames_){
                 results.push_back(leafTraitStates[speciesName]);

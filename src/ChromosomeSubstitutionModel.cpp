@@ -236,6 +236,12 @@ ChromosomeSubstitutionModel :: ChromosomeSubstitutionModel(
     vPowExp_()
     
 {}
+/******************************************************************************/
+ChromosomeNumberDependencyFunction::FunctionType ChromosomeSubstitutionModel::getFunctionType(vector<int> &rateChangeType, paramType param){
+  size_t startNonComposite = getNumberOfNonCompositeParams();
+  return static_cast<ChromosomeNumberDependencyFunction::FunctionType>(rateChangeType[static_cast<int>(param)-startNonComposite]);
+
+}
 
 /******************************************************************************/
 void ChromosomeSubstitutionModel::defineFunctionsNames(vector<int> &rateChangeType){

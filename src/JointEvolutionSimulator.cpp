@@ -51,13 +51,22 @@ void JointEvolutionSimulator::simulateMutationPath(uint nodeId, double &currentT
         return;
     }
     std::string pnameSigma = traitModel_->getModelName() + ContinuousTraitModel::getParameterName(ContinuousTraitModel::SIGMA);
-    double sigma = traitModel_->getParamValue(pnameSigma, currentChromState + chromosomeModel_->getMin());
-    auto chromModel = std::shared_ptr<ChromosomeBMSubstitutionModel>(chromosomeModel_->getModelAccordingToState(chromosomeModel_, currentTraitState, sigma));
-    auto simulator = SimpleMutationProcess(chromModel.get());
-    MutationPath mutationPath = simulator.detailedEvolve(currentChromState, delta_time-timeAccumulated);
-    vector<double> times = mutationPath.getTimes();
-    vector<size_t> states = mutationPath.getStates();
-    
+    double sigma;
+    vector<double> times;
+    vector<size_t> states;
+    try{
+        sigma = traitModel_->getParamValue(pnameSigma, currentChromState + chromosomeModel_->getMin());
+        auto chromModel = std::shared_ptr<ChromosomeBMSubstitutionModel>(chromosomeModel_->getModelAccordingToState(chromosomeModel_, currentTraitState, sigma));
+        auto simulator = SimpleMutationProcess(chromModel.get());
+        MutationPath mutationPath = simulator.detailedEvolve(currentChromState, delta_time-timeAccumulated);
+        times = mutationPath.getTimes();
+        states = mutationPath.getStates();
+
+    }catch (const std::exception& e) {
+        std::cout << "Error when simulating chromosome evolution: " << e.what() << std::endl;
+        successfulSimulation_ = false;
+        return;
+    }
     // add each time only the first mutation - the next one will be determined by a new trait state
     if (states.size() > 0){
         if (states[0] == chromosomeModel_->getMax() - chromosomeModel_->getMin()){
@@ -68,7 +77,15 @@ void JointEvolutionSimulator::simulateMutationPath(uint nodeId, double &currentT
         
         timeAccumulated += times[0];
         //polyploidy = isPolyploidyEvent(prevChromState, states[0]);
-        currentTraitState = traitModel_->simulate(times[0], currentTraitState, static_cast<double>(currentChromState) + chromosomeModel_->getMin());
+        try{
+            currentTraitState = traitModel_->simulate(times[0], currentTraitState, static_cast<double>(currentChromState) + chromosomeModel_->getMin());
+
+        }catch (const std::exception& e) {
+            std::cout << "Error when simulating trait evolution: " << e.what() << std::endl;
+            successfulSimulation_ = false;
+            return;
+        }
+        
         double prevChromStateAsNum = currentChromState + chromosomeModel_->getMin();
         double currentChromStateAsNum = states[0] + chromosomeModel_->getMin();
         traitModel_->updateState(currentTraitState, prevChromStateAsNum, currentChromStateAsNum);
@@ -77,7 +94,15 @@ void JointEvolutionSimulator::simulateMutationPath(uint nodeId, double &currentT
         simulateMutationPath(nodeId, currentTraitState, currentChromState, delta_time, mutationPathChrom, timeAccumulated);
 
     }else{
-        currentTraitState = traitModel_->simulate(delta_time-timeAccumulated, currentTraitState, static_cast<double>(currentChromState) + chromosomeModel_->getMin());
+        try{
+            currentTraitState = traitModel_->simulate(delta_time-timeAccumulated, currentTraitState, static_cast<double>(currentChromState) + chromosomeModel_->getMin());
+
+        }catch (const std::exception& e) {
+            std::cout << "Error when simulating trait evolution: " << e.what() << std::endl;
+            successfulSimulation_ = false;
+            return;
+        }
+        
         simulatedEvolutionTrait_[nodeId].push_back(std::make_pair(currentTraitState, delta_time-timeAccumulated));
 
     }

@@ -403,6 +403,8 @@ public:
   void checkParametersBounds() const;
   // this function is needed, because a large range of base number tends to lead to very high chromosome numbers in the simulation
   virtual void correctBaseNumForSimulation(int maxChrNum);
+  static ChromosomeNumberDependencyFunction::FunctionType getFunctionType(vector<int> &rateChangeType, paramType param);
+  
   
 
 
