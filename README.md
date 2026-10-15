@@ -5,7 +5,7 @@ the program infers ancestral chromosome numbers as well as the location and type
 chromosome number transitions along the tree.
 In addition, the program allows the following extensions:
 1) Models enabling the identification of clades with distinct patterns of chromosome number evolution within a phylogeny.
-2) Models of dependence of polyploidy and dysploidy on the current number of chromosomes.
+2) Models of dependence of polyploidy and dysploidy rates on the current number of chromosomes.
 3) A joint model of chromosome number and trait evolution.
    
 ## Publications
